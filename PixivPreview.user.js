@@ -1,5 +1,6 @@
 // ==UserScript==
 // @name            Pixiv Arts Preview & Followed Atrists Coloring
+// @name:ru         Pixiv Arts Preview & Followed Atrists Coloring
 // @namespace       Pixiv
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page. Install "NewTabImageOpen.user.js"(placed in same folder) for propper new tab image originals opening. The names of the authors you are already subscribed to are highlighted with green.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом. Для правильного открытия оригиналов артов в новом окне нужна также установка "NewTabImageOpen.user.js". Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом.
@@ -11,9 +12,11 @@
 // @match           https://www.pixiv.net/member_illust.php*
 // @match           https://www.pixiv.net/ranking.php?mode=*
 // @match           https://www.pixiv.net/member.php?id=*
-// @version         0.36.2
+// @match           https://www.pixiv.net/bookmark.php?id=*
+// @version         0.36.3
 // @homepageURL     https://github.com/NightLancer/PixivPreview
 // @downloadURL     https://github.com/NightLancer/PixivPreview/raw/master/PixivPreview.user.js
+// @license         MIT License
 // @grant           none
 // ==/UserScript==
 //---------------------------------------------------------------------------------------
@@ -53,7 +56,7 @@
         hits = 0,
         isRunning = false,
         lastImgId = " ",
-        siteImgMaxWidth = 150,
+        siteImgMaxWidth = 150, //for now it is used for pagetype==7
         mangaWidth = 1200,
         PAGETYPE = checkPageType();
     //-----------------------------------------------------------------------------------
@@ -68,6 +71,7 @@
       if (document.URL.match('https://www.pixiv.net/bookmark_detail.php?'))              return 4; //Bookmark information
       if (document.URL.match('https://www.pixiv.net/bookmark_add.php?'))                 return 5; //Added new bookmarks
       if (document.URL.match('https://www.pixiv.net/ranking.php?'))                      return 6; //Daily rankings
+      if (document.URL.match(/https:\/\/www\.pixiv\.net\/bookmark\.php\?/))              return 7; //Someone's bookmarks page
 
       return -1;
     }
@@ -228,7 +232,7 @@
         });
       }
       //artist works page and daily rankings & rest of pages-----------------------------
-      else if ((PAGETYPE >= 2)&&(PAGETYPE <= 6))
+      else if ((PAGETYPE >= 2)&&(PAGETYPE <= 7))
       {
         $('body').on('mouseenter', 'a[href*="member_illust.php?mode=medium&illust_id="]', function() //direct div selector works badly with "::before"
         {
