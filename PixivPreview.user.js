@@ -13,6 +13,7 @@
 // @match           https://www.pixiv.net/ranking.php?mode=*
 // @match           https://www.pixiv.net/member.php?id=*
 // @match           https://www.pixiv.net/bookmark.php?id=*
+// @match           https://www.pixiv.net/search.php*
 // @version         0.36.3
 // @homepageURL     https://github.com/NightLancer/PixivPreview
 // @downloadURL     https://github.com/NightLancer/PixivPreview/raw/master/PixivPreview.user.js
@@ -24,6 +25,7 @@
 {
   'use strict';
   console.log('MyPixivJS');
+  var CLICK_FAVORITE = false;
 
   if (!window.jQuery)
   {
@@ -72,6 +74,7 @@
       if (document.URL.match('https://www.pixiv.net/bookmark_add.php?'))                 return 5; //Added new bookmarks
       if (document.URL.match('https://www.pixiv.net/ranking.php?'))                      return 6; //Daily rankings
       if (document.URL.match(/https:\/\/www\.pixiv\.net\/bookmark\.php\?/))              return 7; //Someone's bookmarks page
+      if (document.URL.match('https://www.pixiv.net/search.php'))                        return 8; //Search page
 
       return -1;
     }
@@ -197,7 +200,7 @@
     //-----------------------------------------------------------------------------------
     //**************************************Hover****************************************
     //-----------------------------------------------------------------------------------
-    if (PAGETYPE==0 || PAGETYPE==1) siteImgMaxWidth = 200;
+    if (PAGETYPE==0 || PAGETYPE==1 || PAGETYPE==8) siteImgMaxWidth = 200;
     else if (PAGETYPE>=2 && PAGETYPE<=5) siteImgMaxWidth = 150;
     else if (PAGETYPE==6) siteImgMaxWidth = 240;
     //-----------------------------------------------------------------------------------
@@ -209,8 +212,8 @@
       document.body.appendChild(imgContainer);
       document.body.appendChild(mangaOuterContainer);
 
-      //feed and discovery---------------------------------------------------------------
-      if ((PAGETYPE === 0)||(PAGETYPE === 1))
+      //feed, discovery and search---------------------------------------------------------------
+      if ((PAGETYPE === 0)||(PAGETYPE === 1) || (PAGETYPE===8))
       {
         //single art hover
         $('body').on('mouseenter', 'a[href*="member_illust.php?mode=medium&illust_id="] > div:only-child', function()
@@ -262,6 +265,19 @@
       imgContainer.style.left = (document.body.clientWidth-l < w)? document.body.clientWidth-w +'px': l +'px';
 
       imgContainer.style.display='block';
+      if($(thisObj).parent().parent().children(".thumbnail-menu").children("._one-click-bookmark").hasClass("on")) {
+        $(imgContainer).css("background", "rgb(255, 64, 96)");
+      }
+      else {
+        $(imgContainer).css("background", "rgb(34, 34, 34)");
+      }
+      //-----------------------------------------------------------------------------------
+      //*************************************Clicks****************************************
+      //-----------------------------------------------------------------------------------
+      hoverImg.onmouseup = function (event) //single arts onclick actions
+      {
+        onClickActions(this, thisObj, event);
+      };
     }
     //-----------------------------------------------------------------------------------
     function setMangaHover(thisObj, count)
@@ -271,6 +287,10 @@
       mangaOuterContainer.style.top = getOffsetRect(thisObj.parentNode.parentNode).top+'px';
       mangaOuterContainer.style.left = '30px';
       imgsArrInit(parseImgUrl(thisObj), +count);
+      $('body').on('mouseup', 'div#mangaContainer > img', function(event) //manga arts onclick actions
+      {
+        onClickActions(this, thisObj, event);
+      });
     }
     //-----------------------------------------------------------------------------------
     function imgsArrInit(primaryLink, l)
@@ -345,32 +365,26 @@
       mangaOuterContainer.style.display='none';
     };
     //-----------------------------------------------------------------------------------
-    //*************************************Clicks****************************************
-    //-----------------------------------------------------------------------------------
-    hoverImg.onmouseup = function (event) //single arts onclick actions
-    {
-      onClickActions(this, event);
-    };
-    //-----------------------------------------------------------------------------------
-    $('body').on('mouseup', 'div#mangaContainer > img', function(event) //manga arts onclick actions
-    {
-      onClickActions(this, event);
-    });
-    //-----------------------------------------------------------------------------------
-    function onClickActions(thisObj, event)
+    function onClickActions(imgContainerObj, imgObj, event)
     {
       event.preventDefault();
-      let sourceUrl = thisObj.src.replace(/c\/...x...\/img-master/, 'img-original').replace('_master1200', ''); //"blind" link to source image
+      let sourceUrl = imgContainerObj.src.replace(/c\/...x...\/img-master/, 'img-original').replace('_master1200', ''); //"blind" link to source image
       if (event.button  == 1) //Middle Mouse Button click
       {
         let strId = getImgId(sourceUrl);
         let illustPageUrl = document.querySelectorAll('a[href*="member_illust.php?mode=medium&illust_id=' + strId + '"]')[0].href;
         window.open(illustPageUrl,'_blank'); //open illust page in new tab(in background — with FF pref "browser.tabs.loadDivertedInBackground" set to "true")
       }
-      else if (event.button  == 0)
+      else if (event.button  == 0) //Left Mouse click
       {
-        window.open(sourceUrl, '_blank'); //open source of image in new tab
-        window.open(sourceUrl.replace('jpg','png'),'_blank');
+        if(CLICK_FAVORITE === true) {
+          $(imgObj).parent().parent().children(".thumbnail-menu").children("._one-click-bookmark").click();
+          $(imgContainerObj).parent().css("background", "rgb(255, 64, 96)");
+        }
+        else {
+          window.open(sourceUrl, '_blank'); //open source of image in new tab
+          window.open(sourceUrl.replace('jpg','png'),'_blank');
+        }
       }
     };
     //-----------------------------------------------------------------------------------
