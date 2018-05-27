@@ -296,7 +296,9 @@
       }
       else {
         $(mangaOuterContainer).css("background", "rgb(34, 34, 34)");
+        $(mangaContainer).css("background", "rgb(34, 34, 34)");
       }
+      $('body').off('mouseup', 'div#mangaContainer > img');
       $('body').on('mouseup', 'div#mangaContainer > img', function(event) //manga arts onclick actions
       {
         onClickActions(this, bookmarkObj, event);
@@ -373,6 +375,7 @@
     mangaOuterContainer.onmouseleave = function ()
     {
       mangaOuterContainer.style.display='none';
+      $(mangaOuterContainer).css("background", "rgb(34, 34, 34)");
     };
     //-----------------------------------------------------------------------------------
     function onClickActions(imgContainerObj, bookmarkObj, event)
