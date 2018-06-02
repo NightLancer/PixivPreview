@@ -2,8 +2,8 @@
 // @name            Pixiv Arts Preview & Followed Atrists Coloring
 // @name:ru         Pixiv Arts Preview & Followed Atrists Coloring
 // @namespace       Pixiv
-// @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page. Install "NewTabImageOpen.user.js"(placed in same folder) for propper new tab image originals opening. The names of the authors you are already subscribed to are highlighted with green.
-// @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом. Для правильного открытия оригиналов артов в новом окне нужна также установка "NewTabImageOpen.user.js". Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом.
+// @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Ctrl+LMB-click to add art to bookmarks. Install "NewTabImageOpen.user.js"(placed in same folder) for propper new tab image originals opening. The names of the authors you are already subscribed to are highlighted with green.
+// @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Ctrl + клик ЛКМ для добавления в закладки. Для правильного открытия оригиналов артов в новом окне нужна также установка "NewTabImageOpen.user.js". Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом.
 // @author          NightLancerX
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
@@ -14,7 +14,7 @@
 // @match           https://www.pixiv.net/member.php?id=*
 // @match           https://www.pixiv.net/bookmark.php?id=*
 // @match           https://www.pixiv.net/search.php*
-// @version         0.37
+// @version         0.38
 // @homepageURL     https://github.com/NightLancer/PixivPreview
 // @downloadURL     https://github.com/NightLancer/PixivPreview/raw/master/PixivPreview.user.js
 // @license         MIT License
@@ -25,7 +25,6 @@
 {
   'use strict';
   console.log('MyPixivJS');
-  var CLICK_FAVORITE = false; //set "=true" fot LMB-click to bookmark instead of open original | TODO
 
   if (!window.jQuery)
   {
@@ -268,14 +267,14 @@
       let l = getOffsetRect(thisObj.parentNode.parentNode).left;
       let w = 600*(((PAGETYPE==6)?thisObj.clientWidth:thisObj.parentNode.parentNode.clientWidth)/siteImgMaxWidth)+5;
       imgContainer.style.left = (document.body.clientWidth-l < w)? document.body.clientWidth-w +'px': l +'px';
-      
+
       if($(bookmarkObj).hasClass("on")) {
         $(imgContainer).css("background", "rgb(255, 64, 96)");
       }
       else {
         $(imgContainer).css("background", "rgb(34, 34, 34)");
       }
-      
+
       imgContainer.style.display='block';
     }
     //-----------------------------------------------------------------------------------
@@ -285,7 +284,7 @@
 
       mangaOuterContainer.style.top = getOffsetRect(thisObj.parentNode.parentNode).top+'px';
       mangaOuterContainer.style.left = '30px';
-      
+
       if($(bookmarkObj).hasClass("on")) {
         $(mangaOuterContainer).css("background", "rgb(255, 64, 96)");
       }
@@ -293,7 +292,7 @@
         $(mangaOuterContainer).css("background", "rgb(34, 34, 34)");
         $(mangaContainer).css("background", "rgb(34, 34, 34)");
       }
-      
+
       imgsArrInit(parseImgUrl(thisObj), +count);
     }
     //-----------------------------------------------------------------------------------
@@ -392,13 +391,15 @@
         let illustPageUrl = document.querySelectorAll('a[href*="member_illust.php?mode=medium&illust_id=' + strId + '"]')[0].href;
         window.open(illustPageUrl,'_blank'); //open illust page in new tab(in background — with FF pref "browser.tabs.loadDivertedInBackground" set to "true")
       }
-      else if (event.button  == 0) //Left Mouse click
+      else if (event.button  == 0) //Left Mouse Button click
       {
-        if(CLICK_FAVORITE === true) {
+        if(event.ctrlKey) //Ctrl + LMB-click
+        {
           $(bookmarkObj).click();
           $(imgContainerObj).parent().css("background", "rgb(255, 64, 96)");
         }
-        else {
+        else //single click
+        {
           window.open(sourceUrl, '_blank'); //open source of image in new tab
           window.open(sourceUrl.replace('jpg','png'),'_blank');
         }
@@ -414,7 +415,7 @@
     //-----------------------------------------------------------------------------------
     mangaContainer.onwheel = function(e)
     {
-      if (e.deltaY<0 && (mangaOuterContainer.getBoundingClientRect().top < 5))
+      if (e.deltaY<0 && (mangaOuterContainer.getBoundingClientRect().top < 0))
       {
         mangaOuterContainer.scrollIntoView({block: "start", behavior: "smooth"}); //aligning to top screen side on scrollUp if needed
       }
