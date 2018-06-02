@@ -14,7 +14,7 @@
 // @match           https://www.pixiv.net/member.php?id=*
 // @match           https://www.pixiv.net/bookmark.php?id=*
 // @match           https://www.pixiv.net/search.php*
-// @version         0.36.4
+// @version         0.37
 // @homepageURL     https://github.com/NightLancer/PixivPreview
 // @downloadURL     https://github.com/NightLancer/PixivPreview/raw/master/PixivPreview.user.js
 // @license         MIT License
@@ -25,7 +25,7 @@
 {
   'use strict';
   console.log('MyPixivJS');
-  var CLICK_FAVORITE = true; //opening image tag edition instead of original if it has been favorited
+  var CLICK_FAVORITE = false; //set "=true" fot LMB-click to bookmark instead of open original | TODO
 
   if (!window.jQuery)
   {
@@ -414,10 +414,21 @@
     //-----------------------------------------------------------------------------------
     mangaContainer.onwheel = function(e)
     {
-      //let scrlLft = mangaContainer.scrollLeft; //does this feature needed?
-      //if ((scrlLft>0 && e.deltaY<0) || ((scrlLft<(mangaContainer.scrollWidth-mangaContainer.clientWidth)) && e.deltaY>0)) e.preventDefault();
-      e.preventDefault();
-      mangaContainer.scrollLeft += e.deltaY*70;
+      if (e.deltaY<0 && (mangaOuterContainer.getBoundingClientRect().top < 5))
+      {
+        mangaOuterContainer.scrollIntoView({block: "start", behavior: "smooth"}); //aligning to top screen side on scrollUp if needed
+      }
+      else if (e.deltaY>0 && (mangaOuterContainer.getBoundingClientRect().bottom > document.documentElement.clientHeight))
+      {
+        mangaOuterContainer.scrollIntoView({block: "end", behavior: "smooth"}); //aligning to bottom screen side on scrollDown if needed
+      }
+
+      let scrlLft = mangaContainer.scrollLeft;
+      if ((scrlLft>0 && e.deltaY<0) || ((scrlLft<(mangaContainer.scrollWidth-mangaContainer.clientWidth)) && e.deltaY>0))
+      {
+        e.preventDefault();
+        mangaContainer.scrollLeft += e.deltaY*70;
+      }
     }
     //-----------------------------------------------------------------------------------
     window.onresize = function()
