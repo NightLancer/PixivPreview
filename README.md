@@ -18,6 +18,9 @@ Features:<br>
 For larger amount of artworks, horisontal scrollbar is appeared, but scrolling via mouse wheel is supported too(note: page scroll is disabled while this, move mouse out of preview to reenable it). Preview gallery is located 40px from horizontal page edges(considering small screens and window resizing).
 <img src=http://i.prntscr.com/td_hJncaSZueEf3hx3mXrA.png><br>
 
+■ Press Control and left mouse button click for quick adding artwork into bookmarks. Repeat combination again for opening bookmark (tags) edition page. Preview of bookmarked artworks are outlined with magenta.
+<img src=http://i.prntscr.com/1CNDwRN8SMidaPPeBAWEMQ.png>
+
 ■ The names of the authors(users) you are already subscribed to are highlighted with green.
 <img src=http://i.prntscr.com/xa2ErFzkQOGLloz9kAHRZQ.png><br>
 
