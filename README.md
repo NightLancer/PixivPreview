@@ -24,6 +24,6 @@ For larger amount of artworks, horisontal scrollbar is appeared, but scrolling v
 ■ The names of the authors(users) you are already subscribed to are highlighted with green.
 <img src=http://i.prntscr.com/xa2ErFzkQOGLloz9kAHRZQ.png><br>
 
-■ Click left mouse button on image preview to open original art in new tab, or middle mouse button to open art illustration page. <strong>
+■ Click left mouse button on image preview to open original art in new tab, or middle mouse button to open art illustration page. 
 
 Works best with <a href="https://greasyfork.org/uk/scripts/3254-endless-pixiv-pages">"Endless Pixiv Pages"</a> ©Mango.<br>
