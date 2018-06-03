@@ -2,8 +2,8 @@
 // @name            Pixiv Arts Preview & Followed Atrists Coloring
 // @name:ru         Pixiv Arts Preview & Followed Atrists Coloring
 // @namespace       Pixiv
-// @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Ctrl+LMB-click to add art to bookmarks. Install "NewTabImageOpen.user.js"(placed in same folder) for propper new tab image originals opening. The names of the authors you are already subscribed to are highlighted with green.
-// @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Ctrl + клик ЛКМ для добавления в закладки. Для правильного открытия оригиналов артов в новом окне нужна также установка "NewTabImageOpen.user.js". Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом.
+// @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Ctrl+LMB-click to add art to bookmarks. The names of the authors you are already subscribed to are highlighted with green. Preview of bookmarked artworks are outlined with magenta.
+// @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Ctrl + клик ЛКМ для добавления в закладки. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Превью добавленных в закладки иллюстраций выделены розовым цветом.
 // @author          NightLancerX
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
@@ -14,7 +14,7 @@
 // @match           https://www.pixiv.net/member.php?id=*
 // @match           https://www.pixiv.net/bookmark.php?id=*
 // @match           https://www.pixiv.net/search.php*
-// @version         0.38
+// @version         1.00
 // @homepageURL     https://github.com/NightLancer/PixivPreview
 // @downloadURL     https://github.com/NightLancer/PixivPreview/raw/master/PixivPreview.user.js
 // @license         MIT License
@@ -137,7 +137,7 @@
             }
             CheckedPublic = true;
           }
-          doc = followedProfiles = null; //I don't trust anything
+          doc = followedProfiles = null;
         }
       };
       xhr.onerror = function()
@@ -253,7 +253,6 @@
           };
         });
       }
-      //getNextPage(); //global todo task... no need: Endless Pixiv Pages has been fixed
     });
     //-----------------------------------------------------------------------------------
     function setHover(thisObj)
@@ -290,7 +289,6 @@
       }
       else {
         $(mangaOuterContainer).css("background", "rgb(34, 34, 34)");
-        $(mangaContainer).css("background", "rgb(34, 34, 34)");
       }
 
       imgsArrInit(parseImgUrl(thisObj), +count);
@@ -302,8 +300,8 @@
       if (margins > 0) mangaOuterContainer.style.left = margins/2-10+'px';
 
       let currentImgId = getImgId(primaryLink);
-      console.log('lastImgId: ' + lastImgId);
-      console.log('currentImgId: ' + currentImgId);
+      //console.log('lastImgId: ' + lastImgId);
+      //console.log('currentImgId: ' + currentImgId);
       //---------------------------------------------------------------------------------
       if (currentImgId != lastImgId)
       {
@@ -334,6 +332,11 @@
       url = url.replace(/\/...x...\//, '/600x600/'); //both feed and artist works case | TODO: '1200x1200' variant
       return url;
     };
+    //-----------------------------------------------------------------------------------
+    function getImgId(str)
+    {
+      return str.substring(str.lastIndexOf("/")+1, str.indexOf("_"));
+    }
     //-----------------------------------------------------------------------------------
     function getOffsetRect(elem)
     {
@@ -366,49 +369,82 @@
     mangaOuterContainer.onmouseleave = function ()
     {
       mangaOuterContainer.style.display='none';
-      $(mangaOuterContainer).css("background", "rgb(34, 34, 34)");
     };
     //-----------------------------------------------------------------------------------
     //*************************************Clicks****************************************
     //-----------------------------------------------------------------------------------
     hoverImg.onmouseup = function (event) //single arts onclick actions
     {
-      onClickActions(this, event);
+      onClickActions(this, event, false);
     };
     //-----------------------------------------------------------------------------------
     $('body').on('mouseup', 'div#mangaContainer > img', function(event) //manga arts onclick actions
     {
-      onClickActions(this, event);
+      onClickActions(this, event, true);
     });
     //-----------------------------------------------------------------------------------
-    function onClickActions(imgContainerObj, event)
+    function onClickActions(imgContainerObj, event, isManga)
     {
       event.preventDefault();
-      let sourceUrl = imgContainerObj.src.replace(/c\/...x...\/img-master/, 'img-original').replace('_master1200', ''); //"blind" link to source image
-      if (event.button  == 1) //Middle Mouse Button click
+      let strId = getImgId(imgContainerObj.src);
+      let illustPageUrl = 'https://www.pixiv.net/member_illust.php?mode=medium&illust_id=' + strId;
+
+      //----------------------------Middle Mouse Button click----------------------------
+      if (event.button  == 1)
       {
-        let strId = getImgId(sourceUrl);
-        let illustPageUrl = document.querySelectorAll('a[href*="member_illust.php?mode=medium&illust_id=' + strId + '"]')[0].href;
         window.open(illustPageUrl,'_blank'); //open illust page in new tab(in background — with FF pref "browser.tabs.loadDivertedInBackground" set to "true")
       }
-      else if (event.button  == 0) //Left Mouse Button click
+      //----------------------------Left Mouse Button clicks...--------------------------
+      else if (event.button  == 0)
       {
-        if(event.ctrlKey) //Ctrl + LMB-click
+        //----------------------------Single LMB-click-----------------------------------
+        if (!event.ctrlKey)
         {
+          if (!isManga) //single art
+          {
+            getOriginalUrl(illustPageUrl, event, false);
+          }
+          else //manga art
+          {
+            let src = imgContainerObj.src;
+            let pageNum = src.substring(src.indexOf("_")+2, src.lastIndexOf("_"));
+            let singleIllustPageUrl = 'https://www.pixiv.net/member_illust.php?mode=manga_big&illust_id=' + strId + '&page=' + pageNum;
+            getOriginalUrl(singleIllustPageUrl, event, true);
+          }
+        }
+        //----------------------------Ctrl + LMB-click-----------------------------------
+        else {
           $(bookmarkObj).click();
-          $(imgContainerObj).parent().css("background", "rgb(255, 64, 96)");
+          if (!isManga) $(imgContainerObj).parent().css("background", "rgb(255, 64, 96)");
+          else $(mangaOuterContainer).css("background", "rgb(255, 64, 96)");
         }
-        else //single click
-        {
-          window.open(sourceUrl, '_blank'); //open source of image in new tab
-          window.open(sourceUrl.replace('jpg','png'),'_blank');
-        }
+        //-------------------------------------------------------------------------------
       }
+      //---------------------------------------------------------------------------------
     };
     //-----------------------------------------------------------------------------------
-    function getImgId(str)
+    function getOriginalUrl(illustPageUrl, event, isManga)
     {
-      return str.substring(str.lastIndexOf("/")+1,str.indexOf("_"));
+      let xhr = new XMLHttpRequest();
+      xhr.open("GET", illustPageUrl, true);
+      xhr.onreadystatechange = function ()
+      {
+        if (xhr.readyState == 4 && xhr.status == 200)
+        {
+          let originalArtUrl = "";
+          if (!isManga)
+          {
+            originalArtUrl = $(xhr.responseXML.getElementsByClassName("original-image")[0]).attr('data-src');
+          }
+          else
+          {
+            originalArtUrl = xhr.responseXML.querySelectorAll('img')[0].src;
+          }
+          window.open(originalArtUrl, '_blank');
+        }
+      };
+      xhr.responseType = "document";
+      xhr.send();
     }
     //-----------------------------------------------------------------------------------
     //**************************************Other****************************************
