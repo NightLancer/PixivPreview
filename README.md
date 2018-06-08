@@ -31,6 +31,6 @@ For larger amount of artworks, horisontal scrollbar is appeared, but scrolling v
 ■ *** <strong>For enabling feature of saving originals with Ctrl + LMB-click you need to install <a href="https://github.com/NightLancer/PixivPreview/blob/master/SaveImageWithCtrlClick.user.js">«Saving Pixiv Images with Ctrl+Click»</a>!</strong><br>
 For Chrome users: if you get "Failed - Forbidden" error while downloading image, you need to do next:<br>
 • Install extension <a href="https://chrome.google.com/webstore/detail/referer-control/hnkcfpcejkafcihlgbojoidoihckciin/">"Referer Control"</a> from a Chrome webstore.<br>
-• Add "https://i.pximg.net/" as a site-name, click "Custom"->"url"(make sure extension is set to "active") <a href="http://i.prntscr.com/KofXEJUVQGetYbaDnfuqlA.png">(by-step screenshot)</a><br>
+• Add "https://i.pximg.net/" as a site-name, click "Custom"->"url"(make sure extension is set to "active") <a href="http://i.prntscr.com/kBYHcA0yQC2od0rFHbj4Qw.png">(by-step screenshot)</a><br>
 
 Works best with <a href="https://greasyfork.org/uk/scripts/3254-endless-pixiv-pages">"Endless Pixiv Pages"</a> ©Mango.<br>
