@@ -12,9 +12,9 @@
 // @match           https://www.pixiv.net/member_illust.php*
 // @match           https://www.pixiv.net/ranking.php?mode=*
 // @match           https://www.pixiv.net/member.php?id=*
-// @match           https://www.pixiv.net/bookmark.php?id=*
+// @match           https://www.pixiv.net/bookmark.php*
 // @match           https://www.pixiv.net/search.php*
-// @version         1.10
+// @version         1.15
 // @homepageURL     https://github.com/NightLancer/PixivPreview
 // @downloadURL     https://github.com/NightLancer/PixivPreview/raw/master/PixivPreview.user.js
 // @license         MIT License
@@ -69,8 +69,9 @@
       if (document.URL.match('https://www.pixiv.net/bookmark_detail.php?'))              return 4; //Bookmark information
       if (document.URL.match('https://www.pixiv.net/bookmark_add.php?'))                 return 5; //Added new bookmarks
       if (document.URL.match('https://www.pixiv.net/ranking.php?'))                      return 6; //Daily rankings
-      if (document.URL.match(/https:\/\/www\.pixiv\.net\/bookmark\.php\?/))              return 7; //Someone's bookmarks page
+      if (document.URL.match(/https:\/\/www\.pixiv\.net\/bookmark\.php\?id/))            return 7; //Someone's bookmarks page
       if (document.URL.match('https://www.pixiv.net/search.php'))                        return 8; //Search page
+      if (document.URL.match('https://www.pixiv.net/bookmark.php?'))                     return 9; //Your bookmarks page
 
       return -1;
     }
@@ -78,7 +79,7 @@
     //-----------------------------------------------------------------------------------
     //**********************************ColorFollowed************************************
     //-----------------------------------------------------------------------------------
-    if (PAGETYPE==1 || PAGETYPE>=4)
+    if (PAGETYPE==1 || PAGETYPE>=4 && PAGETYPE!=9)
     {
       checkFollowedArtists(BOOKMARK_URL+'?type=user');
 
@@ -197,7 +198,7 @@
     //**************************************Hover****************************************
     //-----------------------------------------------------------------------------------
     if (PAGETYPE==0 || PAGETYPE==1 || PAGETYPE==8) siteImgMaxWidth = 200;
-    else if (PAGETYPE>=2 && PAGETYPE<=5) siteImgMaxWidth = 150;
+    else if (PAGETYPE>=2 && PAGETYPE<=5 || PAGETYPE==9) siteImgMaxWidth = 150;
     else if (PAGETYPE==6) siteImgMaxWidth = 240;
     //-----------------------------------------------------------------------------------
     $(document).ready(function ()
@@ -208,8 +209,8 @@
       document.body.appendChild(imgContainer);
       document.body.appendChild(mangaOuterContainer);
 
-      //feed, discovery and search---------------------------------------------------------------
-      if ((PAGETYPE === 0)||(PAGETYPE === 1) || (PAGETYPE===8))
+      //feed, discovery and search-------------------------------------------------------
+      if ((PAGETYPE === 0) || (PAGETYPE === 1) || (PAGETYPE===8))
       {
         //single art hover
         $('body').on('mouseenter', 'a[href*="member_illust.php?mode=medium&illust_id="] > div:only-child', function()
@@ -233,7 +234,7 @@
         });
       }
       //artist works page and daily rankings & rest of pages-----------------------------
-      else if ((PAGETYPE >= 2)&&(PAGETYPE <= 7))
+      else if ((PAGETYPE >= 2)&&(PAGETYPE <= 7) || (PAGETYPE == 9))
       {
         $('body').on('mouseenter', 'a[href*="member_illust.php?mode=medium&illust_id="]', function() //direct div selector works badly with "::before"
         {
@@ -386,12 +387,12 @@
       let illustPageUrl = 'https://www.pixiv.net/member_illust.php?mode=medium&illust_id=' + strId;
 
       //----------------------------Middle Mouse Button click----------------------------
-      if (event.button  == 1)
+      if (event.button == 1)
       {
         window.open(illustPageUrl,'_blank'); //open illust page in new tab(in background — with FF pref "browser.tabs.loadDivertedInBackground" set to "true")
       }
       //----------------------------Left Mouse Button clicks...--------------------------
-      else if (event.button  == 0)
+      else if (event.button == 0)
       {
         //----------------------------Single LMB-click-----------------------------------
         if (!event.altKey)
@@ -462,7 +463,7 @@
       if ((scrlLft>0 && e.deltaY<0) || ((scrlLft<(mangaContainer.scrollWidth-mangaContainer.clientWidth)) && e.deltaY>0))
       {
         e.preventDefault();
-        mangaContainer.scrollLeft += e.deltaY*70;
+        mangaContainer.scrollLeft += e.deltaY*70; // TODO - find better value for opera/chrome
       }
     };
     //-----------------------------------------------------------------------------------
