@@ -14,7 +14,7 @@
 // @match           https://www.pixiv.net/member.php?id=*
 // @match           https://www.pixiv.net/bookmark.php*
 // @match           https://www.pixiv.net/search.php*
-// @version         1.15
+// @version         1.16
 // @homepageURL     https://github.com/NightLancer/PixivPreview
 // @downloadURL     https://github.com/NightLancer/PixivPreview/raw/master/PixivPreview.user.js
 // @license         MIT License
@@ -380,19 +380,19 @@
       onClickActions(this, event, true);
     });
     //-----------------------------------------------------------------------------------
-    function onClickActions(imgContainerObj, event, isManga)
+    async function onClickActions(imgContainerObj, event, isManga)
     {
       event.preventDefault();
       let strId = getImgId(imgContainerObj.src);
       let illustPageUrl = 'https://www.pixiv.net/member_illust.php?mode=medium&illust_id=' + strId;
 
       //----------------------------Middle Mouse Button click----------------------------
-      if (event.button == 1)
+      if (event.button  == 1)
       {
         window.open(illustPageUrl,'_blank'); //open illust page in new tab(in background — with FF pref "browser.tabs.loadDivertedInBackground" set to "true")
       }
       //----------------------------Left Mouse Button clicks...--------------------------
-      else if (event.button == 0)
+      else if (event.button  == 0)
       {
         //----------------------------Single LMB-click-----------------------------------
         if (!event.altKey)
@@ -421,7 +421,7 @@
       //---------------------------------------------------------------------------------
     };
     //-----------------------------------------------------------------------------------
-    function getOriginalUrl(illustPageUrl, event, isManga, toSave)
+    async function getOriginalUrl(illustPageUrl, event, isManga, toSave)
     {
       let xhr = new XMLHttpRequest();
       xhr.open("GET", illustPageUrl, true);
@@ -432,7 +432,12 @@
           let originalArtUrl = "";
           if (!isManga)
           {
-            originalArtUrl = $(xhr.responseXML.getElementsByClassName("original-image")[0]).attr('data-src');
+            let scripts = xhr.responseXML.head.getElementsByTagName("script");
+            for(let i = 0; i < scripts.length; i++)
+            {
+              let originalURL = scripts[i].textContent.match(/"original":"(http[^"]+)"/); //thanks to Mango
+              if (originalURL) originalArtUrl = originalURL[1].replace(/\\\//g,'/');
+            }
           }
           else
           {
