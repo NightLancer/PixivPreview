@@ -1,4 +1,4 @@
-// ==UserScript==
+﻿// ==UserScript==
 // @name            Pixiv Arts Preview & Followed Atrists Coloring
 // @name:ru         Pixiv Arts Preview & Followed Atrists Coloring
 // @namespace       Pixiv
@@ -14,20 +14,23 @@
 // @match           https://www.pixiv.net/member.php?id=*
 // @match           https://www.pixiv.net/bookmark.php*
 // @match           https://www.pixiv.net/search.php*
-// @version         1.17
+// @version         1.19.0
 // @homepageURL     https://github.com/NightLancer/PixivPreview
 // @downloadURL     https://github.com/NightLancer/PixivPreview/raw/master/PixivPreview.user.js
 // @license         MIT License
 // @grant           none
+// @require         https://code.jquery.com/jquery-3.3.1.min.js
 // ==/UserScript==
 //---------------------------------------------------------------------------------------
 (function ()
 {
   'use strict';
+  const DEVMODE = false; //do NOT change this value, it's for my convenient development process(otherwise it will break your script)
 
   if (window.top == window.self && window.jQuery) jQuery(function($)
   {
-    console.log('MyPixivJS');
+    if (DEVMODE) console.log('MyPixivJS: DEVMODE');
+    else console.log('MyPixivJS');
 
     var hoverImg = document.createElement('img');
 
@@ -56,6 +59,7 @@
         siteImgMaxWidth = 150, //for now it is used for pagetype==7
         mangaWidth = 1200,
         bookmarkObj,
+        isBookmarked = false,
         DELTASCALE = ('mozInnerScreenX' in window)?70:4,
         PAGETYPE = checkPageType();
     //-----------------------------------------------------------------------------------
@@ -198,9 +202,10 @@
     //-----------------------------------------------------------------------------------
     //**************************************Hover****************************************
     //-----------------------------------------------------------------------------------
-    if (PAGETYPE==0 || PAGETYPE==1 || PAGETYPE==8) siteImgMaxWidth = 200;
-    else if (PAGETYPE>=2 && PAGETYPE<=5 || PAGETYPE==9) siteImgMaxWidth = 150;
-    else if (PAGETYPE==6) siteImgMaxWidth = 240;
+    if (PAGETYPE===0 || PAGETYPE===1 || PAGETYPE===8) siteImgMaxWidth = 200; //TODO: case switch
+    else if (PAGETYPE===2 || PAGETYPE===3) siteImgMaxWidth = 184;
+    else if (PAGETYPE===4 || PAGETYPE===5 || PAGETYPE===9) siteImgMaxWidth = 150;
+    else if (PAGETYPE===6) siteImgMaxWidth = 240;
     //-----------------------------------------------------------------------------------
     $(document).ready(function ()
     {
@@ -210,43 +215,79 @@
       document.body.appendChild(imgContainer);
       document.body.appendChild(mangaOuterContainer);
 
-      //feed, discovery and search-------------------------------------------------------
+      //-----------------------------FEED, DISCOVERY AND SEARCH--------------------------
       if ((PAGETYPE === 0) || (PAGETYPE === 1) || (PAGETYPE===8))
       {
-        //single art hover
+        //single art hover---------------------------------------------------------------
         $('body').on('mouseenter', 'a[href*="member_illust.php?mode=medium&illust_id="] > div:only-child', function()
         {
           bookmarkObj = $(this).parent().parent().children(".thumbnail-menu").children("._one-click-bookmark");
+          checkBookmark(this);
           setHover(this);
         });
 
-        //manga-style arts hover
+        //manga-style arts hover---------------------------------------------------------
         $('body').on('mouseenter', 'a[href*="member_illust.php?mode=medium&illust_id="] > div:nth-child(2) ', function()
         {
-          bookmarkObj = $(this).parent().parent().children(".thumbnail-menu").children("._one-click-bookmark");
-          if (this.parentNode.firstChild.childNodes.length) setMangaHover(this, this.parentNode.firstChild.firstChild.textContent);
+          if (this.parentNode.firstChild.childNodes.length)
+          {
+            bookmarkObj = $(this).parent().parent().children(".thumbnail-menu").children("._one-click-bookmark");
+            checkBookmark(this);
+            setMangaHover(this, this.parentNode.firstChild.firstChild.textContent);
+          }
         });
 
-        //clearing loaded arts count when switching on tabs
+        //clearing loaded arts count when switching on tabs------------------------------
         if (PAGETYPE === 1) $('body').on('mouseup','a[href="/discovery/users"]', function() //todo:make into single event handler
         {
           console.log('leaving works page...');
           artsLoaded = hits = 0;
         });
       }
-      //artist works page and daily rankings & rest of pages-----------------------------
-      else if ((PAGETYPE >= 2)&&(PAGETYPE <= 7) || (PAGETYPE == 9))
+      //-----------------------------ARTIST WORKS AND "TOP" PAGES------------------------
+      else if (PAGETYPE===2 || PAGETYPE===3)
+      {
+        //single art hover---------------------------------------------------------------
+        $('body').on('mouseenter', 'a[href*="member_illust.php?mode=medium&illust_id="] > div:only-child', function()
+        {
+          bookmarkObj = this.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0];
+          checkBookmark_NewLayout(this);
+          setHover(this);
+        });
+
+        //manga-style arts hover---------------------------------------------------------
+        $('body').on('mouseenter', 'a[href*="member_illust.php?mode=medium&illust_id="] > div:nth-child(2) ', function()
+        {
+          if (this.parentNode.firstChild.childNodes.length)
+          {
+            bookmarkObj = this.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0];
+            checkBookmark_NewLayout(this);
+            setMangaHover(this, this.parentNode.firstChild.firstChild.textContent);
+          }
+        });
+
+        //clearing loaded arts count when switching on tabs------------------------------
+        if (PAGETYPE === 1) $('body').on('mouseup','a[href="/discovery/users"]', function() //todo:make into single event handler
+        {
+          console.log('leaving works page...');
+          artsLoaded = hits = 0;
+        });
+      }
+      //-------------------------DAILY RANKINGS & BOOKMARKS PAGES------------------------
+      else if ((PAGETYPE >= 4)&&(PAGETYPE <= 7) || (PAGETYPE == 9))
       {
         $('body').on('mouseenter', 'a[href*="member_illust.php?mode=medium&illust_id="]', function() //direct div selector works badly with "::before"
         {
           if (this.childNodes.length == 1 && this.childNodes[0].nodeName=="DIV") //single art
           {
             bookmarkObj = $(this.firstChild.firstChild).parent().children("._one-click-bookmark");
+            checkBookmark(this);
             setHover(this.firstChild.firstChild);
           }
           else if (this.children[1] && this.children[1].className == 'page-count') //manga
           {
             bookmarkObj = $(this.firstChild.firstChild).parent().children("._one-click-bookmark");
+            checkBookmark(this);
             setMangaHover(this.firstChild.firstChild, this.children[1].children[1].textContent);
           };
         });
@@ -265,12 +306,8 @@
       let w = 600*(((PAGETYPE==6)?thisObj.clientWidth:thisObj.parentNode.parentNode.clientWidth)/siteImgMaxWidth)+5;
       imgContainer.style.left = (document.body.clientWidth-l < w)? document.body.clientWidth-w +'px': l +'px';
 
-      if($(bookmarkObj).hasClass("on")) {
-        $(imgContainer).css("background", "rgb(255, 64, 96)");
-      }
-      else {
-        $(imgContainer).css("background", "rgb(34, 34, 34)");
-      }
+      if (isBookmarked) $(imgContainer).css("background", "rgb(255, 64, 96)");
+      else $(imgContainer).css("background", "rgb(34, 34, 34)");
 
       imgContainer.style.display='block';
     }
@@ -282,12 +319,8 @@
       mangaOuterContainer.style.top = getOffsetRect(thisObj.parentNode.parentNode).top+'px';
       mangaOuterContainer.style.left = '30px';
 
-      if($(bookmarkObj).hasClass("on")) {
-        $(mangaOuterContainer).css("background", "rgb(255, 64, 96)");
-      }
-      else {
-        $(mangaOuterContainer).css("background", "rgb(34, 34, 34)");
-      }
+      if (isBookmarked) $(mangaOuterContainer).css("background", "rgb(255, 64, 96)");
+      else $(mangaOuterContainer).css("background", "rgb(34, 34, 34)");
 
       imgsArrInit(parseImgUrl(thisObj), +count);
     }
@@ -327,9 +360,20 @@
     function parseImgUrl(thisObj)
     {
       let url = (thisObj.src)? thisObj.src: thisObj.style.backgroundImage.slice(5,-2); //pixiv changes layout randomly
-      url = url.replace(/\/...x...\//, '/600x600/'); //both feed and artist works case | TODO: '1200x1200' variant
+      url = url.replace(/\/...x..0/, '/600x600').replace('_80_a2','').replace('_square1200','_master1200'); //todo... '1200x1200' variant
       return url;
     };
+    //-----------------------------------------------------------------------------------
+    function checkBookmark(thisObj)
+    {
+      isBookmarked = ($(bookmarkObj).hasClass("on"));
+      //let ch = (thisObj.querySelectorAll('._one-click-bookmark')[0] && thisObj.querySelectorAll('._one-click-bookmark')[0].classList.length === 3);
+    }
+    //-----------------------------------------------------------------------------------
+    function checkBookmark_NewLayout(thisObj)
+    {
+      isBookmarked = thisObj.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0].childNodes[0].classList.length === 3;
+    }
     //-----------------------------------------------------------------------------------
     function getImgId(str)
     {
@@ -380,8 +424,8 @@
     {
       onClickActions(this, event, true);
     });
-    //-----------------------------------------------------------------------------------
-    async function onClickActions(imgContainerObj, event, isManga)
+    //-------------------------------onClickActions - userMode---------------------------
+    var onClickActions = async function(imgContainerObj, event, isManga)
     {
       event.preventDefault();
       let strId = getImgId(imgContainerObj.src);
@@ -413,13 +457,39 @@
         }
         //-----------------------------Alt + LMB-click-----------------------------------
         else if (event.altKey) {
-          $(bookmarkObj).click();
+          $(bookmarkObj).click(); //todo
           if (!isManga) $(imgContainerObj).parent().css("background", "rgb(255, 64, 96)");
           else $(mangaOuterContainer).css("background", "rgb(255, 64, 96)");
         }
         //-------------------------------------------------------------------------------
       }
       //---------------------------------------------------------------------------------
+    };
+    //-----------------------------onClickActions - devMode------------------------------
+    if (DEVMODE===true) onClickActions = async function(imgContainerObj, event, isManga)
+    {
+      event.preventDefault();
+      let sourceUrl = imgContainerObj.src.replace(/c\/...x...\/img-master/, 'img-original').replace('_master1200', ''); //"blind" link to source image
+      if (event.button == 1) //Middle Mouse Button click
+      {
+        let strId = getImgId(sourceUrl);
+        let illustPageUrl = document.querySelectorAll('a[href*="member_illust.php?mode=medium&illust_id=' + strId + '"]')[0].href;
+        window.open(illustPageUrl,'_blank'); //open illust page in new tab(in background — with FF pref "browser.tabs.loadDivertedInBackground" set to "true")
+      }
+      else if (event.button == 0) //Left Mouse Button click
+      {
+        if(event.altKey) //Alt + LMB-click
+        {
+          $(bookmarkObj).click(); //todo - unfavouriting border fadeout
+          if (!isManga) $(imgContainerObj).parent().css("background", "rgb(255, 64, 96)");
+          else $(mangaOuterContainer).css("background", "rgb(255, 64, 96)");
+        }
+        else //single click
+        {
+          window.open(sourceUrl, '_blank'); //open source of image in new tab
+          //window.open(sourceUrl.replace('jpg','png'),'_blank');
+        }
+      }
     };
     //-----------------------------------------------------------------------------------
     async function getOriginalUrl(illustPageUrl, event, isManga, toSave)
