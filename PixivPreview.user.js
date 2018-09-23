@@ -1,4 +1,4 @@
-﻿// ==UserScript==
+// ==UserScript==
 // @name            Pixiv Arts Preview & Followed Atrists Coloring
 // @name:ru         Pixiv Arts Preview & Followed Atrists Coloring
 // @namespace       Pixiv
@@ -14,7 +14,7 @@
 // @match           https://www.pixiv.net/member.php?id=*
 // @match           https://www.pixiv.net/bookmark.php*
 // @match           https://www.pixiv.net/search.php*
-// @version         1.19.0
+// @version         1.19.1
 // @homepageURL     https://github.com/NightLancer/PixivPreview
 // @downloadURL     https://github.com/NightLancer/PixivPreview/raw/master/PixivPreview.user.js
 // @license         MIT License
@@ -360,7 +360,7 @@
     function parseImgUrl(thisObj)
     {
       let url = (thisObj.src)? thisObj.src: thisObj.style.backgroundImage.slice(5,-2); //pixiv changes layout randomly
-      url = url.replace(/\/...x..0/, '/600x600').replace('_80_a2','').replace('_square1200','_master1200'); //todo... '1200x1200' variant
+      url = url.replace(/\/...x..0/, '/600x600').replace('_80_a2','').replace('_square1200','_master1200').replace('_70',''); //todo... '1200x1200' variant
       return url;
     };
     //-----------------------------------------------------------------------------------
@@ -457,7 +457,7 @@
         }
         //-----------------------------Alt + LMB-click-----------------------------------
         else if (event.altKey) {
-          $(bookmarkObj).click(); //todo
+          $(bookmarkObj).click();
           if (!isManga) $(imgContainerObj).parent().css("background", "rgb(255, 64, 96)");
           else $(mangaOuterContainer).css("background", "rgb(255, 64, 96)");
         }
@@ -480,7 +480,7 @@
       {
         if(event.altKey) //Alt + LMB-click
         {
-          $(bookmarkObj).click(); //todo - unfavouriting border fadeout
+          $(bookmarkObj).click();
           if (!isManga) $(imgContainerObj).parent().css("background", "rgb(255, 64, 96)");
           else $(mangaOuterContainer).css("background", "rgb(255, 64, 96)");
         }
