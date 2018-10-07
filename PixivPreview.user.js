@@ -2,9 +2,10 @@
 // @name            Pixiv Arts Preview & Followed Atrists Coloring
 // @name:ru         Pixiv Arts Preview & Followed Atrists Coloring
 // @namespace       Pixiv
-// @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks. Install "Saving Pixiv Images with Ctrl+Click" for enabling saving originals of art via Ctrl+LMB-click. The names of the authors you are already subscribed to are highlighted with green. Preview of bookmarked artworks are outlined with magenta.
-// @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки. Установите «Saving Pixiv Images with Ctrl+Click» для возможности сохранения оригиналов артов с помощью Ctrl + клик ЛКМ. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Превью добавленных в закладки иллюстраций выделены розовым цветом.
+// @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green.
+// @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом.
 // @author          NightLancerX
+// @version         1.20
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -14,23 +15,26 @@
 // @match           https://www.pixiv.net/member.php?id=*
 // @match           https://www.pixiv.net/bookmark.php*
 // @match           https://www.pixiv.net/search.php*
-// @version         1.19.1
+// @match           https://www.pixiv.net/
+// @match           https://www.pixiv.net/stacc*
+// @exclude         https://www.pixiv.net/member_illust.php?mode=manga_big&illust_id=*
+// @connect         i.pximg.net
 // @homepageURL     https://github.com/NightLancer/PixivPreview
 // @downloadURL     https://github.com/NightLancer/PixivPreview/raw/master/PixivPreview.user.js
 // @license         MIT License
-// @grant           none
+// @grant           GM_xmlhttpRequest
+// @grant           GM.xmlHttpRequest
 // @require         https://code.jquery.com/jquery-3.3.1.min.js
+// @require         https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/1.3.8/FileSaver.min.js
 // ==/UserScript==
 //---------------------------------------------------------------------------------------
 (function ()
 {
   'use strict';
-  const DEVMODE = false; //do NOT change this value, it's for my convenient development process(otherwise it will break your script)
 
   if (window.top == window.self && window.jQuery) jQuery(function($)
   {
-    if (DEVMODE) console.log('MyPixivJS: DEVMODE');
-    else console.log('MyPixivJS');
+    console.log('MyPixivJS');
 
     var hoverImg = document.createElement('img');
 
@@ -77,6 +81,8 @@
       if (document.URL.match(/https:\/\/www\.pixiv\.net\/bookmark\.php\?id/))            return 7; //Someone's bookmarks page
       if (document.URL.match('https://www.pixiv.net/search.php'))                        return 8; //Search page
       if (document.URL.match('https://www.pixiv.net/bookmark.php?'))                     return 9; //Your bookmarks page
+      if (document.URL==='https://www.pixiv.net')                                        return 10; //Home page
+      if (document.URL.match('https://www.pixiv.net/stacc?'))                            return 11; //"stacc"
 
       return -1;
     }
@@ -84,7 +90,7 @@
     //-----------------------------------------------------------------------------------
     //**********************************ColorFollowed************************************
     //-----------------------------------------------------------------------------------
-    if (PAGETYPE==1 || PAGETYPE>=4 && PAGETYPE!=9)
+    if (PAGETYPE==1 || PAGETYPE>=4 && PAGETYPE<=8)
     {
       checkFollowedArtists(BOOKMARK_URL+'?type=user');
 
@@ -177,9 +183,10 @@
       for(let i = 0; i < artsContainers.length; i++) //from 0 - 'cause "More like this" insert objects inside array
       {
         if (followedUsersId.indexOf(artsContainers[i].getAttribute('data-user_id'))>=0)
+        //if (followedUsersId.indexOf(artsContainers[i].href.split('=')[1]>=0))  //TODO
         {
           ++h;
-          artsContainers[i].setAttribute("style", "background-color: green;");
+          artsContainers[i].setAttribute("style", "background-color: green; !important");
         };
       }
       artsLoaded = artsContainers.length;
@@ -193,6 +200,7 @@
     function checkArtists()
     {
       artsContainers = $('.ui-profile-popup');
+      //artsContainers = $('[href*="/member.php?id="]'); //TODO:
     }
     //-----------------------------------------------------------------------------------
     function sleep(ms)
@@ -265,16 +273,9 @@
             setMangaHover(this, this.parentNode.firstChild.firstChild.textContent);
           }
         });
-
-        //clearing loaded arts count when switching on tabs------------------------------
-        if (PAGETYPE === 1) $('body').on('mouseup','a[href="/discovery/users"]', function() //todo:make into single event handler
-        {
-          console.log('leaving works page...');
-          artsLoaded = hits = 0;
-        });
       }
-      //-------------------------DAILY RANKINGS & BOOKMARKS PAGES------------------------
-      else if ((PAGETYPE >= 4)&&(PAGETYPE <= 7) || (PAGETYPE == 9))
+      //----------------------DAILY RANKINGS & BOOKMARKS & HOME PAGES--------------------
+      else if ((PAGETYPE >= 4)&&(PAGETYPE <= 7) || (PAGETYPE == 9) || (PAGETYPE == 10) || (PAGETYPE == 11))
       {
         $('body').on('mouseenter', 'a[href*="member_illust.php?mode=medium&illust_id="]', function() //direct div selector works badly with "::before"
         {
@@ -370,9 +371,9 @@
       //let ch = (thisObj.querySelectorAll('._one-click-bookmark')[0] && thisObj.querySelectorAll('._one-click-bookmark')[0].classList.length === 3);
     }
     //-----------------------------------------------------------------------------------
-    function checkBookmark_NewLayout(thisObj)
+    function checkBookmark_NewLayout(thisObj) //TODO - broken
     {
-      isBookmarked = thisObj.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0].childNodes[0].classList.length === 3;
+      //isBookmarked = thisObj.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0].childNodes[0].classList.length === 3;
     }
     //-----------------------------------------------------------------------------------
     function getImgId(str)
@@ -424,16 +425,15 @@
     {
       onClickActions(this, event, true);
     });
-    //-------------------------------onClickActions - userMode---------------------------
-    var onClickActions = async function(imgContainerObj, event, isManga)
+    //---------------------------------onClickActions------------------------------------
+    async function onClickActions(imgContainerObj, event, isManga)
     {
       event.preventDefault();
-      let strId = getImgId(imgContainerObj.src);
-      let illustPageUrl = 'https://www.pixiv.net/member_illust.php?mode=medium&illust_id=' + strId;
-
+      let illustId = getImgId(imgContainerObj.src);
       //----------------------------Middle Mouse Button click----------------------------
       if (event.button == 1)
       {
+        let illustPageUrl = 'https://www.pixiv.net/member_illust.php?mode=medium&illust_id=' + illustId;
         window.open(illustPageUrl,'_blank'); //open illust page in new tab(in background — with FF pref "browser.tabs.loadDivertedInBackground" set to "true")
       }
       //----------------------------Left Mouse Button clicks...--------------------------
@@ -442,16 +442,17 @@
         //----------------------------Single LMB-click-----------------------------------
         if (!event.altKey)
         {
-          let toSave = event.ctrlKey;// Ctrl + LMB-click - saving image
+          let toSave = event.ctrlKey;// Ctrl + LMB-click -> saving image
           if (!isManga) //single art original
           {
-            getOriginalUrl(illustPageUrl, event, false, toSave);
+            let ajaxIllustUrl = 'https://www.pixiv.net/ajax/illust/' + illustId;
+            getOriginalUrl(ajaxIllustUrl, event, false, toSave);
           }
           else //manga art original
           {
             let src = imgContainerObj.src;
             let pageNum = src.substring(src.indexOf("_")+2, src.lastIndexOf("_"));
-            let singleIllustPageUrl = 'https://www.pixiv.net/member_illust.php?mode=manga_big&illust_id=' + strId + '&page=' + pageNum;
+            let singleIllustPageUrl = 'https://www.pixiv.net/member_illust.php?mode=manga_big&illust_id=' + illustId + '&page=' + pageNum;
             getOriginalUrl(singleIllustPageUrl, event, true, toSave);
           }
         }
@@ -465,61 +466,52 @@
       }
       //---------------------------------------------------------------------------------
     };
-    //-----------------------------onClickActions - devMode------------------------------
-    if (DEVMODE===true) onClickActions = async function(imgContainerObj, event, isManga)
-    {
-      event.preventDefault();
-      let sourceUrl = imgContainerObj.src.replace(/c\/...x...\/img-master/, 'img-original').replace('_master1200', ''); //"blind" link to source image
-      if (event.button == 1) //Middle Mouse Button click
-      {
-        let strId = getImgId(sourceUrl);
-        let illustPageUrl = document.querySelectorAll('a[href*="member_illust.php?mode=medium&illust_id=' + strId + '"]')[0].href;
-        window.open(illustPageUrl,'_blank'); //open illust page in new tab(in background — with FF pref "browser.tabs.loadDivertedInBackground" set to "true")
-      }
-      else if (event.button == 0) //Left Mouse Button click
-      {
-        if(event.altKey) //Alt + LMB-click
-        {
-          $(bookmarkObj).click();
-          if (!isManga) $(imgContainerObj).parent().css("background", "rgb(255, 64, 96)");
-          else $(mangaOuterContainer).css("background", "rgb(255, 64, 96)");
-        }
-        else //single click
-        {
-          window.open(sourceUrl, '_blank'); //open source of image in new tab
-          //window.open(sourceUrl.replace('jpg','png'),'_blank');
-        }
-      }
-    };
-    //-----------------------------------------------------------------------------------
+    //---------------------------------getOriginalUrl------------------------------------
     async function getOriginalUrl(illustPageUrl, event, isManga, toSave)
     {
       let xhr = new XMLHttpRequest();
+      xhr.responseType = (isManga)?'document':'json';
       xhr.open("GET", illustPageUrl, true);
       xhr.onreadystatechange = function ()
       {
         if (xhr.readyState == 4 && xhr.status == 200)
         {
           let originalArtUrl = "";
-          if (!isManga)
-          {
-            let scripts = xhr.responseXML.head.getElementsByTagName("script");
-            for(let i = 0; i < scripts.length; i++)
-            {
-              let originalURL = scripts[i].textContent.match(/"original":"(http[^"]+)"/); //thanks to Mango
-              if (originalURL) originalArtUrl = originalURL[1].replace(/\\\//g,'/');
-            }
-          }
-          else
-          {
-            originalArtUrl = xhr.responseXML.querySelectorAll('img')[0].src;
-          }
-          if (toSave) window.open(originalArtUrl+'?s=1', '_blank');
-          else window.open(originalArtUrl, '_blank');
+
+          if (!isManga) originalArtUrl = this.response.body.urls.original;
+          else          originalArtUrl = this.responseXML.querySelectorAll('img')[0].src;
+
+          if (toSave)   saveImgByUrl(originalArtUrl);
+          else          window.open(originalArtUrl, '_blank');
         }
       };
-      xhr.responseType = "document";
       xhr.send();
+    }
+    //-----------------------------------------------------------------------------------
+    async function saveImgByUrl(sourceUrl)
+    {
+      const filename = sourceUrl.split('/').pop();
+      const illustId = filename.split('_')[0];
+      const ext = filename.split('.').pop().toLowerCase();
+      const GMR = (typeof(GM_xmlhttpRequest)==='function')?GM_xmlhttpRequest:GM.xmlHttpRequest;
+
+      //Thanx to FlandreKawaii(c)
+      GMR({
+        method: 'GET',
+        url: sourceUrl,
+        responseType: 'arraybuffer', //TM
+        binary: true, //GM
+        headers: {
+          Referer: `https://www.pixiv.net/member_illust.php?mode=medium&illust_id=${illustId}`,
+        },
+        onload: function(response)
+        {
+          if (ext === 'jpg' || ext === 'jpeg')
+            saveAs(new File([response.response], filename, { type: 'image/jpeg' }));
+          else if (ext === 'png')
+            saveAs(new File([response.response], filename, { type: 'image/png' }));
+        }
+      });
     }
     //-----------------------------------------------------------------------------------
     //**************************************Other****************************************
