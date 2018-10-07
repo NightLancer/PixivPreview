@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом.
 // @author          NightLancerX
-// @version         1.20
+// @version         1.21
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -71,14 +71,14 @@
     //-----------------------------------------------------------------------------------
     function checkPageType()
     {
-      if (document.URL.match('https://www.pixiv.net/bookmark_new_illust.php?'))          return 0; //Works from favourite artists
+      if (document.URL.match('https://www.pixiv.net/bookmark_new_illust.php?'))          return 0; //Works from favourite artists - 'feed'
       if (document.URL.match('https://www.pixiv.net/discovery?'))                        return 1; //Discovery page
-      if (document.URL.match('https://www.pixiv.net/member_illust.php?'))                return 2; //Artist works page
-      if (document.URL.match('https://www.pixiv.net/member.php?'))                       return 3; //Artist "top" page
+      if (document.URL.match('https://www.pixiv.net/member_illust.php?'))                return 2; //Artist works page - New
+      if (document.URL.match('https://www.pixiv.net/member.php?'))                       return 3; //Artist "top" page - New
       if (document.URL.match('https://www.pixiv.net/bookmark_detail.php?'))              return 4; //Bookmark information
       if (document.URL.match('https://www.pixiv.net/bookmark_add.php?'))                 return 5; //Added new bookmarks
       if (document.URL.match('https://www.pixiv.net/ranking.php?'))                      return 6; //Daily rankings
-      if (document.URL.match(/https:\/\/www\.pixiv\.net\/bookmark\.php\?id/))            return 7; //Someone's bookmarks page
+      if (document.URL.match(/https:\/\/www\.pixiv\.net\/bookmark\.php\?id/))            return 7; //Someone's bookmarks page - New
       if (document.URL.match('https://www.pixiv.net/search.php'))                        return 8; //Search page
       if (document.URL.match('https://www.pixiv.net/bookmark.php?'))                     return 9; //Your bookmarks page
       if (document.URL==='https://www.pixiv.net')                                        return 10; //Home page
@@ -90,7 +90,7 @@
     //-----------------------------------------------------------------------------------
     //**********************************ColorFollowed************************************
     //-----------------------------------------------------------------------------------
-    if (PAGETYPE==1 || PAGETYPE>=4 && PAGETYPE<=8)
+    if (PAGETYPE==1 || (PAGETYPE>=4 && PAGETYPE<=6) || PAGETYPE==8)
     {
       checkFollowedArtists(BOOKMARK_URL+'?type=user');
 
@@ -224,7 +224,7 @@
       document.body.appendChild(mangaOuterContainer);
 
       //-----------------------------FEED, DISCOVERY AND SEARCH--------------------------
-      if ((PAGETYPE === 0) || (PAGETYPE === 1) || (PAGETYPE===8))
+      if ((PAGETYPE === 0) || (PAGETYPE === 1) || (PAGETYPE===8)) //TODO - simplify!!
       {
         //single art hover---------------------------------------------------------------
         $('body').on('mouseenter', 'a[href*="member_illust.php?mode=medium&illust_id="] > div:only-child', function()
@@ -253,13 +253,13 @@
         });
       }
       //-----------------------------ARTIST WORKS AND "TOP" PAGES------------------------
-      else if (PAGETYPE===2 || PAGETYPE===3)
+      else if (PAGETYPE===2 || PAGETYPE===3 || PAGETYPE===7)
       {
         //single art hover---------------------------------------------------------------
         $('body').on('mouseenter', 'a[href*="member_illust.php?mode=medium&illust_id="] > div:only-child', function()
         {
           bookmarkObj = this.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0];
-          checkBookmark_NewLayout(this);
+          //checkBookmark_NewLayout(this);
           setHover(this);
         });
 
@@ -269,13 +269,13 @@
           if (this.parentNode.firstChild.childNodes.length)
           {
             bookmarkObj = this.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0];
-            checkBookmark_NewLayout(this);
+            //checkBookmark_NewLayout(this);
             setMangaHover(this, this.parentNode.firstChild.firstChild.textContent);
           }
         });
       }
       //----------------------DAILY RANKINGS & BOOKMARKS & HOME PAGES--------------------
-      else if ((PAGETYPE >= 4)&&(PAGETYPE <= 7) || (PAGETYPE == 9) || (PAGETYPE == 10) || (PAGETYPE == 11))
+      else if ((PAGETYPE >= 4)&&(PAGETYPE <= 6) || (PAGETYPE == 9) || (PAGETYPE == 10))
       {
         $('body').on('mouseenter', 'a[href*="member_illust.php?mode=medium&illust_id="]', function() //direct div selector works badly with "::before"
         {
@@ -291,6 +291,44 @@
             checkBookmark(this);
             setMangaHover(this.firstChild.firstChild, this.children[1].children[1].textContent);
           };
+        });
+      }
+      else if  (PAGETYPE == 11) //'stacc'
+      {
+        $('body').on('mouseenter', 'a[href*="member_illust.php?mode=medium&illust_id="]', function()
+        {
+          if (this.childNodes.length == 1 && this.childNodes[0].nodeName=="DIV")
+          {
+            if ($(this).hasClass('multiple')) //manga
+            {
+              let link = this.href.replace('medium','manga');
+              let that = this;
+
+              let xhr = new XMLHttpRequest();
+              xhr.responseType = 'document';
+              xhr.open("GET", link, true);
+              xhr.onreadystatechange = function ()
+              {
+                if (xhr.readyState == 4 && xhr.status == 200)
+                {
+                  let count = xhr.responseXML.getElementsByClassName("total")[0].textContent;
+                  setMangaHover(that.firstChild.firstChild, count);
+
+                  if (!(that.parentNode.parentNode.parentNode.parentNode.getElementsByClassName('imageCount').length>0)) //todo?..
+                  {
+                    let s = document.createElement('span');
+                    s.className = 'imageCount';
+                    s.style = 'position:relative; display: inline-block; float: right; top:-240px;'
+                    s.textContent = count;
+                    that.parentNode.parentNode.parentNode.parentNode.appendChild(s);
+                  }
+                }
+              };
+              xhr.send();
+              console.log(count);
+            }
+            else setHover(this.firstChild.firstChild); //single art
+          }
         });
       }
     });
@@ -360,8 +398,8 @@
     //-----------------------------------------------------------------------------------
     function parseImgUrl(thisObj)
     {
-      let url = (thisObj.src)? thisObj.src: thisObj.style.backgroundImage.slice(5,-2); //pixiv changes layout randomly
-      url = url.replace(/\/...x..0/, '/600x600').replace('_80_a2','').replace('_square1200','_master1200').replace('_70',''); //todo... '1200x1200' variant
+      let url = (thisObj.src)? thisObj.src: thisObj.style.backgroundImage.slice(5,-2);
+      url = url.replace(/\/...x..0/, '/600x600').replace('_80_a2','').replace('_square1200','_master1200').replace('_70',''); //TODO - '1200x1200' variant
       return url;
     };
     //-----------------------------------------------------------------------------------
