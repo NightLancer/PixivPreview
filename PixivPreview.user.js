@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом.
 // @author          NightLancerX
-// @version         1.30
+// @version         1.30.2
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -70,18 +70,18 @@
     //===================================================================================
     function checkPageType()
     {
-      if (document.URL.match('https://www.pixiv.net/bookmark_new_illust.php?'))          return 0; //Works from favourite artists
-      if (document.URL.match('https://www.pixiv.net/discovery?'))                        return 1; //Discovery page
-      if (document.URL.match('https://www.pixiv.net/member_illust.php?'))                return 2; //Artist works page - New
-      if (document.URL.match('https://www.pixiv.net/member.php?'))                       return 3; //Artist "top" page - New
-      if (document.URL.match('https://www.pixiv.net/bookmark_detail.php?'))              return 4; //Bookmark information
-      //if (document.URL.match('https://www.pixiv.net/bookmark_add.php?'))                 return 5; //Added new bookmarks | Doesn't needed anymore? -> deleted
-      if (document.URL.match('https://www.pixiv.net/ranking.php?'))                      return 6; //Daily rankings
-      if (document.URL.match(/https:\/\/www\.pixiv\.net\/bookmark\.php\?id/))            return 7; //Someone's bookmarks page - New
-      if (document.URL.match('https://www.pixiv.net/search.php?'))                       return 8; //Search page
-      if (document.URL.match('https://www.pixiv.net/bookmark.php?'))                     return 9; //Your bookmarks page
-      if (document.URL==='https://www.pixiv.net/')                                       return 10; //Home page
-      if (document.URL.match('https://www.pixiv.net/stacc?'))                            return 11; //Feed ('stacc')
+      if (document.URL.match('https://www.pixiv.net/bookmark_new_illust.php?'))                             return 0; //Works from favourite artists
+      if (document.URL.match('https://www.pixiv.net/discovery?'))                                           return 1; //Discovery page
+      if (document.URL.match('https://www.pixiv.net/member.php?'))                                          return 3; //Artist "top" page - New
+      if (document.URL.match('https://www.pixiv.net/bookmark_detail.php?'))                                 return 4; //Bookmark information
+      if (document.URL.match('https://www.pixiv.net/ranking.php?'))                                         return 6; //Daily rankings
+      if (document.URL.match(/https:\/\/www\.pixiv\.net\/bookmark\.php\?id/))                               return 7; //Someone's bookmarks page - New
+      if (document.URL.match('https://www.pixiv.net/search.php?'))                                          return 8; //Search page
+      if (document.URL.match('https://www.pixiv.net/bookmark.php?'))                                        return 9; //Your bookmarks page
+      if (document.URL==='https://www.pixiv.net/')                                                          return 10; //Home page
+      if (document.URL.match('https://www.pixiv.net/stacc?'))                                               return 11; //Feed ('stacc')
+      if (document.URL.match(/https:\/\/www\.pixiv\.net\/member_illust\.php\?mode\=medium\&illust_id\=/))   return 12; //Illust page
+      if (document.URL.match('https://www.pixiv.net/member_illust.php?'))                                   return 2; //Artist works page - New
 
       return -1;
     }
@@ -89,7 +89,7 @@
     //===================================================================================
     //**********************************ColorFollowed************************************
     //===================================================================================
-    if ([1,2,4,6].includes(PAGETYPE))
+    if ([1,4,6].includes(PAGETYPE)) //+2 in initMutationParentOnject
     {
       checkFollowedArtists(BOOKMARK_URL+'?type=user');           //public
       checkFollowedArtists(BOOKMARK_URL+'?type=user&rest=hide'); //private
@@ -186,7 +186,7 @@
       console.log('hits: '+currentHits + ' (Total: '+(lastHits)+')');
     }
     //-----------------------------------------------------------------------------------
-    let getArtsContainers = ([1,2,4].includes(PAGETYPE))
+    let getArtsContainers = ([1,12,4].includes(PAGETYPE))
     ?function() {return $('.gtm-illust-recommend-user-name');}
     :function() {return $('.ui-profile-popup');};
     //-----------------------------------------------------------------------------------
@@ -216,7 +216,7 @@
       return document.evaluate(path, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
     };
     //-----------------------------------------------------------------------------------
-    let getArtSectionContainers = ([1,2,4].includes(PAGETYPE))
+    let getArtSectionContainers = ([1,12,4].includes(PAGETYPE))
     ?function() {return $('.gtm-illust-recommend-zone');}
     :function() {return $('.ranking-items');};
     //-----------------------------------------------------------------------------------
@@ -267,6 +267,9 @@
           console.log(mainDiv);
           if (mainDiv.length>0)
           {
+            checkFollowedArtists(BOOKMARK_URL+'?type=user');           //public
+            checkFollowedArtists(BOOKMARK_URL+'?type=user&rest=hide'); //private
+
             colorFollowed();
             createObserver(mainDiv[0]);
             observerParent.disconnect();
@@ -293,7 +296,7 @@
     //**************************************Hover****************************************
     //===================================================================================
     if      (PAGETYPE===0 || PAGETYPE===1 || PAGETYPE===8)  siteImgMaxWidth = 198;
-    else if (PAGETYPE===2 || PAGETYPE===3 || PAGETYPE===7)  siteImgMaxWidth = 184; //todo: quite useless on this pages because of square previews...
+    else if (PAGETYPE===2 || PAGETYPE===3 || PAGETYPE===7 || PAGETYPE===12)  siteImgMaxWidth = 184; //todo: quite useless on this pages because of square previews...
     else if (PAGETYPE===4 || PAGETYPE===9 || PAGETYPE===10) siteImgMaxWidth = 150;
     else if (PAGETYPE===6 || PAGETYPE===11)                 siteImgMaxWidth = 240;
     //-----------------------------------------------------------------------------------
@@ -323,7 +326,7 @@
         _bkmrklst = null;
       }
       //---------------------------------------------------------------------------------
-      if (PAGETYPE===2)
+      if (PAGETYPE===12)
       {
         initMutationParentOnject();
       }
@@ -362,8 +365,8 @@
           artsLoaded = lastHits = 0;
         });
       }
-      //--------------------ARTIST WORKS, "TOP" PAGES, Someone's Bookmarks--------------- //2,3,7
-      else if (PAGETYPE===2 || PAGETYPE===3 || PAGETYPE===7)
+      //--------------------ARTIST WORKS, "TOP" PAGES, Someone's Bookmarks--------------- //2,3,7,12[2]
+      else if (PAGETYPE===2 || PAGETYPE===3 || PAGETYPE===7 || PAGETYPE===12)
       {
         //single art hover---------------------------------------------------------------
         $('body').on('mouseenter', 'a[href*="member_illust.php?mode=medium&illust_id="] > div:only-child', function()
