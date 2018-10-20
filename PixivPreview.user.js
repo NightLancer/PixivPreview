@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом.
 // @author          NightLancerX
-// @version         1.31.1
+// @version         1.32
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -35,22 +35,22 @@
   {
     console.log('MyPixivJS');
 
-    var hoverImg = document.createElement('img');
+    let hoverImg = document.createElement('img');
 
-    var imgContainer = document.createElement('div');
+    let imgContainer = document.createElement('div');
         imgContainer.style = 'position:absolute; display:block; z-index:1000; background:#222; padding:5px; margin:-5px;';
         imgContainer.appendChild(hoverImg);
 
-    var mangaContainer = document.createElement('div');
+    let mangaContainer = document.createElement('div');
         mangaContainer.id = 'mangaContainer';
         mangaContainer.style = 'display:block; z-index:1500; background:#111; overflow-x:auto; maxWidth:1200px; white-space:nowrap;';
 
-    var mangaOuterContainer = document.createElement('div');
+    let mangaOuterContainer = document.createElement('div');
         mangaOuterContainer.style = 'position:absolute; display:block; z-index:1000; padding:5px; background:#111; maxWidth:1200px; marginY:-5px; marginX: auto;';
         mangaOuterContainer.appendChild(mangaContainer);
 
-    var imgsArr = [], //for manga-style image packs...
-        followedUsersId = [], //storing followed users pixiv ID
+    let imgsArr = [], //for manga-style image packs...
+        followedUsersId = {}, //storing followed users pixiv ID
         BOOKMARK_URL = 'https://www.pixiv.net/bookmark.php',
         CheckedPublic = false,
         CheckedPrivate = false,
@@ -77,7 +77,7 @@
     {
       if (document.URL.match('https://www.pixiv.net/bookmark_new_illust.php?'))                             return 0; //Works from favourite artists
       if (document.URL.match('https://www.pixiv.net/discovery?'))                                           return 1; //Discovery page
-      if (document.URL.match('https://www.pixiv.net/member.php?'))                                          return 3; //Artist "top" page - New
+      if (document.URL.match('https://www.pixiv.net/member.php?'))                                          return 3; //Artist "Home" page - New
       if (document.URL.match('https://www.pixiv.net/bookmark_detail.php?'))                                 return 4; //Bookmark information
       if (document.URL.match('https://www.pixiv.net/ranking.php?'))                                         return 6; //Daily rankings
       if (document.URL.match(/https:\/\/www\.pixiv\.net\/bookmark\.php\?id/))                               return 7; //Someone's bookmarks page - New
@@ -94,7 +94,7 @@
     //===================================================================================
     //**********************************ColorFollowed************************************
     //===================================================================================
-    if ([1,4,6].includes(PAGETYPE)) //+12 in initMutationParentOnject(TODO: does it needed now?)
+    if ([1,4,6].includes(PAGETYPE)) //+12 in initMutationParentOnject(TODO: does it needed now?) | todo: 7
     {
       checkFollowedArtistsInit();
     }
@@ -109,7 +109,7 @@
         checkFollowedArtists(BOOKMARK_URL+'?type=user');           //public
         checkFollowedArtists(BOOKMARK_URL+'?type=user&rest=hide'); //private
       }
-      else if (PAGETYPE===6) colorFollowed(); //only for daily rankings? | for cached case
+      else if ([6].includes(PAGETYPE))  colorFollowed(); //only for daily rankings? todo: 7 | for cached case
     }
     //-----------------------------------------------------------------------------------
     async function checkFollowedArtists(url)
@@ -131,9 +131,10 @@
           let followedProfiles = doc.querySelectorAll('div>a.ui-profile-popup');
           for(let i = 0; i < followedProfiles.length; i++)
           {
-            followedUsersId.push(followedProfiles[i].getAttribute("data-user_id"));
+            //followedUsersId.push(followedProfiles[i].getAttribute("data-user_id"));
+            followedUsersId[followedProfiles[i].getAttribute("data-user_id")] = true;
           }
-          console.log(followedUsersId.length);
+          console.log(Object.keys(followedUsersId).length);
 
           let urlTail = $(doc).find('a[rel="next"]').attr('href');
           if (urlTail !== undefined && urlTail.length)
@@ -190,7 +191,7 @@
       let artsContainersLength = artsContainers.length;
       //console.log(artsContainersLength);
 
-      //while (!CheckedPrivate || !CheckedPublic) //wait until last XHR completed if it is not
+      //wait until last XHR completed if it is not---------------------------------------
       if (localStorage.getObj('followedCheckCompleted') === null || localStorage.getObj('followedCheckCompleted') === false)
       {
         if (localStorage.getObj('followedCheckStarted'))
@@ -206,16 +207,16 @@
             }
           }
           followedUsersId = localStorage.getObj('followedUsersId');
-          console.log('Succesfully received followedUsersId: '+ followedUsersId.length);
+          console.log('Succesfully received followedUsersId: '+ Object.keys(followedUsersId).length);
         }
         else console.error('Subscriptions check was not STARTED for some reason!');
       }
       else
       {
         followedUsersId = localStorage.getObj('followedUsersId');
-        console.log('Succesfully loaded cached followedUsersId: '+ followedUsersId.length);
+        console.log('Succesfully loaded cached followedUsersId: '+ Object.keys(followedUsersId).length);
       }
-
+      //---------------------------------------------------------------------------------
       artsLoaded = (PAGETYPE===12)?$('.gtm-illust-recommend-user-name').length:$('.ui-profile-popup').length;
       console.log('arts loaded: '+artsContainersLength + ' (Total: '+(artsLoaded)+')');
 
@@ -224,7 +225,8 @@
       for(let i = 0; i < artsContainersLength; i++)
       {
         userId = getUserId(artsContainers[i]);
-        if (followedUsersId.indexOf(userId)>=0)
+        //if (followedUsersId.indexOf(userId)>=0)
+        if (followedUsersId[userId]==true)
         {
           ++currentHits;
           artsContainers[i].setAttribute("style", "background-color: green; !important");
@@ -339,8 +341,27 @@
       observerParent.observe(parentDiv, options2);
       console.log('observerParent set');
     }
-    //===================================================================================
-    //**************************************Hover****************************************
+    //-----------------------------------------------------------------------------------
+    function followage(thisObj, toFollow, isNew) //TODO: into async queue
+    {
+      console.log('toFollow: '+ toFollow);
+      let userId = (!isNew)
+        ?thisObj.parentNode.parentNode.querySelectorAll('a.user-name')[0].getAttribute('href').split('&')[0].split('=')[1] //OLD
+        :thisObj.parentNode.parentNode.parentNode.querySelectorAll('[href*="/member.php?id="]')[0].getAttribute('href').split('=').pop(); //NEW
+      console.log(userId);
+
+      if (localStorage.getObj('followedCheckCompleted')) //at least basic check until queue is developed
+      {
+        let followedUsersId = localStorage.getObj('followedUsersId'); //local
+        if (toFollow)
+        followedUsersId[userId] = true;
+        else
+        delete followedUsersId[userId];
+
+        localStorage.setObj('followedUsersId', followedUsersId);
+      }
+      else console.error('Slow down! You have subscribed too many to handle this by now! Wait for the next updates :]');
+    }
     //===================================================================================
     if      (PAGETYPE===0 || PAGETYPE===1 || PAGETYPE===8)  siteImgMaxWidth = 198;
     else if (PAGETYPE===2 || PAGETYPE===3 || PAGETYPE===7 || PAGETYPE===12)  siteImgMaxWidth = 184; //todo: quite useless on this pages because of square previews...
@@ -355,6 +376,26 @@
       document.body.appendChild(imgContainer);
       document.body.appendChild(mangaOuterContainer);
 
+      //-------------------------------Follow onclick------------------------------------
+      let toFollow = false;
+      if ([2,3,7,12].includes(PAGETYPE))
+      {
+        $('body').on('mouseup', '[data-click-label*="follow"]', function()
+        {
+          //console.log('NEW CLICK!');
+          toFollow = (this.classList.length === 2);
+          followage(this, toFollow, true);
+        });
+      }
+      else
+      {
+        $('body').on('mouseup', '.follow-button', function()
+        {
+          //console.log('OLD CLICK!');
+          toFollow = (this.textContent === "Follow");
+          followage(this, toFollow, false);
+        });
+      }
       //-----------------------------Bookmarks ------------------------------------------
       /*
       if (PAGETYPE===7) //TODO -> launch form tab
@@ -382,6 +423,8 @@
       {
         initMutationObject();
       }
+      //=================================================================================
+      //**************************************Hover**************************************
       //=================================================================================
       //-----------------------------FEED, DISCOVERY AND SEARCH-------------------------- //0,1,8
       if ((PAGETYPE === 0) || (PAGETYPE === 1) || (PAGETYPE===8)) //TODO - simplify!!
@@ -496,7 +539,6 @@
     //-----------------------------------------------------------------------------------
     function setHover(thisObj)
     {
-      console.log(thisObj);
       mangaOuterContainer.style.display='none';
 
       hoverImg.src = parseImgUrl(thisObj);
@@ -614,7 +656,7 @@
       mangaOuterContainer.style.display='none';
     };
     //===================================================================================
-    //*************************************Clicks****************************************
+    //***********************************Art Clicks**************************************
     //===================================================================================
     hoverImg.onmouseup = function (event) //single arts onclick actions
     {
