@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом.
 // @author          NightLancerX
-// @version         1.30.2
+// @version         1.31.1
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -54,10 +54,8 @@
         BOOKMARK_URL = 'https://www.pixiv.net/bookmark.php',
         CheckedPublic = false,
         CheckedPrivate = false,
-        //artsContainers,
         artsLoaded = 0,
         lastHits = 0,
-        //isRunning = false,
         lastImgId = " ",
         siteImgMaxWidth = 150,
         mangaWidth = 1200,
@@ -65,6 +63,13 @@
         isBookmarked = false, //todo: rework or delete. Arts can be bookmarked on art page.
         DELTASCALE = ('mozInnerScreenX' in window)?70:4,
         PAGETYPE = checkPageType();
+    //-----------------------------------------------------------------------------------
+    Storage.prototype.setObj = function(key, obj){
+      return this.setItem(key, JSON.stringify(obj))
+    }
+    Storage.prototype.getObj = function(key){
+      return JSON.parse(this.getItem(key))
+    }
     //===================================================================================
     //************************************PageType***************************************
     //===================================================================================
@@ -80,7 +85,7 @@
       if (document.URL.match('https://www.pixiv.net/bookmark.php?'))                                        return 9; //Your bookmarks page
       if (document.URL==='https://www.pixiv.net/')                                                          return 10; //Home page
       if (document.URL.match('https://www.pixiv.net/stacc?'))                                               return 11; //Feed ('stacc')
-      if (document.URL.match(/https:\/\/www\.pixiv\.net\/member_illust\.php\?mode\=medium\&illust_id\=/))   return 12; //Illust page
+      if (document.URL.match(/https:\/\/www\.pixiv\.net\/member_illust\.php\?mode\=medium\&illust_id\=/))   return 12; //Illust page - New
       if (document.URL.match('https://www.pixiv.net/member_illust.php?'))                                   return 2; //Artist works page - New
 
       return -1;
@@ -89,10 +94,22 @@
     //===================================================================================
     //**********************************ColorFollowed************************************
     //===================================================================================
-    if ([1,4,6].includes(PAGETYPE)) //+2 in initMutationParentOnject
+    if ([1,4,6].includes(PAGETYPE)) //+12 in initMutationParentOnject(TODO: does it needed now?)
     {
-      checkFollowedArtists(BOOKMARK_URL+'?type=user');           //public
-      checkFollowedArtists(BOOKMARK_URL+'?type=user&rest=hide'); //private
+      checkFollowedArtistsInit();
+    }
+
+    function checkFollowedArtistsInit()
+    {
+      //if (localStorage.getObj((%%%current-time%%% + ###some-time-interval###) < ***check-date-variable***) localStorage.setObj('followedCheckCompleted', false); //TODO: followedUsersId expiration
+      if (!(localStorage.getObj('followedCheckCompleted'))) //we assume that user will not harass reccommendation pages to dos
+      {
+        console.log('followedCheckStarted');
+        localStorage.setObj('followedCheckStarted',true);
+        checkFollowedArtists(BOOKMARK_URL+'?type=user');           //public
+        checkFollowedArtists(BOOKMARK_URL+'?type=user&rest=hide'); //private
+      }
+      else if (PAGETYPE===6) colorFollowed(); //only for daily rankings? | for cached case
     }
     //-----------------------------------------------------------------------------------
     async function checkFollowedArtists(url)
@@ -129,15 +146,26 @@
             if      (doc.querySelectorAll('li.current')[0].textContent==='Public')  CheckedPublic  = true;
             else if (doc.querySelectorAll('li.current')[0].textContent==='Private') CheckedPrivate = true;
 
-            if (CheckedPublic && CheckedPrivate && [6].includes(PAGETYPE)) colorFollowed(); //only for daily rankings?
+            if (CheckedPublic && CheckedPrivate)
+            {
+              localStorage.setObj('followedCheckCompleted', true); //todo: check if there is a difference in command order
+              localStorage.setObj('followedCheckStarted', false);
+              localStorage.setObj('followedUsersId', followedUsersId);
+              console.log('Followed check completed');
+
+              if (PAGETYPE===6) colorFollowed(); //only for daily rankings? | for loading on same page case
+            }
           }
           doc = followedProfiles = null;
         }
       };
       xhr.onerror = function()
       {
-        console.error('ERROR WHILE GETTING SUBSCRIPTIONS LIST!');
-        CheckedPrivate = CheckedPublic = true; //to stop while loop; (make diff flag or smth if needed)
+        console.error('ERROR while GETTING subscriptions list!');
+        //CheckedPrivate = CheckedPublic = true; //to stop while loop; (make diff flag or smth if needed) //TODO -> rework to match localStorage -> delete
+        localStorage.setObj('followedCheckError', true);
+        localStorage.setObj('followedCheckCompleted', false);
+        localStorage.setObj('followedCheckStarted', false);
       };
       xhr.send();
     }
@@ -162,13 +190,33 @@
       let artsContainersLength = artsContainers.length;
       //console.log(artsContainersLength);
 
-      while (!CheckedPrivate || !CheckedPublic) //wait until last XHR completed if it is not
+      //while (!CheckedPrivate || !CheckedPublic) //wait until last XHR completed if it is not
+      if (localStorage.getObj('followedCheckCompleted') === null || localStorage.getObj('followedCheckCompleted') === false)
       {
-        console.log("waiting for followed users..."); //this could happen in case of huge followed users amount
-        await sleep(2000);
+        if (localStorage.getObj('followedCheckStarted'))
+        {
+          while (!localStorage.getObj('followedCheckCompleted'))
+          {
+            console.log("waiting for followed users..."); //this could happen in case of huge followed users amount
+            await sleep(2000);
+            if (localStorage.getObj('followedCheckError'))
+            {
+              console.error('ERROR while RECEIVING subscriptions list!');
+              break;
+            }
+          }
+          followedUsersId = localStorage.getObj('followedUsersId');
+          console.log('Succesfully received followedUsersId: '+ followedUsersId.length);
+        }
+        else console.error('Subscriptions check was not STARTED for some reason!');
+      }
+      else
+      {
+        followedUsersId = localStorage.getObj('followedUsersId');
+        console.log('Succesfully loaded cached followedUsersId: '+ followedUsersId.length);
       }
 
-      artsLoaded = (PAGETYPE===2)?$('.gtm-illust-recommend-user-name').length:$('.ui-profile-popup').length;
+      artsLoaded = (PAGETYPE===12)?$('.gtm-illust-recommend-user-name').length:$('.ui-profile-popup').length;
       console.log('arts loaded: '+artsContainersLength + ' (Total: '+(artsLoaded)+')');
 
       let currentHits = 0;
@@ -267,8 +315,7 @@
           console.log(mainDiv);
           if (mainDiv.length>0)
           {
-            checkFollowedArtists(BOOKMARK_URL+'?type=user');           //public
-            checkFollowedArtists(BOOKMARK_URL+'?type=user&rest=hide'); //private
+            checkFollowedArtistsInit();
 
             colorFollowed();
             createObserver(mainDiv[0]);
@@ -368,22 +415,21 @@
       //--------------------ARTIST WORKS, "TOP" PAGES, Someone's Bookmarks--------------- //2,3,7,12[2]
       else if (PAGETYPE===2 || PAGETYPE===3 || PAGETYPE===7 || PAGETYPE===12)
       {
-        //single art hover---------------------------------------------------------------
-        $('body').on('mouseenter', 'a[href*="member_illust.php?mode=medium&illust_id="] > div:only-child', function()
-        {
-          bookmarkObj = this.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0];
-          //checkBookmark_NewLayout(this);
-          setHover(this);
-        });
-
-        //manga-style arts hover---------------------------------------------------------
         $('body').on('mouseenter', 'a[href*="member_illust.php?mode=medium&illust_id="] > div:nth-child(2) ', function()
         {
-          if (this.parentNode.firstChild.childNodes.length)
+          //single art hover-------------------------------------------------------------
+          if (this.parentNode.firstChild.childNodes.length===1) //single
           {
             bookmarkObj = this.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0];
             //checkBookmark_NewLayout(this);
-            setMangaHover(this, this.parentNode.firstChild.firstChild.textContent);
+            setHover(this);
+          }
+          //manga-style arts hover-------------------------------------------------------
+          else
+          {
+            bookmarkObj = this.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0];
+            //checkBookmark_NewLayout(this);
+            setMangaHover(this, this.parentNode.firstChild.childNodes[1].textContent);
           }
         });
       }
@@ -435,11 +481,11 @@
                     s.style = 'position:relative; display: inline-block; float: right; top:-240px;'
                     s.textContent = count;
                     that.parentNode.parentNode.parentNode.parentNode.appendChild(s);
+                    //console.log(count); delete
                   }
                 }
               };
               xhr.send();
-              console.log(count);
             }
             else setHover(this.firstChild.firstChild); //single art
           }
@@ -450,6 +496,7 @@
     //-----------------------------------------------------------------------------------
     function setHover(thisObj)
     {
+      console.log(thisObj);
       mangaOuterContainer.style.display='none';
 
       hoverImg.src = parseImgUrl(thisObj);
