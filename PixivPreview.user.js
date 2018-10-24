@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом.
 // @author          NightLancerX
-// @version         1.32
+// @version         1.32.1
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -57,7 +57,7 @@
         artsLoaded = 0,
         lastHits = 0,
         lastImgId = " ",
-        siteImgMaxWidth = 150,
+        siteImgMaxWidth = 184, //2,3,7,12 [NEW]| //todo: quite useless on this pages because of square previews...
         mangaWidth = 1200,
         bookmarkObj,
         isBookmarked = false, //todo: rework or delete. Arts can be bookmarked on art page.
@@ -272,7 +272,7 @@
     //-----------------------------------------------------------------------------------
     function createObserver(mainDiv)
     {
-      var observer = new MutationObserver(function(mutations)
+      let observer = new MutationObserver(function(mutations)
       {
         let arr = [];
         mutations.forEach(function(mutation)
@@ -364,7 +364,6 @@
     }
     //===================================================================================
     if      (PAGETYPE===0 || PAGETYPE===1 || PAGETYPE===8)  siteImgMaxWidth = 198;
-    else if (PAGETYPE===2 || PAGETYPE===3 || PAGETYPE===7 || PAGETYPE===12)  siteImgMaxWidth = 184; //todo: quite useless on this pages because of square previews...
     else if (PAGETYPE===4 || PAGETYPE===9 || PAGETYPE===10) siteImgMaxWidth = 150;
     else if (PAGETYPE===6 || PAGETYPE===11)                 siteImgMaxWidth = 240;
     //-----------------------------------------------------------------------------------
@@ -413,7 +412,7 @@
         _bkmrklst.parentNode.removeChild(_bkmrklst);
         _bkmrklst = null;
       }
-      //---------------------------------------------------------------------------------
+      //-----------------------------------Illust page-----------------------------------
       if (PAGETYPE===12)
       {
         initMutationParentOnject();
@@ -458,21 +457,23 @@
       //--------------------ARTIST WORKS, "TOP" PAGES, Someone's Bookmarks--------------- //2,3,7,12[2]
       else if (PAGETYPE===2 || PAGETYPE===3 || PAGETYPE===7 || PAGETYPE===12)
       {
-        $('body').on('mouseenter', 'a[href*="member_illust.php?mode=medium&illust_id="] > div:nth-child(2) ', function()
+        $('body').on('mouseenter', 'a[href*="member_illust.php?mode=medium&illust_id="] > div:only-child', function()
         {
           //single art hover-------------------------------------------------------------
-          if (this.parentNode.firstChild.childNodes.length===1) //single
+          if (this.firstChild.childNodes.length===1) //single
           {
+            //console.log('single');
             bookmarkObj = this.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0];
             //checkBookmark_NewLayout(this);
-            setHover(this);
+            setHover(this.childNodes[1]);
           }
           //manga-style arts hover-------------------------------------------------------
           else
           {
+            //console.log('manga');
             bookmarkObj = this.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0];
             //checkBookmark_NewLayout(this);
-            setMangaHover(this, this.parentNode.firstChild.childNodes[1].textContent);
+            setMangaHover(this.childNodes[1], this.firstChild.childNodes[1].textContent);
           }
         });
       }
