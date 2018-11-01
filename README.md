@@ -27,4 +27,6 @@ For larger amount of artworks, horisontal scrollbar is appeared, but scrolling v
 
 ■ Press Alt and left mouse button click for quick adding artwork into bookmarks. Repeat combination again for opening bookmark (tags) edition page(on pages with old pixiv layout).
 
+You can set `PREVIEW_ON_CLICK = true;` to change preview appearing condition to LMB-click.
+
 Works best with <a href="https://greasyfork.org/uk/scripts/3254-endless-pixiv-pages">"Endless Pixiv Pages"</a> ©Mango.<br>
