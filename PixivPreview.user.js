@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом.
 // @author          NightLancerX
-// @version         1.32.2
+// @version         1.32.3
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -35,6 +35,10 @@
   {
     console.log('MyPixivJS');
 
+    //---------------------------***CUSTOM PREFERENCES***--------------------------------
+    const PREVIEW_ON_CLICK = false; //if "true" — showing arts preview after LMB-click on art instead of hovering over it
+    //-----------------------------------------------------------------------------------
+
     let hoverImg = document.createElement('img');
 
     let imgContainer = document.createElement('div');
@@ -62,6 +66,7 @@
         bookmarkObj,
         isBookmarked = false, //todo: rework or delete. Arts can be bookmarked on art page.
         DELTASCALE = ('mozInnerScreenX' in window)?70:4,
+        previewEventType = (PREVIEW_ON_CLICK)?'click':'mouseenter',
         PAGETYPE = checkPageType();
     //-----------------------------------------------------------------------------------
     Storage.prototype.setObj = function(key, obj){
@@ -340,6 +345,15 @@
       console.log(parentDiv);
       observerParent.observe(parentDiv, options2);
       console.log('observerParent set');
+
+      //initGallery(); TODO
+    }
+    //-----------------------------------------------------------------------------------
+    function initGallery() {
+      let _ttt = $('figure > div[role="presentation"]');
+      let _sss = _ttt[0].textContent.split("⧸").pop(); //NOT slash! charCodeAt(0) == 10744
+      console.log(_ttt);
+      console.log(_sss);
     }
     //-----------------------------------------------------------------------------------
     function followage(thisObj, toFollow, isNew) //TODO: into async queue
@@ -354,9 +368,9 @@
       {
         let followedUsersId = localStorage.getObj('followedUsersId'); //local
         if (toFollow)
-        followedUsersId[userId] = true;
+          followedUsersId[userId] = true;
         else
-        delete followedUsersId[userId];
+          delete followedUsersId[userId];
 
         localStorage.setObj('followedUsersId', followedUsersId);
       }
@@ -429,16 +443,18 @@
       if ((PAGETYPE === 0) || (PAGETYPE === 1) || (PAGETYPE===8)) //TODO - simplify!!
       {
         //single art hover---------------------------------------------------------------
-        $('body').on('mouseenter', 'a[href*="member_illust.php?mode=medium&illust_id="] > div:only-child', function()
+        $('body').on(previewEventType, 'a[href*="member_illust.php?mode=medium&illust_id="] > div:only-child', function(e)
         {
+          e.preventDefault();
           bookmarkObj = $(this).parent().parent().children(".thumbnail-menu").children("._one-click-bookmark");
           checkBookmark(this);
           setHover(this);
         });
 
         //manga-style arts hover---------------------------------------------------------
-        $('body').on('mouseenter', 'a[href*="member_illust.php?mode=medium&illust_id="] > div:nth-child(2) ', function()
+        $('body').on(previewEventType, 'a[href*="member_illust.php?mode=medium&illust_id="] > div:nth-child(2) ', function(e)
         {
+          e.preventDefault();
           if (this.parentNode.firstChild.childNodes.length)
           {
             bookmarkObj = $(this).parent().parent().children(".thumbnail-menu").children("._one-click-bookmark");
@@ -455,10 +471,10 @@
         });
       }
       //--------------------ARTIST WORKS, "TOP" PAGES, Someone's Bookmarks--------------- //2,3,7,12[2]
-      else if (PAGETYPE===2 || PAGETYPE===3 || PAGETYPE===7 || PAGETYPE===12)
+      else if (PAGETYPE===2 || PAGETYPE===3 || PAGETYPE===7 || PAGETYPE===12) //TODO!!! do smthng with that amorphous pixiv styleshit!
       {
         /*
-        $('body').on('mouseenter', 'a[href*="member_illust.php?mode=medium&illust_id="] > div:only-child', function()
+        $('body').on(previewEventType, 'a[href*="member_illust.php?mode=medium&illust_id="] > div:only-child', function()
         {
           //single art hover-------------------------------------------------------------
           if (this.firstChild.childNodes.length===1) //single
@@ -478,8 +494,9 @@
           }
         });
         */
-        $('body').on('mouseenter', 'a[href*="member_illust.php?mode=medium&illust_id="] > div:nth-child(2) ', function()
+        $('body').on(previewEventType, 'a[href*="member_illust.php?mode=medium&illust_id="] > div:nth-child(2) ', function(e)
         {
+          e.preventDefault();
           //single art hover-------------------------------------------------------------
           if (this.parentNode.firstChild.childNodes.length===1) //single
           {
@@ -499,8 +516,10 @@
       //----------------------DAILY RANKINGS & BOOKMARKS & HOME PAGES-------------------- //4,[5],6,9,10
       else if (PAGETYPE == 4 || PAGETYPE == 6 || PAGETYPE == 9 || PAGETYPE == 10)
       {
-        $('body').on('mouseenter', 'a[href*="member_illust.php?mode=medium&illust_id="]', function() //direct div selector works badly with "::before"
+        $('body').on(previewEventType, 'a[href*="member_illust.php?mode=medium&illust_id="]', function(e) //direct div selector works badly with "::before"
         {
+          e.preventDefault();
+
           if (this.childNodes.length == 1 && this.childNodes[0].nodeName=="DIV") //single art
           {
             bookmarkObj = $(this.firstChild.firstChild).parent().children("._one-click-bookmark");
@@ -518,8 +537,10 @@
       //-----------------------------------Feed('stacc')--------------------------------- //11
       else if  (PAGETYPE == 11)
       {
-        $('body').on('mouseenter', 'a[href*="member_illust.php?mode=medium&illust_id="]', function()
+        $('body').on(previewEventType, 'a[href*="member_illust.php?mode=medium&illust_id="]', function(e)
         {
+          e.preventDefault();
+
           if (this.childNodes.length == 1 && this.childNodes[0].nodeName=="DIV")
           {
             if ($(this).hasClass('multiple')) //manga
