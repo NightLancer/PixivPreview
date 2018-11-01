@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом.
 // @author          NightLancerX
-// @version         1.32.1
+// @version         1.32.2
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -457,6 +457,7 @@
       //--------------------ARTIST WORKS, "TOP" PAGES, Someone's Bookmarks--------------- //2,3,7,12[2]
       else if (PAGETYPE===2 || PAGETYPE===3 || PAGETYPE===7 || PAGETYPE===12)
       {
+        /*
         $('body').on('mouseenter', 'a[href*="member_illust.php?mode=medium&illust_id="] > div:only-child', function()
         {
           //single art hover-------------------------------------------------------------
@@ -474,6 +475,24 @@
             bookmarkObj = this.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0];
             //checkBookmark_NewLayout(this);
             setMangaHover(this.childNodes[1], this.firstChild.childNodes[1].textContent);
+          }
+        });
+        */
+        $('body').on('mouseenter', 'a[href*="member_illust.php?mode=medium&illust_id="] > div:nth-child(2) ', function()
+        {
+          //single art hover-------------------------------------------------------------
+          if (this.parentNode.firstChild.childNodes.length===1) //single
+          {
+            bookmarkObj = this.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0];
+            //checkBookmark_NewLayout(this);
+            setHover(this);
+          }
+          //manga-style arts hover-------------------------------------------------------
+          else
+          {
+            bookmarkObj = this.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0];
+            //checkBookmark_NewLayout(this);
+            setMangaHover(this, this.parentNode.firstChild.childNodes[1].textContent);
           }
         });
       }
