@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом.
 // @author          NightLancerX
-// @version         1.32.3
+// @version         1.32.5
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -106,11 +106,11 @@
 
     function checkFollowedArtistsInit()
     {
-      //if (localStorage.getObj((%%%current-time%%% + ###some-time-interval###) < ***check-date-variable***) localStorage.setObj('followedCheckCompleted', false); //TODO: followedUsersId expiration
-      if (!(localStorage.getObj('followedCheckCompleted'))) //we assume that user will not harass reccommendation pages to dos
+      if ((Date.now()-23*60*60*1000)>localStorage.getItem('followedCheckDate') && !localStorage.getObj('followedCheckStarted')) //forcing update followed list in case of errors at least every 23 hours
       {
         console.log('followedCheckStarted');
-        localStorage.setObj('followedCheckStarted',true);
+        localStorage.setObj('followedCheckCompleted', false);
+        localStorage.setObj('followedCheckStarted', true);
         checkFollowedArtists(BOOKMARK_URL+'?type=user');           //public
         checkFollowedArtists(BOOKMARK_URL+'?type=user&rest=hide'); //private
       }
@@ -157,6 +157,7 @@
               localStorage.setObj('followedCheckCompleted', true); //todo: check if there is a difference in command order
               localStorage.setObj('followedCheckStarted', false);
               localStorage.setObj('followedUsersId', followedUsersId);
+              localStorage.setObj('followedCheckDate', Date.now());
               console.log('Followed check completed');
 
               if (PAGETYPE===6) colorFollowed(); //only for daily rankings? | for loading on same page case
@@ -179,7 +180,7 @@
     async function colorFollowed(artsContainers)
     {
       let c = 0;
-      while (!artsContainers || artsContainers.length === 0) //first call -> only for daily rankings?
+      while (!artsContainers || artsContainers.length === 0) //first call -> daily rankings, illust page
       {
         console.log('waiting for arts...');
         await sleep(1000);
@@ -361,8 +362,9 @@
       console.log('toFollow: '+ toFollow);
       let userId = (!isNew)
         ?thisObj.parentNode.parentNode.querySelectorAll('a.user-name')[0].getAttribute('href').split('&')[0].split('=')[1] //OLD
-        :thisObj.parentNode.parentNode.parentNode.querySelectorAll('[href*="/member.php?id="]')[0].getAttribute('href').split('=').pop(); //NEW
-      console.log(userId);
+        //:thisObj.parentNode.parentNode.parentNode.querySelectorAll('[href*="/member.php?id="]')[0].getAttribute('href').split('=').pop(); //NEW
+        :document.querySelectorAll('[href*="/member.php?id="]')[0].getAttribute('href').split('=').pop(); //NEW
+      //console.log(userId);
 
       if (localStorage.getObj('followedCheckCompleted')) //at least basic check until queue is developed
       {
@@ -373,8 +375,9 @@
           delete followedUsersId[userId];
 
         localStorage.setObj('followedUsersId', followedUsersId);
+        console.log('userId ' + userId + [(toFollow)?' added to':' deleted from'] + ' localStorage');
       }
-      else console.error('Slow down! You have subscribed too many to handle this by now! Wait for the next updates :]');
+      else console.error('Slow down! You have subscribed too many to handle this by now! Wait for the next updates');
     }
     //===================================================================================
     if      (PAGETYPE===0 || PAGETYPE===1 || PAGETYPE===8)  siteImgMaxWidth = 198;
@@ -390,25 +393,20 @@
       document.body.appendChild(mangaOuterContainer);
 
       //-------------------------------Follow onclick------------------------------------
-      let toFollow = false;
-      if ([2,3,7,12].includes(PAGETYPE))
-      {
-        $('body').on('mouseup', '[data-click-label*="follow"]', function()
-        {
-          //console.log('NEW CLICK!');
-          toFollow = (this.classList.length === 2);
-          followage(this, toFollow, true);
-        });
+      let toFollow, isNew, followSelector;
+      if ([2,3,7,12].includes(PAGETYPE)){
+        followSelector = '[data-click-label*="follow"]';
+        isNew = true;
       }
-      else
-      {
-        $('body').on('mouseup', '.follow-button', function()
-        {
-          //console.log('OLD CLICK!');
-          toFollow = (this.textContent === "Follow");
-          followage(this, toFollow, false);
-        });
+      else{
+        followSelector = '.follow-button';
+        isNew = false;
       }
+
+      $('body').on('mouseup', followSelector, function(){
+        toFollow = (this.textContent == 'Follow');
+        followage(this, toFollow, isNew);
+      });
       //-----------------------------Bookmarks ------------------------------------------
       /*
       if (PAGETYPE===7) //TODO -> launch form tab
