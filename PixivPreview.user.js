@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом.
 // @author          NightLancerX
-// @version         1.32.5
+// @version         1.33
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -37,6 +37,7 @@
 
     //---------------------------***CUSTOM PREFERENCES***--------------------------------
     const PREVIEW_ON_CLICK = false; //if "true" — showing arts preview after LMB-click on art instead of hovering over it
+    const DELAY_BEFORE_PREVIEW = 0; //if you need delay before showing art preview, set it here (1000 = 1 second)
     //-----------------------------------------------------------------------------------
 
     let hoverImg = document.createElement('img');
@@ -68,6 +69,8 @@
         DELTASCALE = ('mozInnerScreenX' in window)?70:4,
         previewEventType = (PREVIEW_ON_CLICK)?'click':'mouseenter',
         PAGETYPE = checkPageType();
+
+    var timerId;
     //-----------------------------------------------------------------------------------
     Storage.prototype.setObj = function(key, obj){
       return this.setItem(key, JSON.stringify(obj))
@@ -169,7 +172,6 @@
       xhr.onerror = function()
       {
         console.error('ERROR while GETTING subscriptions list!');
-        //CheckedPrivate = CheckedPublic = true; //to stop while loop; (make diff flag or smth if needed) //TODO -> rework to match localStorage -> delete
         localStorage.setObj('followedCheckError', true);
         localStorage.setObj('followedCheckCompleted', false);
         localStorage.setObj('followedCheckStarted', false);
@@ -375,7 +377,7 @@
           delete followedUsersId[userId];
 
         localStorage.setObj('followedUsersId', followedUsersId);
-        console.log('userId ' + userId + [(toFollow)?' added to':' deleted from'] + ' localStorage');
+        console.log('userId ' + userId + [(toFollow)?' added to':' deleted from'] + ' localStorage. Followed: '+ Object.keys(followedUsersId).length);
       }
       else console.error('Slow down! You have subscribed too many to handle this by now! Wait for the next updates');
     }
@@ -573,8 +575,25 @@
           }
         });
       }
+      //-----------------------------------------------------------------------------------
+      if (DELAY_BEFORE_PREVIEW>0) $('body').on('mouseleave', 'a[href*="member_illust.php?mode=medium&illust_id="]', function()
+      {
+        clearTimeout(timerId);
+      });
     });
     //===================================================================================
+    //-----------------------------------------------------------------------------------
+    function checkDelay(callback) {
+      if (DELAY_BEFORE_PREVIEW>0){
+        clearTimeout(timerId);
+        //console.log('CLEARED on hover');
+
+        //console.log('OLD timerId '+ timerId);
+        timerId = setTimeout(callback, 1000);
+        //console.log('NEW timerId '+ timerId);
+      }
+      else callback();
+    }
     //-----------------------------------------------------------------------------------
     function setHover(thisObj)
     {
@@ -591,7 +610,8 @@
       if (isBookmarked) $(imgContainer).css("background", "rgb(255, 64, 96)");
       else $(imgContainer).css("background", "rgb(34, 34, 34)");
 
-      imgContainer.style.display='block';
+      //imgContainer.style.display='block';
+      checkDelay(function(){imgContainer.style.display='block';});
     }
     //-----------------------------------------------------------------------------------
     function setMangaHover(thisObj, count)
@@ -622,7 +642,8 @@
         {
           imgsArr[j].src = '';
         }
-        mangaOuterContainer.style.display='block';
+        checkDelay(function(){mangaOuterContainer.style.display='block';});
+        //mangaOuterContainer.style.display='block';
         lastImgId = currentImgId;
 
         for(let i=0; i<l; i++)
@@ -636,7 +657,8 @@
         }
       }
       //---------------------------------------------------------------------------------
-      else mangaOuterContainer.style.display='block';
+      else checkDelay(function(){mangaOuterContainer.style.display='block';});
+      //mangaOuterContainer.style.display='block';
     };
     //-----------------------------------------------------------------------------------
     function parseImgUrl(thisObj)
