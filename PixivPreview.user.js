@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом.
 // @author          NightLancerX
-// @version         1.33
+// @version         1.35.1
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -38,6 +38,8 @@
     //---------------------------***CUSTOM PREFERENCES***--------------------------------
     const PREVIEW_ON_CLICK = false; //if "true" — showing arts preview after LMB-click on art instead of hovering over it
     const DELAY_BEFORE_PREVIEW = 0; //if you need delay before showing art preview, set it here (1000 = 1 second)
+    const PREVIEW_SIZE = 600; //if you have "4K" or "QHD" monitor, you can set preview size to 1200(which can't fit at 1920*1080 monitor, so stay at 600 if you have that one)
+    const ACCURATE_MANGA_PREVIEW = false; //if `true` - increases time before manga preview appearing(to 1sec) but shows it at more accurate position considering width(for case of few arts)
     //-----------------------------------------------------------------------------------
 
     let hoverImg = document.createElement('img');
@@ -51,7 +53,7 @@
         mangaContainer.style = 'display:block; z-index:1500; background:#111; overflow-x:auto; maxWidth:1200px; white-space:nowrap;';
 
     let mangaOuterContainer = document.createElement('div');
-        mangaOuterContainer.style = 'position:absolute; display:block; z-index:1000; padding:5px; background:#111; maxWidth:1200px; marginY:-5px; marginX: auto;';
+        mangaOuterContainer.style = 'position:absolute; display:block; visibility:hidden; z-index:1000; padding:5px; background:#111; maxWidth:1200px; marginY:-5px; marginX: auto; left: 30px;';
         mangaOuterContainer.appendChild(mangaContainer);
 
     let imgsArr = [], //for manga-style image packs...
@@ -61,9 +63,10 @@
         CheckedPrivate = false,
         artsLoaded = 0,
         lastHits = 0,
-        lastImgId = " ",
+        lastImgId = -1,
         siteImgMaxWidth = 184, //2,3,7,12 [NEW]| //todo: quite useless on this pages because of square previews...
         mangaWidth = 1200,
+        //prevSize = PREVIEW_SIZE,
         bookmarkObj,
         isBookmarked = false, //todo: rework or delete. Arts can be bookmarked on art page.
         DELTASCALE = ('mozInnerScreenX' in window)?70:4,
@@ -109,7 +112,7 @@
 
     function checkFollowedArtistsInit()
     {
-      if ((Date.now()-23*60*60*1000)>localStorage.getItem('followedCheckDate') && !localStorage.getObj('followedCheckStarted')) //forcing update followed list in case of errors at least every 23 hours
+      if ((Date.now()-23*60*60*1000)>localStorage.getItem('followedCheckDate') && !localStorage.getObj('followedCheckStarted')) //forcing update followed list(in case of errors) at least every 23 hours
       {
         console.log('followedCheckStarted');
         localStorage.setObj('followedCheckCompleted', false);
@@ -349,7 +352,7 @@
       observerParent.observe(parentDiv, options2);
       console.log('observerParent set');
 
-      //initGallery(); TODO
+      //initGallery(); TODO (preview on the illust page???)
     }
     //-----------------------------------------------------------------------------------
     function initGallery() {
@@ -391,6 +394,7 @@
       console.log('$(document).ready');
       mangaWidth = document.body.clientWidth - 80;
       mangaContainer.style.maxWidth = mangaOuterContainer.style.maxWidth = mangaWidth+'px';
+      //mangaContainer.style.maxHeight = mangaOuterContainer.style.maxHeight = document.documentElement.clientHeight;
       document.body.appendChild(imgContainer);
       document.body.appendChild(mangaOuterContainer);
 
@@ -586,25 +590,21 @@
     function checkDelay(callback) {
       if (DELAY_BEFORE_PREVIEW>0){
         clearTimeout(timerId);
-        //console.log('CLEARED on hover');
-
-        //console.log('OLD timerId '+ timerId);
-        timerId = setTimeout(callback, 1000);
-        //console.log('NEW timerId '+ timerId);
+        timerId = setTimeout(callback, DELAY_BEFORE_PREVIEW);
       }
       else callback();
     }
     //-----------------------------------------------------------------------------------
     function setHover(thisObj)
     {
-      mangaOuterContainer.style.display='none';
+      mangaOuterContainer.style.visibility = 'hidden';
 
-      hoverImg.src = parseImgUrl(thisObj);
+      hoverImg.src = parseImgUrl(thisObj, PREVIEW_SIZE);
       imgContainer.style.top = getOffsetRect(thisObj.parentNode.parentNode).top+'px';
 
       //adjusting preview position considering expected image width
       let l = getOffsetRect(thisObj.parentNode.parentNode).left;
-      let w = 600*(((PAGETYPE==6)?thisObj.clientWidth:thisObj.parentNode.parentNode.clientWidth)/siteImgMaxWidth)+5;
+      let w = PREVIEW_SIZE*(((PAGETYPE==6)?thisObj.clientWidth:thisObj.parentNode.parentNode.clientWidth)/siteImgMaxWidth)+5;
       imgContainer.style.left = (document.body.clientWidth-l < w)? document.body.clientWidth-w +'px': l +'px';
 
       if (isBookmarked) $(imgContainer).css("background", "rgb(255, 64, 96)");
@@ -619,19 +619,16 @@
       imgContainer.style.display='none'; //just in case
 
       mangaOuterContainer.style.top = getOffsetRect(thisObj.parentNode.parentNode).top+'px';
-      mangaOuterContainer.style.left = '30px';
+      //mangaOuterContainer.style.left = '30px';
 
       if (isBookmarked) $(mangaOuterContainer).css("background", "rgb(255, 64, 96)");
       else $(mangaOuterContainer).css("background", "rgb(34, 34, 34)");
 
-      imgsArrInit(parseImgUrl(thisObj), +count);
+      imgsArrInit(parseImgUrl(thisObj, PREVIEW_SIZE), +count);
     }
     //-----------------------------------------------------------------------------------
     function imgsArrInit(primaryLink, l)
     {
-      let margins = document.body.clientWidth - l*600; //some blind frame adjusting
-      if (margins > 0) mangaOuterContainer.style.left = margins/2-10+'px';
-
       let currentImgId = getImgId(primaryLink);
       //console.log('lastImgId: ' + lastImgId);
       //console.log('currentImgId: ' + currentImgId);
@@ -642,8 +639,7 @@
         {
           imgsArr[j].src = '';
         }
-        checkDelay(function(){mangaOuterContainer.style.display='block';});
-        //mangaOuterContainer.style.display='block';
+
         lastImgId = currentImgId;
 
         for(let i=0; i<l; i++)
@@ -655,18 +651,40 @@
           };
           imgsArr[i].src = primaryLink.replace('p0','p'+i);
         }
+
+        if (ACCURATE_MANGA_PREVIEW == true || DELAY_BEFORE_PREVIEW > 1000) //more accurate frame adjusting
+        {
+          setTimeout(function()
+          {
+            adjustMargins(mangaOuterContainer.scrollWidth);
+            checkDelay(function(){mangaOuterContainer.style.visibility='visible';});
+          }, 1000);
+        }
+        else //some blind frame adjusting
+        {
+          adjustMargins(l*PREVIEW_SIZE);
+          checkDelay(function(){mangaOuterContainer.style.visibility='visible';});
+        }
       }
       //---------------------------------------------------------------------------------
-      else checkDelay(function(){mangaOuterContainer.style.display='block';});
-      //mangaOuterContainer.style.display='block';
+      else
+      {
+        checkDelay(function(){mangaOuterContainer.style.visibility='visible';});
+      }
     };
     //-----------------------------------------------------------------------------------
-    function parseImgUrl(thisObj)
+    function parseImgUrl(thisObj, PREVIEW_SIZE)
     {
       let url = (thisObj.src)? thisObj.src: thisObj.style.backgroundImage.slice(5,-2);
-      url = url.replace(/\/...x..[0|8]/, '/600x600').replace('_80_a2','').replace('_square1200','_master1200').replace('_70',''); //TODO - '1200x1200' variant
+      url = url.replace(/\/...x..[0|8]/, '/'+PREVIEW_SIZE+'x'+PREVIEW_SIZE).replace('_80_a2','').replace('_square1200','_master1200').replace('_70',''); //TODO - '1200x1200' variant
       return url;
     };
+    //-----------------------------------------------------------------------------------
+    function adjustMargins(width)
+    {
+      let margins = document.body.clientWidth - width;
+      if (margins > 0) mangaOuterContainer.style.left = margins/2-10+'px';
+    }
     //-----------------------------------------------------------------------------------
     function checkBookmark(thisObj) //seems excessive -> todo delete
     {
@@ -712,9 +730,9 @@
       hoverImg.src='';
     };
     //-----------------------------------------------------------------------------------
-    mangaOuterContainer.onmouseleave = function ()
+    mangaOuterContainer.onmouseleave = function()
     {
-      mangaOuterContainer.style.display='none';
+      mangaOuterContainer.style.visibility='hidden';
     };
     //===================================================================================
     //***********************************Art Clicks**************************************
@@ -843,6 +861,18 @@
       mangaWidth = document.body.clientWidth - 80;
       mangaContainer.style.maxWidth = mangaOuterContainer.style.maxWidth = mangaWidth+'px';
     };
+    //-----------------------------------------------------------------------------------
+    document.onkeyup = function(e) //Enlarge with shift
+    {
+      console.log(e.keyCode);
+      if (e.keyCode == 16 && hoverImg.src && PREVIEW_SIZE<1200)
+      {
+        let l = getOffsetRect(imgContainer).left;
+        let w = hoverImg.naturalWidth*2+5;
+        hoverImg.src = hoverImg.src.replace(/\/...x..[0|8]/, '/1200x1200');
+        imgContainer.style.left = (document.body.clientWidth-l < w)? document.body.clientWidth-w +'px': l +'px';
+      }
+    }
     //===================================================================================
     //***********************************************************************************
     //===================================================================================
