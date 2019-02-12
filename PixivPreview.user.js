@@ -1,11 +1,11 @@
-// ==UserScript==
+/ ==UserScript==
 // @name            Pixiv Arts Preview & Followed Atrists Coloring
 // @name:ru         Pixiv Arts Preview & Followed Atrists Coloring
 // @namespace       Pixiv
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом.
 // @author          NightLancerX
-// @version         1.35.1
+// @version         1.36
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -19,7 +19,6 @@
 // @exclude         https://www.pixiv.net/member_illust.php?mode=manga_big&illust_id=*
 // @connect         i.pximg.net
 // @homepageURL     https://github.com/NightLancer/PixivPreview
-// @downloadURL     https://github.com/NightLancer/PixivPreview/raw/master/PixivPreview.user.js
 // @license         MIT License
 // @grant           GM_xmlhttpRequest
 // @grant           GM.xmlHttpRequest
@@ -394,7 +393,6 @@
       console.log('$(document).ready');
       mangaWidth = document.body.clientWidth - 80;
       mangaContainer.style.maxWidth = mangaOuterContainer.style.maxWidth = mangaWidth+'px';
-      //mangaContainer.style.maxHeight = mangaOuterContainer.style.maxHeight = document.documentElement.clientHeight;
       document.body.appendChild(imgContainer);
       document.body.appendChild(mangaOuterContainer);
 
@@ -603,14 +601,48 @@
       imgContainer.style.top = getOffsetRect(thisObj.parentNode.parentNode).top+'px';
 
       //adjusting preview position considering expected image width
+      //---------------------------------------------------------------------------------
       let l = getOffsetRect(thisObj.parentNode.parentNode).left;
-      let w = PREVIEW_SIZE*(((PAGETYPE==6)?thisObj.clientWidth:thisObj.parentNode.parentNode.clientWidth)/siteImgMaxWidth)+5;
-      imgContainer.style.left = (document.body.clientWidth-l < w)? document.body.clientWidth-w +'px': l +'px';
+      let dcw = document.body.clientWidth;
+      let previewWidth = 0;
 
+      if (hoverImg.naturalWidth>0){ //cached (previously viewed)
+        adjustSinglePreview(dcw, l, hoverImg.naturalWidth);
+      }
+      else{
+        if (![2,3,7,12].includes(PAGETYPE)){
+          let previewWidth = PREVIEW_SIZE*(((PAGETYPE==6)?thisObj.clientWidth:thisObj.parentNode.parentNode.clientWidth)/siteImgMaxWidth)+5; //if not on NEW layout - width is predictable
+          adjustSinglePreview(dcw, l, previewWidth);
+        }
+        else{
+          if (dcw - l - PREVIEW_SIZE - 5 > 0){ //if it is obvious that preview will fit on the screen then there is no need in setInterval(trying to use as minimun setInterval`s as possible)
+            imgContainer.style.left = l+'px';
+            checkDelay(function(){imgContainer.style.display='block';});
+          }else{ //when on NEW layout - need to wait until image width is received
+            let tLimit;
+            let tInt = setInterval(function(){
+              if (hoverImg.naturalWidth>0){
+                clearTimeout(tInt);
+                adjustSinglePreview(dcw, l, hoverImg.naturalWidth);
+                ++tLimit;
+              }
+              if (tLimit*20>3000){ //in case of loading errors
+                clearTimeout(tInt);
+                hoverImg.src='';
+              }
+            }, 20);
+          }
+        }
+      }
+      //---------------------------------------------------------------------------------
       if (isBookmarked) $(imgContainer).css("background", "rgb(255, 64, 96)");
       else $(imgContainer).css("background", "rgb(34, 34, 34)");
-
-      //imgContainer.style.display='block';
+    }
+    //-----------------------------------------------------------------------------------
+    function adjustSinglePreview(dcw, l, contentWidth)
+    {
+      let d = dcw - l - contentWidth - 5; //5 - padding - todo...
+      imgContainer.style.left = (d>=0)?l+'px':l+d+'px';
       checkDelay(function(){imgContainer.style.display='block';});
     }
     //-----------------------------------------------------------------------------------
@@ -619,7 +651,7 @@
       imgContainer.style.display='none'; //just in case
 
       mangaOuterContainer.style.top = getOffsetRect(thisObj.parentNode.parentNode).top+'px';
-      //mangaOuterContainer.style.left = '30px';
+      if (!ACCURATE_MANGA_PREVIEW) mangaOuterContainer.style.left = '30px';
 
       if (isBookmarked) $(mangaOuterContainer).css("background", "rgb(255, 64, 96)");
       else $(mangaOuterContainer).css("background", "rgb(34, 34, 34)");
@@ -864,7 +896,7 @@
     //-----------------------------------------------------------------------------------
     document.onkeyup = function(e) //Enlarge with shift
     {
-      console.log(e.keyCode);
+      //console.log(e.keyCode);
       if (e.keyCode == 16 && hoverImg.src && PREVIEW_SIZE<1200)
       {
         let l = getOffsetRect(imgContainer).left;
