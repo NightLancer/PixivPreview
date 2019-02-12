@@ -1,11 +1,11 @@
-/ ==UserScript==
+// ==UserScript==
 // @name            Pixiv Arts Preview & Followed Atrists Coloring
 // @name:ru         Pixiv Arts Preview & Followed Atrists Coloring
 // @namespace       Pixiv
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом.
 // @author          NightLancerX
-// @version         1.36
+// @version         1.36.3
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -19,6 +19,7 @@
 // @exclude         https://www.pixiv.net/member_illust.php?mode=manga_big&illust_id=*
 // @connect         i.pximg.net
 // @homepageURL     https://github.com/NightLancer/PixivPreview
+// @downloadURL     https://github.com/NightLancer/PixivPreview/raw/master/PixivPreview.user.js
 // @license         MIT License
 // @grant           GM_xmlhttpRequest
 // @grant           GM.xmlHttpRequest
@@ -39,6 +40,7 @@
     const DELAY_BEFORE_PREVIEW = 0; //if you need delay before showing art preview, set it here (1000 = 1 second)
     const PREVIEW_SIZE = 600; //if you have "4K" or "QHD" monitor, you can set preview size to 1200(which can't fit at 1920*1080 monitor, so stay at 600 if you have that one)
     const ACCURATE_MANGA_PREVIEW = false; //if `true` - increases time before manga preview appearing(to 1sec) but shows it at more accurate position considering width(for case of few arts)
+    const EXPERIMENTAL_WORKSPAGE_RESTYLE = false; //currently raw style adjustment on illust page; may broke at any time, so turn it on your risk (yet)
     //-----------------------------------------------------------------------------------
 
     let hoverImg = document.createElement('img');
@@ -373,8 +375,10 @@
       if (localStorage.getObj('followedCheckCompleted')) //at least basic check until queue is developed
       {
         let followedUsersId = localStorage.getObj('followedUsersId'); //local
-        if (toFollow)
+        if (toFollow){
           followedUsersId[userId] = true;
+          initFollowagePreview(); //TODO
+        }
         else
           delete followedUsersId[userId];
 
@@ -382,6 +386,24 @@
         console.log('userId ' + userId + [(toFollow)?' added to':' deleted from'] + ' localStorage. Followed: '+ Object.keys(followedUsersId).length);
       }
       else console.error('Slow down! You have subscribed too many to handle this by now! Wait for the next updates');
+    }
+    //-----------------------------------------------------------------------------------
+    function initFollowagePreview() //TODO!!!
+    {
+      $('body').on(previewEventType, 'a[href*="member_illust.php?mode=medium&illust_id="]', function(e)
+      {
+        e.preventDefault();
+        setHover(this.firstChild);
+        //---
+        hoverImg.onload = function(){imgContainer.scrollIntoView({block: "start", behavior: "smooth"});}; //!!!
+
+        let scroll = getElementByXpath('/html/body/div[6]/div/div/div/div/ul');
+        scroll.onwheel = function(ev)
+        {
+          ev.preventDefault();
+          scroll.scrollLeft += ev.deltaY*DELTASCALE;
+        };
+      });
     }
     //===================================================================================
     if      (PAGETYPE===0 || PAGETYPE===1 || PAGETYPE===8)  siteImgMaxWidth = 198;
@@ -396,6 +418,32 @@
       document.body.appendChild(imgContainer);
       document.body.appendChild(mangaOuterContainer);
 
+      //------------------------------Style changing-------------------------------------
+      if (EXPERIMENTAL_WORKSPAGE_RESTYLE===true && PAGETYPE===2){
+        setTimeout(function(){
+          var aaa= document.getElementsByClassName('gW2sMCp')[0];
+          aaa.style = 'max-Width:'+ document.body.clientWidth + 'px;';
+
+          var bbb = document.getElementsByClassName('sc-kjoXOD dYMASP');
+          for (let item of bbb) {
+            console.log(item.id);
+            item.style.width = '250px';
+          }
+
+          var ccc = document.getElementsByClassName('sc-bRBYWo dHdfgU');
+          for (let item2 of ccc) {
+            console.log(item2.id);
+            item2.style.width = '250px';
+            item2.style.height = '250px';
+          }
+
+          var ddd = document.getElementsByClassName('_2WwRD0o _2WyzEUZ')[0];
+          ddd.style = 'margin:-12px -24px; padding: 0px;';
+        }, 2000);
+
+        //todo: meed to restyle after reload
+        ///html/body/div[1]/div[1]/div/div[2] - parent?
+      }
       //-------------------------------Follow onclick------------------------------------
       let toFollow, isNew, followSelector;
       if ([2,3,7,12].includes(PAGETYPE)){
@@ -421,6 +469,15 @@
         }, 4000); -> await while
       }
       */
+      //---------------------------------------------------------------------------------
+      $('body').on(previewEventType, 'a[href*="ref=profile_card"]', function(e) //TODO
+      {
+        e.preventDefault();;
+        setHover(this);
+
+        imgContainer.style.top = getOffsetRect(this).top+200+'px';
+        //$(imgContainer).css('zIndex', 3000);
+      });
       //--------------------------------Bookmark detail----------------------------------
       if (PAGETYPE===4)
       {
@@ -629,6 +686,7 @@
               if (tLimit*20>3000){ //in case of loading errors
                 clearTimeout(tInt);
                 hoverImg.src='';
+                console.error('setInterval error');
               }
             }, 20);
           }
@@ -881,11 +939,11 @@
       }
 
       let scrlLft = mangaContainer.scrollLeft;
-      if ((scrlLft>0 && e.deltaY<0) || ((scrlLft<(mangaContainer.scrollWidth-mangaContainer.clientWidth)) && e.deltaY>0))
-      {
+      //if ((scrlLft>0 && e.deltaY<0) || ((scrlLft<(mangaContainer.scrollWidth-mangaContainer.clientWidth)) && e.deltaY>0))
+      //{
         e.preventDefault();
         mangaContainer.scrollLeft += e.deltaY*DELTASCALE;
-      }
+      //}
     };
     //-----------------------------------------------------------------------------------
     window.onresize = function()
