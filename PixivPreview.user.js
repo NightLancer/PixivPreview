@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом.
 // @author          NightLancerX
-// @version         1.36.3
+// @version         1.36.7
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -40,7 +40,11 @@
     const DELAY_BEFORE_PREVIEW = 0; //if you need delay before showing art preview, set it here (1000 = 1 second)
     const PREVIEW_SIZE = 600; //if you have "4K" or "QHD" monitor, you can set preview size to 1200(which can't fit at 1920*1080 monitor, so stay at 600 if you have that one)
     const ACCURATE_MANGA_PREVIEW = false; //if `true` - increases time before manga preview appearing(to 1sec) but shows it at more accurate position considering width(for case of few arts)
-    const EXPERIMENTAL_WORKSPAGE_RESTYLE = false; //currently raw style adjustment on illust page; may broke at any time, so turn it on your risk (yet)
+    const DISABLE_MANGA_PREVIEW_SCROLLLING_PROPAGATION = false; //defines whether to keep on scrolling propagation when reaching end of manga preview container
+    const SCROLL_INTO_VIEW_FOR_SINGLE_IMAGE = true; //apply scrollIntoView for single preview
+    const DISABLE_SINGLE_PREVIEW_BACKGROUND_SCROLLING = false; //defines background scrolling for single preview when `SCROLL_INTO_VIEW_FOR_SINGLE_IMAGE` set to `true`
+    //-----------------------------------------------------------------------------------
+    //const EXPERIMENTAL_WORKSPAGE_RESTYLE = false; //currently raw style adjustment on illust page; may broke at any time, so turn it on your risk (yet) --> currently broken
     //-----------------------------------------------------------------------------------
 
     let hoverImg = document.createElement('img');
@@ -68,6 +72,7 @@
         siteImgMaxWidth = 184, //2,3,7,12 [NEW]| //todo: quite useless on this pages because of square previews...
         mangaWidth = 1200,
         //prevSize = PREVIEW_SIZE,
+        maxRequestTime = 30000,
         bookmarkObj,
         isBookmarked = false, //todo: rework or delete. Arts can be bookmarked on art page.
         DELTASCALE = ('mozInnerScreenX' in window)?70:4,
@@ -165,6 +170,7 @@
               localStorage.setObj('followedCheckStarted', false);
               localStorage.setObj('followedUsersId', followedUsersId);
               localStorage.setObj('followedCheckDate', Date.now());
+              localStorage.setObj('followedCheckError', false);
               console.log('Followed check completed');
 
               if (PAGETYPE===6) colorFollowed(); //only for daily rankings? | for loading on same page case
@@ -185,7 +191,7 @@
     //-----------------------------------------------------------------------------------
     async function colorFollowed(artsContainers)
     {
-      let c = 0;
+      let c = 0, d = 0;
       while (!artsContainers || artsContainers.length === 0) //first call -> daily rankings, illust page
       {
         console.log('waiting for arts...');
@@ -212,9 +218,20 @@
           {
             console.log("waiting for followed users..."); //this could happen in case of huge followed users amount
             await sleep(2000);
+
             if (localStorage.getObj('followedCheckError'))
             {
               console.error('ERROR while RECEIVING subscriptions list!');
+              break;
+            }
+
+            ++d;
+            if (d*2000>maxRequestTime)
+            {
+              console.error('ERROR while EXPECTING for subscriptions list!');
+              localStorage.setObj('followedCheckError', true);
+              localStorage.setObj('followedCheckCompleted', false);
+              localStorage.setObj('followedCheckStarted', false);
               break;
             }
           }
@@ -234,9 +251,11 @@
 
       let currentHits = 0;
       let userId = 0;
+      //console.dir(artsContainers);
       for(let i = 0; i < artsContainersLength; i++)
       {
         userId = getUserId(artsContainers[i]);
+        //console.log(userId);
         //if (followedUsersId.indexOf(userId)>=0)
         if (followedUsersId[userId]==true)
         {
@@ -248,9 +267,10 @@
       console.log('hits: '+currentHits + ' (Total: '+(lastHits)+')');
     }
     //-----------------------------------------------------------------------------------
-    let getArtsContainers = ([1,12,4].includes(PAGETYPE))
-    ?function() {return $('.gtm-illust-recommend-user-name');}
-    :function() {return $('.ui-profile-popup');};
+    let getArtsContainers = ([1,4].includes(PAGETYPE)) //??? TODO!!!
+    ?                           function() {return document.querySelectorAll('.gtm-illust-recommend-user-name');}
+    :([12].includes(PAGETYPE))? function() {return document.querySelectorAll('.gtm-illust-recommend-title');}
+    :                           function() {return $('.ui-profile-popup');};
     //-----------------------------------------------------------------------------------
     let getUserId = (PAGETYPE===6)
     ?function (artContainer)
@@ -262,9 +282,8 @@
     }
     :function (artContainer) //1,2,4
     {
-      let userId = (artContainer.hasAttribute('href'))
-      ?artContainer.getAttribute('href').split('=').pop()
-      :artContainer.querySelectorAll('.gtm-illust-recommend-user-name')[0].getAttribute('href').split('=').pop();
+      artContainer = artContainer.querySelectorAll('.gtm-illust-recommend-title')[0] || artContainer; // -_-'
+      let userId = artContainer.parentNode.querySelectorAll('[href*="/member.php?id="]')[0].getAttribute('href').split('=').pop();
       return userId;
     };
     //-----------------------------------------------------------------------------------
@@ -395,7 +414,7 @@
         e.preventDefault();
         setHover(this.firstChild);
         //---
-        hoverImg.onload = function(){imgContainer.scrollIntoView({block: "start", behavior: "smooth"});}; //!!!
+        //hoverImg.onload = function(){imgContainer.scrollIntoView({block: "start", behavior: "smooth"});}; //!!! TODO - only to follow case
 
         let scroll = getElementByXpath('/html/body/div[6]/div/div/div/div/ul');
         scroll.onwheel = function(ev)
@@ -419,6 +438,7 @@
       document.body.appendChild(mangaOuterContainer);
 
       //------------------------------Style changing-------------------------------------
+      /*
       if (EXPERIMENTAL_WORKSPAGE_RESTYLE===true && PAGETYPE===2){
         setTimeout(function(){
           var aaa= document.getElementsByClassName('gW2sMCp')[0];
@@ -444,6 +464,7 @@
         //todo: meed to restyle after reload
         ///html/body/div[1]/div[1]/div/div[2] - parent?
       }
+      */
       //-------------------------------Follow onclick------------------------------------
       let toFollow, isNew, followSelector;
       if ([2,3,7,12].includes(PAGETYPE)){
@@ -561,14 +582,14 @@
           {
             bookmarkObj = this.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0];
             //checkBookmark_NewLayout(this);
-            setHover(this);
+            setHover(this.childNodes[0]); //todo? - zero child-node trying?
           }
           //manga-style arts hover-------------------------------------------------------
           else
           {
             bookmarkObj = this.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0];
             //checkBookmark_NewLayout(this);
-            setMangaHover(this, this.parentNode.firstChild.childNodes[1].textContent);
+            setMangaHover(this.childNodes[0], this.parentNode.firstChild.childNodes[1].textContent);
           }
         });
       }
@@ -759,6 +780,7 @@
       //---------------------------------------------------------------------------------
       else
       {
+        adjustMargins(mangaOuterContainer.scrollWidth);
         checkDelay(function(){mangaOuterContainer.style.visibility='visible';});
       }
     };
@@ -774,6 +796,7 @@
     {
       let margins = document.body.clientWidth - width;
       if (margins > 0) mangaOuterContainer.style.left = margins/2-10+'px';
+      else mangaOuterContainer.style.left = '30px';
     }
     //-----------------------------------------------------------------------------------
     function checkBookmark(thisObj) //seems excessive -> todo delete
@@ -939,11 +962,25 @@
       }
 
       let scrlLft = mangaContainer.scrollLeft;
-      //if ((scrlLft>0 && e.deltaY<0) || ((scrlLft<(mangaContainer.scrollWidth-mangaContainer.clientWidth)) && e.deltaY>0))
-      //{
+      if ((DISABLE_MANGA_PREVIEW_SCROLLLING_PROPAGATION) || ((scrlLft>0 && e.deltaY<0) || ((scrlLft<(mangaContainer.scrollWidth-mangaContainer.clientWidth)) && e.deltaY>0)))
+      {
         e.preventDefault();
         mangaContainer.scrollLeft += e.deltaY*DELTASCALE;
-      //}
+      }
+    };
+    //-----------------------------------------------------------------------------------
+    if (SCROLL_INTO_VIEW_FOR_SINGLE_IMAGE) imgContainer.onwheel = function(e)
+    {
+      if (DISABLE_SINGLE_PREVIEW_BACKGROUND_SCROLLING) e.preventDefault();
+
+      if (e.deltaY<0 && (imgContainer.getBoundingClientRect().top < 0))
+      {
+        imgContainer.scrollIntoView({block: "start", behavior: "smooth"}); //aligning to top screen side on scrollUp if needed
+      }
+      else if (e.deltaY>0 && (imgContainer.getBoundingClientRect().bottom > document.documentElement.clientHeight))
+      {
+        imgContainer.scrollIntoView({block: "end", behavior: "smooth"}); //aligning to bottom screen side on scrollDown if needed
+      }
     };
     //-----------------------------------------------------------------------------------
     window.onresize = function()
