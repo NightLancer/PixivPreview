@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом.
 // @author          NightLancerX
-// @version         1.36.7
+// @version         1.36.8
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -79,7 +79,7 @@
         previewEventType = (PREVIEW_ON_CLICK)?'click':'mouseenter',
         PAGETYPE = checkPageType();
 
-    var timerId;
+    var timerId, tInt;
     //-----------------------------------------------------------------------------------
     Storage.prototype.setObj = function(key, obj){
       return this.setItem(key, JSON.stringify(obj))
@@ -698,10 +698,11 @@
             checkDelay(function(){imgContainer.style.display='block';});
           }else{ //when on NEW layout - need to wait until image width is received
             let tLimit;
-            let tInt = setInterval(function(){
+            tInt = setInterval(function(){
               if (hoverImg.naturalWidth>0){
                 clearTimeout(tInt);
-                adjustSinglePreview(dcw, l, hoverImg.naturalWidth);
+                //elementMouseIsOver = document.elementFromPoint(x, y); if (thisObj != elementMouseIsOver) break;
+                adjustSinglePreview(dcw, l, hoverImg.naturalWidth); //position mismatching due to old `thisObj` => clearing in hoverImg.mouseleave
                 ++tLimit;
               }
               if (tLimit*20>3000){ //in case of loading errors
@@ -841,11 +842,14 @@
     {
       imgContainer.style.display='none';
       hoverImg.src='';
+      clearTimeout(timerId);
+      clearTimeout(tInt);
     };
     //-----------------------------------------------------------------------------------
     mangaOuterContainer.onmouseleave = function()
     {
       mangaOuterContainer.style.visibility='hidden';
+      clearTimeout(timerId);
     };
     //===================================================================================
     //***********************************Art Clicks**************************************
