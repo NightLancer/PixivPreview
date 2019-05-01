@@ -27,6 +27,12 @@ For larger amount of artworks, horisontal scrollbar is appeared, but scrolling v
 
 ■ Press Alt and left mouse button click for quick adding artwork into bookmarks. Repeat combination again for opening bookmark (tags) edition page(on pages with old pixiv layout).
 
-You can set `PREVIEW_ON_CLICK = true;` to change preview appearing condition to LMB-click.
+You can:
+- set `PREVIEW_SIZE = 1200;` (instead of standard 600 pixels)if you are using appropriate monitor(QHD or 4K).
+- set `PREVIEW_ON_CLICK = true;` to change preview appearing condition to LMB-click.
+- change `DELAY_BEFORE_PREVIEW = 0;` from 0 to the desired value in ms (1000 = 1 second) in order to increase delay before art preview appearing.
+- set `ACCURATE_MANGA_PREVIEW = true;` to make more position-accurate(due to content) manga preview.
+- set `SCROLL_INTO_VIEW_FOR_SINGLE_IMAGE = false;` to disable scrollIntoView for single preview
+- set `DISABLE_SINGLE_PREVIEW_BACKGROUND_SCROLLING = false;` to disable background scrolling for single preview (when `SCROLL_INTO_VIEW_FOR_SINGLE_IMAGE` set to `true`)
 
 Works best with <a href="https://greasyfork.org/uk/scripts/3254-endless-pixiv-pages">"Endless Pixiv Pages"</a> ©Mango.<br>
