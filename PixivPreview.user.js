@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом.
 // @author          NightLancerX
-// @version         1.36.9
+// @version         1.37
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -350,7 +350,6 @@
           {
             checkFollowedArtistsInit();
 
-            colorFollowed();
             createObserver(mainDiv[0]);
             observerParent.disconnect();
             observerParent = null;
@@ -372,7 +371,7 @@
       observerParent.observe(parentDiv, options2);
       console.log('observerParent set');
 
-      //initGallery(); TODO (preview on the illust page???)
+      //initGallery(); TODO (preview on the illust page???) - no need? - pixiv has released own 'gallery'
     }
     //-----------------------------------------------------------------------------------
     function initGallery() {
@@ -509,7 +508,16 @@
       //-----------------------------------Illust page-----------------------------------
       if (PAGETYPE===12)
       {
-        initMutationParentOnject();
+        let zone = document.getElementsByClassName('gtm-illust-recommend-zone')[0];
+        if (zone === undefined)
+          initMutationParentOnject();
+        else
+        {
+          console.log(zone);
+          checkFollowedArtistsInit();
+          colorFollowed(); //process missed arts containers
+          createObserver(zone);
+        }
       }
       //-----------------------------Init illust fetch listener--------------------------
       if (PAGETYPE===1 || PAGETYPE===4 || PAGETYPE===6)
