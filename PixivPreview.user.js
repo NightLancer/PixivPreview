@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом.
 // @author          NightLancerX
-// @version         1.37
+// @version         1.37.1
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -681,6 +681,8 @@
     //-----------------------------------------------------------------------------------
     function setHover(thisObj)
     {
+      clearTimeout(timerId);
+      clearTimeout(tInt);
       mangaOuterContainer.style.visibility = 'hidden';
 
       hoverImg.src = parseImgUrl(thisObj, PREVIEW_SIZE);
@@ -736,6 +738,8 @@
     //-----------------------------------------------------------------------------------
     function setMangaHover(thisObj, count)
     {
+      clearTimeout(timerId);
+      clearTimeout(tInt);
       imgContainer.style.display='none'; //just in case
 
       mangaOuterContainer.style.top = getOffsetRect(thisObj.parentNode.parentNode).top+'px';
