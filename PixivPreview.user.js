@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом.
 // @author          NightLancerX
-// @version         1.38.1
+// @version         1.39
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -16,6 +16,7 @@
 // @match           https://www.pixiv.net/search.php*
 // @match           https://www.pixiv.net/
 // @match           https://www.pixiv.net/stacc*
+// @match           https://www.pixiv.net/*artworks/*
 // @exclude         https://www.pixiv.net/member_illust.php?mode=manga_big&illust_id=*
 // @connect         i.pximg.net
 // @homepageURL     https://github.com/NightLancer/PixivPreview
@@ -92,19 +93,19 @@
     //===================================================================================
     function checkPageType()
     {
-      if (document.URL.match('https://www.pixiv.net/bookmark_new_illust.php?'))                             return 0; //Works from favourite artists
-      if (document.URL==='https://www.pixiv.net/discovery')                                                 return 1; //Discovery page(works)
-      if (document.URL.match('https://www.pixiv.net/member.php?'))                                          return 3; //Artist "Home" page - New
-      if (document.URL.match('https://www.pixiv.net/bookmark_detail.php?'))                                 return 4; //Bookmark information
-      if (document.URL.match('https://www.pixiv.net/ranking.php?'))                                         return 6; //Daily rankings
-      if (document.URL.match(/https:\/\/www\.pixiv\.net\/bookmark\.php\?id/))                               return 7; //Someone's bookmarks page - New
-      if (document.URL.match('https://www.pixiv.net/search.php?'))                                          return 8; //Search page
-      if (document.URL.match('https://www.pixiv.net/bookmark.php?'))                                        return 9; //Your bookmarks page
-      if (document.URL==='https://www.pixiv.net/')                                                          return 10; //Home page
-      if (document.URL.match('https://www.pixiv.net/stacc?'))                                               return 11; //Feed ('stacc')
-      if (document.URL.match(/https:\/\/www\.pixiv\.net\/member_illust\.php\?mode\=medium\&illust_id\=/))   return 12; //Illust page - New
-      if (document.URL.match('https://www.pixiv.net/member_illust.php?'))                                   return 2; //Artist works page - New
-      if (document.URL.match('https://www.pixiv.net/discovery/users?'))                                     return 13; //Discovery page(users)
+      if (document.URL.match('https://www.pixiv.net/bookmark_new_illust.php?'))                             return 0; //Works from favourite artists - Old +
+      if (document.URL==='https://www.pixiv.net/discovery')                                                 return 1; //Discovery page(works) - Old +
+      if (document.URL.match('https://www.pixiv.net/member_illust.php?'))                                   return 2; //Artist works page - New +
+      if (document.URL.match('https://www.pixiv.net/member.php?'))                                          return 3; //Artist "Home" page - New +
+      if (document.URL.match('https://www.pixiv.net/bookmark_detail.php?'))                                 return 4; //Bookmark information - Old +
+      if (document.URL.match('https://www.pixiv.net/ranking.php?'))                                         return 6; //Daily rankings - Old +
+      if (document.URL.match(/https:\/\/www\.pixiv\.net\/bookmark\.php\?id/))                               return 7; //Someone's bookmarks page - New +
+      if (document.URL.match('https://www.pixiv.net/search.php?'))                                          return 8; //Search page - Old +
+      if (document.URL.match('https://www.pixiv.net/bookmark.php?'))                                        return 9; //Your bookmarks page - Old +
+      //if (document.URL==='https://www.pixiv.net/')                                                          return 10; //Home page -
+      if (document.URL.match('https://www.pixiv.net/stacc?'))                                               return 11; //Feed ('stacc') +
+      if (document.URL.match('https://www.pixiv.net/en/artworks/?'))                                        return 12; //Illust page - New_ +
+      if (document.URL.match('https://www.pixiv.net/discovery/users?'))                                     return 13; //Discovery page(users) +
 
       return -1;
     }
@@ -167,7 +168,7 @@
 
             if (CheckedPublic && CheckedPrivate)
             {
-              localStorage.setObj('followedCheckCompleted', true); //todo: check if there is a difference in command order
+              localStorage.setObj('followedCheckCompleted', true);
               localStorage.setObj('followedCheckStarted', false);
               localStorage.setObj('followedUsersId', followedUsersId);
               localStorage.setObj('followedCheckDate', Date.now());
@@ -268,10 +269,10 @@
       console.log('hits: '+currentHits + ' (Total: '+(lastHits)+')');
     }
     //-----------------------------------------------------------------------------------
-    let getArtsContainers = ([1,4].includes(PAGETYPE)) //??? TODO!!!
-    ?                           function() {return document.querySelectorAll('.gtm-illust-recommend-user-name');}
-    :([12].includes(PAGETYPE))? function() {return document.querySelectorAll('.gtm-illust-recommend-title');}
-    :                           function() {return $('.ui-profile-popup');};
+    let getArtsContainers = //todo: simplify if needed
+    ([1,4].includes(PAGETYPE))? document.querySelectorAll('.gtm-illust-recommend-user-name')
+    :([12].includes(PAGETYPE))? document.querySelectorAll('.gtm-illust-recommend-title')
+    :                           $('.ui-profile-popup');
     //-----------------------------------------------------------------------------------
     let getUserId = (PAGETYPE===6 || PAGETYPE===1 || PAGETYPE===13) //1,6
     ?function (artContainer)
@@ -361,28 +362,28 @@
         'childList': true
       };
 
-      let parentDiv = getElementByXpath('/html/body/div[1]/div[1]/div/aside[3]');
+      let parentDiv = getElementByXpath('/html/body/div[1]/div[1]/div/aside[2]/div'); //~todo: replace with selector if possible
       while(!parentDiv)
       {
         console.log('Waiting for getElementByXpath');
         await sleep(1000);
-        parentDiv = getElementByXpath('/html/body/div[1]/div[1]/div/aside[3]');
+        parentDiv = getElementByXpath('/html/body/div[1]/div[1]/div/aside[2]/div');
       }
       console.log(parentDiv);
       observerParent.observe(parentDiv, options2);
       console.log('observerParent set');
-
-      //initGallery(); TODO (preview on the illust page???) - no need? - pixiv has released own 'gallery'
     }
     //-----------------------------------------------------------------------------------
+    /*
     function initGallery() {
       let _ttt = $('figure > div[role="presentation"]');
       let _sss = _ttt[0].textContent.split("⧸").pop(); //NOT slash! charCodeAt(0) == 10744
       console.log(_ttt);
       console.log(_sss);
     }
+    */
     //-----------------------------------------------------------------------------------
-    function followage(thisObj, toFollow, isNew) //TODO: into async queue
+    function followage(thisObj, toFollow, isNew) //todo?: into async queue
     {
       console.log('toFollow: '+ toFollow);
       let userId;
@@ -440,35 +441,6 @@
       mangaContainer.style.maxWidth = mangaOuterContainer.style.maxWidth = mangaWidth+'px';
       document.body.appendChild(imgContainer);
       document.body.appendChild(mangaOuterContainer);
-
-      //------------------------------Style changing-------------------------------------
-      /*
-      if (EXPERIMENTAL_WORKSPAGE_RESTYLE===true && PAGETYPE===2){
-        setTimeout(function(){
-          var aaa= document.getElementsByClassName('gW2sMCp')[0];
-          aaa.style = 'max-Width:'+ document.body.clientWidth + 'px;';
-
-          var bbb = document.getElementsByClassName('sc-kjoXOD dYMASP');
-          for (let item of bbb) {
-            console.log(item.id);
-            item.style.width = '250px';
-          }
-
-          var ccc = document.getElementsByClassName('sc-bRBYWo dHdfgU');
-          for (let item2 of ccc) {
-            console.log(item2.id);
-            item2.style.width = '250px';
-            item2.style.height = '250px';
-          }
-
-          var ddd = document.getElementsByClassName('_2WwRD0o _2WyzEUZ')[0];
-          ddd.style = 'margin:-12px -24px; padding: 0px;';
-        }, 2000);
-
-        //todo: meed to restyle after reload
-        ///html/body/div[1]/div[1]/div/div[2] - parent?
-      }
-      */
       //-------------------------------Follow onclick------------------------------------
       let toFollow, isNew, followSelector;
       if ([2,3,7,12].includes(PAGETYPE)){
@@ -540,7 +512,7 @@
       function setPreviewEventListeners()
       {
         //single art hover---------------------------------------------------------------
-        $('body').on(previewEventType, 'a[href*="member_illust.php?mode=medium&illust_id="] > div:only-child', function(e)
+        $('body').on(previewEventType, 'a[href*="/artworks/"] > div:only-child', function(e)
         {
           e.preventDefault();
           bookmarkObj = $(this).parent().parent().children(".thumbnail-menu").children("._one-click-bookmark");
@@ -549,7 +521,7 @@
         });
 
         //manga-style arts hover---------------------------------------------------------
-        $('body').on(previewEventType, 'a[href*="member_illust.php?mode=medium&illust_id="] > div:nth-child(2) ', function(e)
+        $('body').on(previewEventType, 'a[href*="/artworks/"] > div:nth-child(2) ', function(e)
         {
           e.preventDefault();
           if (this.parentNode.firstChild.childNodes.length)
@@ -561,7 +533,7 @@
         });
       }
       //---------------------------------------------------------------------------------
-      let discoveryUsersPreview = function(e)
+      let discoveryUsersPreview = function(e) //todo -> place it down if body.off doesn't work
       {
         e.preventDefault();
         if      (this.childNodes.length == 0)  setHover(this); //single art
@@ -570,7 +542,7 @@
       //---------------------------------------------------------------------------------
       function setDiscoveryUsersPreviewEventListeners()
       {
-        $('body').on(previewEventType, 'a[href*="member_illust.php?mode=medium&illust_id="]', discoveryUsersPreview);
+        $('body').on(previewEventType, 'a[href*="/artworks/"]', discoveryUsersPreview);
       };
       //---------------------------------------------------------------------------------
       function setTabSwitchingListenerW_U()
@@ -641,27 +613,46 @@
           }
         });
         */
-        $('body').on(previewEventType, 'a[href*="member_illust.php?mode=medium&illust_id="] > div:nth-child(2) ', function(e)
+        $('body').on(previewEventType, 'a[href*="/artworks/"] > div:nth-child(2) ', function(e)
         {
           e.preventDefault();
           //single art hover-------------------------------------------------------------
           if (this.parentNode.firstChild.childNodes.length===1) //single
           {
             bookmarkObj = this.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0];
-            //checkBookmark_NewLayout(this);
             setHover(this.childNodes[0]); //todo? - zero child-node trying?
           }
           //manga-style arts hover-------------------------------------------------------
           else
           {
             bookmarkObj = this.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0];
-            //checkBookmark_NewLayout(this);
             setMangaHover(this.childNodes[0], this.parentNode.firstChild.childNodes[1].textContent);
           }
         });
       }
-      //----------------------DAILY RANKINGS & BOOKMARKS & HOME PAGES-------------------- //4,[5],6,9,10
-      else if (PAGETYPE == 4 || PAGETYPE == 6 || PAGETYPE == 9 || PAGETYPE == 10)
+      //----------------------DAILY RANKINGS & BOOKMARK INFORMATION PAGES---------------- //4,6 [10]
+      else if (PAGETYPE == 4 || PAGETYPE == 6)
+      {
+        $('body').on(previewEventType, 'a[href*="/artworks/"]', function(e) //direct div selector works badly with "::before"
+        {
+          e.preventDefault();
+
+          if (this.childNodes.length == 1 && this.childNodes[0].nodeName=="DIV") //single art
+          {
+            bookmarkObj = $(this.firstChild.firstChild).parent().children("._one-click-bookmark");
+            checkBookmark(this);
+            setHover(this.firstChild.firstChild);
+          }
+          else if (this.children[1] && this.children[1].className == 'page-count') //manga
+          {
+            bookmarkObj = $(this.firstChild.firstChild).parent().children("._one-click-bookmark");
+            checkBookmark(this);
+            setMangaHover(this.firstChild.firstChild, this.children[1].children[1].textContent);
+          };
+        });
+      }
+      //--------------------------------------BOOKMARKS---------------------------------- //9
+      else if (PAGETYPE == 9)
       {
         $('body').on(previewEventType, 'a[href*="member_illust.php?mode=medium&illust_id="]', function(e) //direct div selector works badly with "::before"
         {
@@ -692,17 +683,17 @@
           {
             if ($(this).hasClass('multiple')) //manga
             {
-              let link = this.href.replace('medium','manga');
+              let link = 'https://www.pixiv.net/ajax/illust/' + this.href.split('&')[1].split('=')[1];
               let that = this;
 
               let xhr = new XMLHttpRequest();
-              xhr.responseType = 'document';
+              xhr.responseType = 'json';
               xhr.open("GET", link, true);
               xhr.onreadystatechange = function ()
               {
                 if (xhr.readyState == 4 && xhr.status == 200)
                 {
-                  let count = xhr.responseXML.getElementsByClassName("total")[0].textContent;
+                  let count = this.response.body.pageCount;
                   setMangaHover(that.firstChild.firstChild, count);
 
                   if (!(that.parentNode.parentNode.parentNode.parentNode.getElementsByClassName('imageCount').length>0)) //todo?..
@@ -712,7 +703,6 @@
                     s.style = 'position:relative; display: inline-block; float: right; top:-240px;'
                     s.textContent = count;
                     that.parentNode.parentNode.parentNode.parentNode.appendChild(s);
-                    //console.log(count); delete
                   }
                 }
               };
@@ -722,7 +712,7 @@
           }
         });
       }
-      //-----------------------------------------------------------------------------------
+      //---------------------------------------------------------------------------------
       if (DELAY_BEFORE_PREVIEW>0) $('body').on('mouseleave', 'a[href*="member_illust.php?mode=medium&illust_id="]', function()
       {
         clearTimeout(timerId);
@@ -862,7 +852,7 @@
     function parseImgUrl(thisObj, PREVIEW_SIZE)
     {
       let url = (thisObj.src)? thisObj.src: thisObj.style.backgroundImage.slice(5,-2);
-      url = url.replace(/\/...x..[0|8]/, '/'+PREVIEW_SIZE+'x'+PREVIEW_SIZE).replace('_80_a2','').replace('_square1200','_master1200').replace('_70',''); //TODO - '1200x1200' variant
+      url = url.replace(/\/...x..[0|8]/, '/'+PREVIEW_SIZE+'x'+PREVIEW_SIZE).replace('_80_a2','').replace('_square1200','_master1200').replace('_70','');
       return url;
     };
     //-----------------------------------------------------------------------------------
@@ -873,15 +863,9 @@
       else mangaOuterContainer.style.left = '30px';
     }
     //-----------------------------------------------------------------------------------
-    function checkBookmark(thisObj) //seems excessive -> todo delete
+    function checkBookmark(thisObj) //let this be until it works
     {
       isBookmarked = ($(bookmarkObj).hasClass("on"));
-      //let ch = (thisObj.querySelectorAll('._one-click-bookmark')[0] && thisObj.querySelectorAll('._one-click-bookmark')[0].classList.length === 3); //delete?
-    }
-    //-----------------------------------------------------------------------------------
-    function checkBookmark_NewLayout(thisObj) //TODO - broken
-    {
-      //isBookmarked = thisObj.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0].childNodes[0].classList.length === 3;
     }
     //-----------------------------------------------------------------------------------
     function getImgId(str)
@@ -944,7 +928,7 @@
       //----------------------------Middle Mouse Button click----------------------------
       if (event.button == 1)
       {
-        let illustPageUrl = 'https://www.pixiv.net/member_illust.php?mode=medium&illust_id=' + illustId;
+        let illustPageUrl = 'https://www.pixiv.net/artworks/' + illustId;
         window.open(illustPageUrl,'_blank'); //open illust page in new tab(in background — with FF pref "browser.tabs.loadDivertedInBackground" set to "true")
       }
       //----------------------------Left Mouse Button clicks...--------------------------
@@ -1013,7 +997,7 @@
         responseType: 'arraybuffer', //TM
         binary: true, //GM
         headers: {
-          Referer: `https://www.pixiv.net/member_illust.php?mode=medium&illust_id=${illustId}`,
+          Referer: `https://www.pixiv.net/member_illust.php?mode=medium&illust_id=${illustId}`, //~todo: may need to change to "artworks" in future
         },
         onload: function(response)
         {
