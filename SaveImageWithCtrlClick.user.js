@@ -6,6 +6,8 @@
 // @match           *://*/*.jpg*
 // @match           *://*/*.png*
 // @version         2.1
+// @homepageURL     https://github.com/NightLancer/PixivPreview
+// @downloadURL     https://github.com/NightLancer/PixivPreview/raw/master/SaveImageWithCtrlClick.user.js
 // @license         MIT License
 // @grant           none
 // @run-at          document-end
