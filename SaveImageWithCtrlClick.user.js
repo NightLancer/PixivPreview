@@ -5,9 +5,7 @@
 // @author          NightLancerX
 // @match           *://*/*.jpg*
 // @match           *://*/*.png*
-// @version         2.0
-// @homepageURL     https://github.com/NightLancer/PixivPreview
-// @downloadURL     https://github.com/NightLancer/PixivPreview/raw/master/SaveImageWithCtrlClick.user.js
+// @version         2.1
 // @license         MIT License
 // @grant           none
 // @run-at          document-end
@@ -19,17 +17,22 @@
     let img = document.querySelectorAll('img')[0];
     let imgSrc = img.src;
     
+    function main()
+    {
+        let anchor = document.createElement('a');
+        anchor.href = img.src;
+        anchor.target = '_self';
+        anchor.download = (imgSrc.indexOf('?')>-1)? imgSrc.substring(imgSrc.lastIndexOf("/")+1, imgSrc.indexOf('?')): imgSrc.substring(imgSrc.lastIndexOf("/")+1);
+        document.body.appendChild(anchor);
+        anchor.click();
+    };
+    
     img.onclick = function(e)
     {
         if (e.ctrlKey) //save with Ctrl+Click
         {
             e.preventDefault();
-	    let anchor = document.createElement('a');
-	    anchor.href = img.src;
-	    anchor.target = '_self';
-	    anchor.download = (imgSrc.indexOf('?')>-1)? imgSrc.substring(imgSrc.lastIndexOf("/")+1, imgSrc.indexOf('?')): imgSrc.substring(imgSrc.lastIndexOf("/")+1);
-	    document.body.appendChild(anchor);
-	    anchor.click();
+	    main();
         };           
     };
     
@@ -37,13 +40,7 @@
     {
         if (e.keyCode == 16) //save with shift
         {
-            console.log('2');
-            var anchor = document.createElement('a');
-            anchor.href = img.src;
-            anchor.target = '_self';
-            anchor.download = (imgSrc.indexOf('?')>-1)? imgSrc.substring(imgSrc.lastIndexOf("/")+1, imgSrc.indexOf('?')): imgSrc.substring(imgSrc.lastIndexOf("/")+1);  
-            document.body.appendChild(anchor);
-            anchor.click(); 
+            main();
         }
-    }
+    };
 })();
