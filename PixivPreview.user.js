@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом.
 // @author          NightLancerX
-// @version         1.39
+// @version         1.40
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -938,18 +938,19 @@
         if (!event.altKey)
         {
           let toSave = event.ctrlKey;// Ctrl + LMB-click -> saving image
-          if (!isManga) //single art original
-          {
-            let ajaxIllustUrl = 'https://www.pixiv.net/ajax/illust/' + illustId;
-            getOriginalUrl(ajaxIllustUrl, event, false, toSave);
-          }
-          else //manga art original
+          let pageNum = 0;
+
+          //Single (general url)
+          let ajaxIllustUrl = 'https://www.pixiv.net/ajax/illust/' + illustId;
+
+          //Manga
+          if (isManga)
           {
             let src = imgContainerObj.src;
-            let pageNum = src.substring(src.indexOf("_")+2, src.lastIndexOf("_"));
-            let singleIllustPageUrl = 'https://www.pixiv.net/member_illust.php?mode=manga_big&illust_id=' + illustId + '&page=' + pageNum;
-            getOriginalUrl(singleIllustPageUrl, event, true, toSave);
+            pageNum = src.substring(src.indexOf("_")+2, src.lastIndexOf("_"));
           }
+
+          getOriginalUrl(ajaxIllustUrl, event, pageNum, toSave);
         }
         //-----------------------------Alt + LMB-click-----------------------------------
         else if (event.altKey) {
@@ -962,22 +963,20 @@
       //---------------------------------------------------------------------------------
     };
     //---------------------------------getOriginalUrl------------------------------------
-    async function getOriginalUrl(illustPageUrl, event, isManga, toSave)
+    async function getOriginalUrl(illustPageUrl, event, pageNum, toSave)
     {
       let xhr = new XMLHttpRequest();
-      xhr.responseType = (isManga)?'document':'json';
+      xhr.responseType = 'json';
       xhr.open("GET", illustPageUrl, true);
       xhr.onreadystatechange = function ()
       {
         if (xhr.readyState == 4 && xhr.status == 200)
         {
-          let originalArtUrl = "";
+          let originalArtUrl = this.response.body.urls.original;
+          if (pageNum>0) originalArtUrl = originalArtUrl.replace('p0','p'+pageNum);
 
-          if (!isManga) originalArtUrl = this.response.body.urls.original;
-          else          originalArtUrl = this.responseXML.querySelectorAll('img')[0].src;
-
-          if (toSave)   saveImgByUrl(originalArtUrl);
-          else          window.open(originalArtUrl, '_blank');
+          if (toSave)    saveImgByUrl(originalArtUrl);
+          else           window.open(originalArtUrl, '_blank');
         }
       };
       xhr.send();
