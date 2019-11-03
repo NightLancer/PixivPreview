@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом.
 // @author          NightLancerX
-// @version         1.40
+// @version         1.40.3
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -17,7 +17,6 @@
 // @match           https://www.pixiv.net/
 // @match           https://www.pixiv.net/stacc*
 // @match           https://www.pixiv.net/*artworks/*
-// @exclude         https://www.pixiv.net/member_illust.php?mode=manga_big&illust_id=*
 // @connect         i.pximg.net
 // @homepageURL     https://github.com/NightLancer/PixivPreview
 // @downloadURL     https://github.com/NightLancer/PixivPreview/raw/master/PixivPreview.user.js
@@ -93,7 +92,7 @@
     //===================================================================================
     function checkPageType()
     {
-      if (document.URL.match('https://www.pixiv.net/bookmark_new_illust.php?'))                             return 0; //Works from favourite artists - Old +
+      if (document.URL.match('https://www.pixiv.net/bookmark_new_illust.php?'))                             return 0; //New illustrations - Old +
       if (document.URL==='https://www.pixiv.net/discovery')                                                 return 1; //Discovery page(works) - Old +
       if (document.URL.match('https://www.pixiv.net/member_illust.php?'))                                   return 2; //Artist works page - New +
       if (document.URL.match('https://www.pixiv.net/member.php?'))                                          return 3; //Artist "Home" page - New +
@@ -102,14 +101,17 @@
       if (document.URL.match(/https:\/\/www\.pixiv\.net\/bookmark\.php\?id/))                               return 7; //Someone's bookmarks page - New +
       if (document.URL.match('https://www.pixiv.net/search.php?'))                                          return 8; //Search page - Old +
       if (document.URL.match('https://www.pixiv.net/bookmark.php?'))                                        return 9; //Your bookmarks page - Old +
-      //if (document.URL==='https://www.pixiv.net/')                                                          return 10; //Home page -
-      if (document.URL.match('https://www.pixiv.net/stacc?'))                                               return 11; //Feed ('stacc') +
-      if (document.URL.match('https://www.pixiv.net/en/artworks/?'))                                        return 12; //Illust page - New_ +
-      if (document.URL.match('https://www.pixiv.net/discovery/users?'))                                     return 13; //Discovery page(users) +
+      //if (document.URL==='https://www.pixiv.net/')                                                          return 10; //Home page - //todo: settings menu?
+      if (document.URL.match('https://www.pixiv.net/stacc?'))                                               return 11; //Feed ('stacc') Old +
+      if (document.URL.match(/https:\/\/www\.pixiv\.net\/(?:en\/)?artworks/))                               return 12; //Illust page - New* +
+      if (document.URL.match('https://www.pixiv.net/discovery/users?'))                                     return 13; //Discovery page(users) New +
 
       return -1;
     }
     console.log('PAGETYPE: '+ PAGETYPE);
+    //Old: 0,1,4,6,8,9,11
+    //New: 2,3,7,12,13
+
     //===================================================================================
     //**********************************ColorFollowed************************************
     //===================================================================================
@@ -274,7 +276,7 @@
     :([12].includes(PAGETYPE))? document.querySelectorAll('.gtm-illust-recommend-title')
     :                           $('.ui-profile-popup');
     //-----------------------------------------------------------------------------------
-    let getUserId = (PAGETYPE===6 || PAGETYPE===1 || PAGETYPE===13) //1,6
+    let getUserId = (PAGETYPE===6 || PAGETYPE===1 || PAGETYPE===13) //1[13],6
     ?function (artContainer)
     {
       let userId = (artContainer.hasAttribute('data-user_id'))
@@ -399,7 +401,7 @@
         let followedUsersId = localStorage.getObj('followedUsersId'); //local
         if (toFollow){
           followedUsersId[userId] = true;
-          //if (!PAGETYPE===13) initFollowagePreview(); //TODO - broken
+          if ([2,3,7,12].includes(PAGETYPE)) initFollowagePreview();
         }
         else
           delete followedUsersId[userId];
@@ -409,26 +411,6 @@
       }
       else console.error('Slow down! You have subscribed too many to handle this by now! Wait for the next updates');
     }
-    //-----------------------------------------------------------------------------------
-    /*
-    function initFollowagePreview() //TODO!!!
-    {
-      $('body').on(previewEventType, 'a[href*="member_illust.php?mode=medium&illust_id="]', function(e)
-      {
-        e.preventDefault();
-        setHover(this.firstChild);
-        //---
-        //hoverImg.onload = function(){imgContainer.scrollIntoView({block: "start", behavior: "smooth"});}; //!!! TODO - only to follow case
-
-        let scroll = getElementByXpath('/html/body/div[6]/div/div/div/div/ul');
-        scroll.onwheel = function(ev)
-        {
-          ev.preventDefault();
-          scroll.scrollLeft += ev.deltaY*DELTASCALE;
-        };
-      });
-    }
-    */
     //===================================================================================
     if      (PAGETYPE===0 || PAGETYPE===1 || PAGETYPE===8)  siteImgMaxWidth = 198;
     else if (PAGETYPE===4 || PAGETYPE===9 || PAGETYPE===10) siteImgMaxWidth = 150;
@@ -470,23 +452,14 @@
         }, 4000); -> await while
       }
       */
-      //---------------------------------------------------------------------------------
-      $('body').on(previewEventType, 'a[href*="ref=profile_card"]', function(e) //TODO
-      {
-        e.preventDefault();;
-        setHover(this);
-
-        imgContainer.style.top = getOffsetRect(this).top+200+'px';
-        //$(imgContainer).css('zIndex', 3000);
-      });
-      //--------------------------------Bookmark detail----------------------------------
+      //----------------------------Bookmark detail page cleaning------------------------
       if (PAGETYPE===4)
       {
         let _bkmrklst = $('.bookmark-list-unit')[0];
         _bkmrklst.parentNode.removeChild(_bkmrklst);
         _bkmrklst = null;
       }
-      //-----------------------------------Illust page-----------------------------------
+      //-------------------------------Illust page extra check---------------------------
       if (PAGETYPE===12)
       {
         let zone = document.getElementsByClassName('gtm-illust-recommend-zone')[0];
@@ -506,9 +479,40 @@
         initMutationObject();
       }
       //=================================================================================
-      //**************************************Hover**************************************
+      //***************************************HOVER*************************************
       //=================================================================================
-      //-----------------------------FEED, DISCOVERY AND SEARCH-------------------------- //0,1,8
+      //------------------------------------Profile card--------------------------------- //0,1,4,6,8,9,11
+      if ([0,1,4,6,8,9,11].includes(PAGETYPE))
+      {
+        $('body').on(previewEventType, 'a[href*="/artworks/"]', function(e)
+        {
+          e.preventDefault();
+          if (this.childNodes.length === 0) //for preventing issues with 4 and 6 pages
+          {
+            setHover(this);
+            imgContainer.style.top = getOffsetRect(this).top+200+'px';
+          }
+        });
+      }
+      //-------------------------------------Followage----------------------------------- //2,3,7,12
+      function initFollowagePreview()
+      {
+        $('body').on(previewEventType, '.gtm-recommend-user-thumbnail', function(e)
+        {
+          e.preventDefault();
+
+          let top = window.innerHeight - PREVIEW_SIZE - 5 + window.scrollY + 'px';
+          setHover(this.firstChild.firstChild, top);
+
+          let scroll = getElementByXpath('/html/body/div[6]/div/div/div/div/ul');
+          scroll.onwheel = function(ev)
+          {
+            ev.preventDefault();
+            scroll.scrollLeft += ev.deltaY*DELTASCALE;
+          };
+        });
+      }
+      //--------------------NEW ILLUSTRATIONS, DISCOVERY[ARTWORKS] AND SEARCH------------ //0,1,8
       function setPreviewEventListeners()
       {
         //single art hover---------------------------------------------------------------
@@ -532,19 +536,17 @@
           }
         });
       }
-      //---------------------------------------------------------------------------------
-      let discoveryUsersPreview = function(e) //todo -> place it down if body.off doesn't work
-      {
-        e.preventDefault();
-        if      (this.childNodes.length == 0)  setHover(this); //single art
-        else if (this.childNodes.length == 1)  setMangaHover(this, this.firstChild.textContent); //manga
-      };
-      //---------------------------------------------------------------------------------
+      //-----------------------------------DISCOVERY[USERS]------------------------------ //13
       function setDiscoveryUsersPreviewEventListeners()
       {
-        $('body').on(previewEventType, 'a[href*="/artworks/"]', discoveryUsersPreview);
+        $('body').on(previewEventType, 'a[href*="/artworks/"]', function(e) //todo -> place it down if body.off doesn't work (???)
+        {
+          e.preventDefault();
+          if      (this.childNodes.length == 0)  setHover(this); //single art
+          else if (this.childNodes.length == 1)  setMangaHover(this, this.firstChild.textContent); //manga
+        });
       };
-      //---------------------------------------------------------------------------------
+      //--------------------------------------------------------------------------------- //1->13
       function setTabSwitchingListenerW_U()
       {
         $('body').on('mouseup','a[href="/discovery/users"]', function() //todo:make into single event handler
@@ -557,7 +559,7 @@
           setTabSwitchingListenerU_W();
         });
       };
-      //---------------------------------------------------------------------------------
+      //--------------------------------------------------------------------------------- //13->1
       function setTabSwitchingListenerU_W()
       {
         $('body').on('mouseup','a[href="/discovery"]', function() //todo:make into single event handler
@@ -573,24 +575,25 @@
           setTabSwitchingListenerW_U();
         });
       };
-      //------------------------------------Discovery------------------------------------
+      //--------------------------------DISCOVERY[Artworks]------------------------------ //1
       if (PAGETYPE === 1) //Works
       {
         setTabSwitchingListenerW_U();
         setPreviewEventListeners();
       }
+      //----------------------------------DISCOVERY[Users]------------------------------- //13
       else if (PAGETYPE === 13) //Users
       {
         setTabSwitchingListenerU_W();
         setDiscoveryUsersPreviewEventListeners();
       }
-      //---------------------------------FEED AND SEARCH---------------------------------
-      else if ((PAGETYPE === 0) || (PAGETYPE===8))
+      //----------------------------NEW ILLUSTRATIONS AND SEARCH------------------------- //0,8
+      else if ((PAGETYPE === 0) || (PAGETYPE ===8))
       {
         setPreviewEventListeners();
       }
-      //--------------------ARTIST WORKS, "TOP" PAGES, Someone's Bookmarks--------------- //2,3,7,12[2]
-      else if (PAGETYPE===2 || PAGETYPE===3 || PAGETYPE===7 || PAGETYPE===12) //TODO!!! do smthng with that amorphous pixiv styleshit!
+      //--------------------ARTIST WORKS, "TOP" PAGES, Someone's Bookmarks--------------- //2,3,7,12
+      else if (PAGETYPE === 2 || PAGETYPE === 3 || PAGETYPE === 7 || PAGETYPE === 12)     //TODO!!! do smthng with that amorphous pixiv styleshit!
       {
         /*
         $('body').on(previewEventType, 'a[href*="member_illust.php?mode=medium&illust_id="] > div:only-child', function()
@@ -631,7 +634,7 @@
         });
       }
       //----------------------DAILY RANKINGS & BOOKMARK INFORMATION PAGES---------------- //4,6 [10]
-      else if (PAGETYPE == 4 || PAGETYPE == 6)
+      else if (PAGETYPE === 4 || PAGETYPE === 6)
       {
         $('body').on(previewEventType, 'a[href*="/artworks/"]', function(e) //direct div selector works badly with "::before"
         {
@@ -652,7 +655,7 @@
         });
       }
       //--------------------------------------BOOKMARKS---------------------------------- //9
-      else if (PAGETYPE == 9)
+      else if (PAGETYPE === 9)
       {
         $('body').on(previewEventType, 'a[href*="member_illust.php?mode=medium&illust_id="]', function(e) //direct div selector works badly with "::before"
         {
@@ -672,8 +675,8 @@
           };
         });
       }
-      //-----------------------------------Feed('stacc')--------------------------------- //11
-      else if  (PAGETYPE == 11)
+      //------------------------------------Feed('stacc')-------------------------------- //11
+      else if  (PAGETYPE === 11)
       {
         $('body').on(previewEventType, 'a[href*="member_illust.php?mode=medium&illust_id="]', function(e)
         {
@@ -720,7 +723,8 @@
     });
     //===================================================================================
     //-----------------------------------------------------------------------------------
-    function checkDelay(callback) {
+    function checkDelay(callback)
+    {
       if (DELAY_BEFORE_PREVIEW>0){
         clearTimeout(timerId);
         timerId = setTimeout(callback, DELAY_BEFORE_PREVIEW);
@@ -728,14 +732,14 @@
       else callback();
     }
     //-----------------------------------------------------------------------------------
-    function setHover(thisObj)
+    function setHover(thisObj, top)
     {
       clearTimeout(timerId);
       clearTimeout(tInt);
       mangaOuterContainer.style.visibility = 'hidden';
 
       hoverImg.src = parseImgUrl(thisObj, PREVIEW_SIZE);
-      imgContainer.style.top = getOffsetRect(thisObj.parentNode.parentNode).top+'px';
+      imgContainer.style.top = top || getOffsetRect(thisObj.parentNode.parentNode).top+'px';
 
       //adjusting preview position considering expected image width
       //---------------------------------------------------------------------------------
