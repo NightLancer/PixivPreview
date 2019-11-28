@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом.
 // @author          NightLancerX
-// @version         1.43
+// @version         1.43.1
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -17,8 +17,10 @@
 // @match           https://www.pixiv.net/
 // @match           https://www.pixiv.net/stacc*
 // @match           https://www.pixiv.net/*artworks/*
+// @match           https://www.pixiv.net/*tags/*
 // @connect         i.pximg.net
 // @homepageURL     https://github.com/NightLancer/PixivPreview
+// @downloadURL     https://github.com/NightLancer/PixivPreview/raw/master/PixivPreview.user.js
 // @license         MIT License
 // @grant           GM_xmlhttpRequest
 // @grant           GM.xmlHttpRequest
@@ -98,7 +100,7 @@
       if (document.URL.match('https://www.pixiv.net/bookmark_detail.php?'))                                 return 4; //Bookmark information - Old +
       if (document.URL.match('https://www.pixiv.net/ranking.php?'))                                         return 6; //Daily rankings - Old +
       if (document.URL.match(/https:\/\/www\.pixiv\.net\/bookmark\.php\?id/))                               return 7; //Someone's bookmarks page - New +
-      if (document.URL.match('https://www.pixiv.net/search.php?'))                                          return 8; //Search page - Old +
+      if (document.URL.match(/https:\/\/www\.pixiv\.net\/(?:en\/)?tags/))                                   return 8; //Search page - New +
       if (document.URL.match('https://www.pixiv.net/bookmark.php?'))                                        return 9; //Your bookmarks page - Old +
       //if (document.URL==='https://www.pixiv.net/')                                                          return 10; //Home page - //todo: settings menu?
       if (document.URL.match('https://www.pixiv.net/stacc?'))                                               return 11; //Feed ('stacc') Old +
@@ -108,8 +110,8 @@
       return -1;
     }
     console.log('PAGETYPE: '+ PAGETYPE);
-    //Old: 0,1,4,6,8,9,11
-    //New: 2,3,7,12,13
+    //Old: 0,1,4,6,9,11
+    //New: 2,3,7,12,13,8
     //-----------------------------------------------------------------------------------
     function resetPreviewSize(){PREVIEW_SIZE = (previewSize)?previewSize:(window.innerHeight>1200 & document.body.clientWidth>1200)?1200:600}
     //===================================================================================
@@ -537,7 +539,7 @@
       //***************************************HOVER*************************************
       //=================================================================================
       //------------------------------------Profile card--------------------------------- //0,1,4,6,8,9,11
-      if ([0,1,4,6,8,9,11].includes(PAGETYPE))
+      if ([0,1,4,6,9,11].includes(PAGETYPE))
       {
         $('body').on(previewEventType, 'a[href*="/artworks/"]', function(e)
         {
@@ -643,12 +645,12 @@
         setDiscoveryUsersPreviewEventListeners();
       }
       //----------------------------NEW ILLUSTRATIONS AND SEARCH------------------------- //0,8
-      else if ((PAGETYPE === 0) || (PAGETYPE ===8))
+      else if (PAGETYPE === 0)
       {
         setPreviewEventListeners();
       }
       //--------------------ARTIST WORKS, "TOP" PAGES, Someone's Bookmarks--------------- //2,3,7,12
-      else if (PAGETYPE === 2 || PAGETYPE === 3 || PAGETYPE === 7 || PAGETYPE === 12)     //TODO!!! do smthng with that amorphous pixiv styleshit!
+      else if (PAGETYPE === 2 || PAGETYPE === 3 || PAGETYPE === 7 || PAGETYPE === 12 || PAGETYPE === 8)     //TODO!!! do smthng with that amorphous pixiv styleshit!
       {
         /*
         $('body').on(previewEventType, 'a[href*="member_illust.php?mode=medium&illust_id="] > div:only-child', function()
