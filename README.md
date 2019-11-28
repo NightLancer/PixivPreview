@@ -3,11 +3,13 @@
 Script is written for www.pixiv.net site usability.
 
 Features:<br>
-• Showing enlarged preview of artworks and manga on mouse hovering on most pages.<br>
-• Highlighting names of users from "Followed" list.<br>
-• Opening source of artwork in new tab in one click(LMB).<br>
-• Quickly save the original art by clicking Ctrl+LMB-Click on the art preview.<br>
-• Quick add to bookmarks by clicking Alt+LMB-Click on the art preview.<br>
+• Showing enlarged preview of artworks and manga on mouse hovering* on most site pages.<br>
+• Highlighting names of users from your "Followed" list.<br>
+• Opening source of artwork in new tab in one click (LMB).<br>
+• MMB-click on preview opens corresponding artwork page.<br>
+• Instantly save the original art by clicking Ctrl+LMB on the art preview.<br>
+• Quick add to bookmarks by clicking ALT+LMB on the art preview.<br>
+• Repeat ALT-LMB combination again for quick unfavoriting/opening bookmark tags edition page.<br>
 
 ■ Preview of single artworks appears in left top corner of image block.
 <img src=http://i.prntscr.com/4LvnU6EITOmbB8VKMmBcog.png><br>
@@ -23,16 +25,46 @@ For larger amount of artworks, horisontal scrollbar is appeared, but scrolling v
 ■ The names of the authors(users) you are already subscribed to are highlighted with green.
 <img src=http://i.prntscr.com/xa2ErFzkQOGLloz9kAHRZQ.png><br>
 
-■ Click left mouse button on image preview to open original art in new tab, or middle mouse button to open art illustration page. 
-
-■ Press Alt and left mouse button click for quick adding artwork into bookmarks. Repeat combination again for opening bookmark (tags) edition page(on pages with old pixiv layout).
-
-You can:
-- set `PREVIEW_SIZE = 1200;` (instead of standard 600 pixels)if you are using appropriate monitor(QHD or 4K).
-- set `PREVIEW_ON_CLICK = true;` to change preview appearing condition to LMB-click.
-- change `DELAY_BEFORE_PREVIEW = 0;` from 0 to the desired value in ms (1000 = 1 second) in order to increase delay before art preview appearing.
-- set `ACCURATE_MANGA_PREVIEW = true;` to make more position-accurate(due to content) manga preview.
-- set `SCROLL_INTO_VIEW_FOR_SINGLE_IMAGE = false;` to disable scrollIntoView for single preview
-- set `DISABLE_SINGLE_PREVIEW_BACKGROUND_SCROLLING = false;` to disable background scrolling for single preview (when `SCROLL_INTO_VIEW_FOR_SINGLE_IMAGE` set to `true`)
+Preferences:<br>
+<br>
+■ PREVIEW_ON_CLICK =<br>
+false : showing preview on mouseover (default)<br>
+true : showing preview after LMB-click<br>
+<br>
+■ DELAY_BEFORE_PREVIEW =<br>
+0 : no delay before preview (default)<br>
+1000 : 1 second delay (2000 for 2 seconds, etc)<br>
+<br>
+■ previewSize =<br>
+0 : automatically calculate preview size (1200 or 600) depending of current screen size (default)<br>
+600 : up to 600px x 600px<br>
+1200 : up to 1200px x 1200px<br>
+<br>
+■ ACCURATE_MANGA_PREVIEW =<br>
+false : quicker, but less accurate in some cases (default)<br>
+true : takes 1sec before preview showing for more accurate positioning<br>
+<br>
+■ DISABLE_MANGA_PREVIEW_SCROLLLING_PROPAGATION =<br>
+false : keeping page scrolling after end of manga preview scrolling (default)<br>
+true : disable page scrolling when viewing manga preview (move mouse out of preview to re-enable scrolling)<br>
+<br>
+■ SCROLL_INTO_VIEW_FOR_SINGLE_IMAGE =<br>
+true : preview of single image will smoothly fit to vertical screen border after one scroll (default)<br>
+false : manually scrolling (may need in case of forced 1200px vertical preview with small user screen)<br>
+<br>
+■ DISABLE_SINGLE_PREVIEW_BACKGROUND_SCROLLING =<br>
+false: standard behavior (default)<br>
+true : disable page scrolling when viewing single preview (works only if previous setting set to `true`)<br>
+<br>
+Supported pages:<br>
+- New illustrations<br>
+- Discovery<br>
+- Daily rankings<br>
+- Artwork page<br>
+- Pixiv member pages<br>
+- Search<br>
+- Bookmarked artworks<br>
+- Bookmark information<br>
+- Feed<br>
 
 Works best with <a href="https://greasyfork.org/uk/scripts/3254-endless-pixiv-pages">"Endless Pixiv Pages"</a> ©Mango.<br>
