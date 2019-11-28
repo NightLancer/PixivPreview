@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом.
 // @author          NightLancerX
-// @version         1.42.2.2
+// @version         1.43
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -19,7 +19,6 @@
 // @match           https://www.pixiv.net/*artworks/*
 // @connect         i.pximg.net
 // @homepageURL     https://github.com/NightLancer/PixivPreview
-// @downloadURL     https://github.com/NightLancer/PixivPreview/raw/master/PixivPreview.user.js
 // @license         MIT License
 // @grant           GM_xmlhttpRequest
 // @grant           GM.xmlHttpRequest
@@ -94,7 +93,7 @@
     {
       if (document.URL.match('https://www.pixiv.net/bookmark_new_illust.php?'))                             return 0; //New illustrations - Old +
       if (document.URL==='https://www.pixiv.net/discovery')                                                 return 1; //Discovery page(works) - Old +
-      if (document.URL.match('https://www.pixiv.net/member_illust.php?'))                                   return 2; //Artist works page - New +
+      if (document.URL.match('https://www.pixiv.net/member_illust.php?'))                                   return 2; //Artist works page - New + | Todo: merge 2 and 3 pages?...
       if (document.URL.match('https://www.pixiv.net/member.php?'))                                          return 3; //Artist "Home" page - New +
       if (document.URL.match('https://www.pixiv.net/bookmark_detail.php?'))                                 return 4; //Bookmark information - Old +
       if (document.URL.match('https://www.pixiv.net/ranking.php?'))                                         return 6; //Daily rankings - Old +
@@ -272,12 +271,17 @@
       console.log('hits: '+currentHits + ' (Total: '+(lastHits)+')');
     }
     //-----------------------------------------------------------------------------------
-    let getArtsContainers =
-    ([1,4].includes(PAGETYPE))? () => document.querySelectorAll('.gtm-illust-recommend-user-name')
-    :([12].includes(PAGETYPE))? () => document.querySelectorAll('.gtm-illust-recommend-title')
-    :([6].includes(PAGETYPE))?  () => document.querySelectorAll('.ui-profile-popup')
-    :([7].includes(PAGETYPE))?  () => document.querySelectorAll('a[href*="/member.php?id="]')
-    :                           () => {console.error('UNPROCESSED getArtsContainers() CASE!'); return null}
+    function getArtsContainers()
+    {
+      switch (PAGETYPE){
+        case 1,4: return document.querySelectorAll('.gtm-illust-recommend-user-name');
+        case 12:  return document.querySelectorAll('.gtm-illust-recommend-title');
+        case 6:   return document.querySelectorAll('.ui-profile-popup');
+        case 7:   return document.querySelectorAll('a[href*="/member.php?id="]');
+        default:  console.error('Unprocessed PAGETYPE in getArtsContainers()!');
+      }
+      return null;
+    }
     //-----------------------------------------------------------------------------------
     let getUserId = (artContainer) =>
     {
@@ -466,6 +470,11 @@
         _bkmrklst.parentNode.removeChild(_bkmrklst);
         _bkmrklst = null;
       }
+      //------------------------------Dayli rankings ad cleaning-------------------------
+      if (PAGETYPE===6)
+      {
+        $('.ad-printservice').remove();
+      }
       //-------------------------------Illust page extra check---------------------------
       if (PAGETYPE===12)
       {
@@ -487,23 +496,42 @@
       {
         initMutationObject();
       }
-      //-----------------------------Bookmarks ------------------------------------------
+      //---------------------------------Pixiv Member pages------------------------------
+      if (PAGETYPE===2|| PAGETYPE===3 || PAGETYPE===7)
+      {
+        $('body').on('mouseup', 'a[href*="&rest=show"]', function(){
+          console.log('PAGETYPE: '+ PAGETYPE+' -> 7');
+          PAGETYPE = 7;
+          bookmarksInit();
+        });
+        // $('body').on('mouseup', 'a[href*="/member.php?id="]', function(){
+        //   console.log('PAGETYPE: '+ PAGETYPE+' -> 3');
+        //   PAGETYPE = 3;
+        // });
+        //
+        // $('body').on('mouseup', 'a[href*="&type=illust"]', function(){
+        //   console.log('PAGETYPE: '+ PAGETYPE+' -> 2');
+        //   PAGETYPE = 2;
+        // });
+      }
+      //-------------------------------
+      async function bookmarksInit()
+      {
+        checkFollowedArtistsInit();
+        let mainSelector = '/html/body/div[1]/div[1]/div/div[2]/div[1]/section/ul';
+        let mainDiv = getElementByXpath(mainSelector);
+        while(!mainDiv)
+        {
+          console.log('Waiting for getElementByXpath');
+          await sleep(1000);
+          mainDiv = getElementByXpath(mainSelector);
+        }
+        colorFollowed();
+      }
+      //------------------------------------Bookmarks------------------------------------
       if (PAGETYPE===7)
       {
-        const _a = async () =>
-        {
-          checkFollowedArtistsInit();
-          let mainSelector = '/html/body/div[1]/div[1]/div/div[2]/div[1]/section/ul';
-          let mainDiv = getElementByXpath(mainSelector);
-          while(!mainDiv)
-          {
-            console.log('Waiting for getElementByXpath');
-            await sleep(1000);
-            mainDiv = getElementByXpath(mainSelector);
-          }
-          colorFollowed();
-        };
-        _a();
+        bookmarksInit();
       }
       //=================================================================================
       //***************************************HOVER*************************************
