@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом.
 // @author          NightLancerX
-// @version         1.40.3
+// @version         1.42.2.2
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -38,7 +38,7 @@
     //---------------------------***CUSTOM PREFERENCES***--------------------------------
     const PREVIEW_ON_CLICK = false; //if "true" — showing arts preview after LMB-click on art instead of hovering over it
     const DELAY_BEFORE_PREVIEW = 0; //if you need delay before showing art preview, set it here (1000 = 1 second)
-    const PREVIEW_SIZE = 600; //if you have "4K" or "QHD" monitor, you can set preview size to 1200(which can't fit at 1920*1080 monitor, so stay at 600 if you have that one)
+    const previewSize = 0; //you can manually set size of preview to 1200 or 600 (pixels); Default value (0) means it will be calculated automatically with "live" dependence of current screen size
     const ACCURATE_MANGA_PREVIEW = false; //if `true` - increases time before manga preview appearing(to 1sec) but shows it at more accurate position considering width(for case of few arts)
     const DISABLE_MANGA_PREVIEW_SCROLLLING_PROPAGATION = false; //defines whether to keep on scrolling propagation when reaching end of manga preview container
     const SCROLL_INTO_VIEW_FOR_SINGLE_IMAGE = true; //apply scrollIntoView for single preview
@@ -69,12 +69,12 @@
         artsLoaded = 0,
         lastHits = 0,
         lastImgId = -1,
-        siteImgMaxWidth = 184, //2,3,7,12 [NEW]| //todo: quite useless on this pages because of square previews...
+        PREVIEW_SIZE,
+        siteImgMaxWidth = 184, //2,3,7,12 [NEW]| quite useless on this pages because of square previews...
         mangaWidth = 1200,
-        //prevSize = PREVIEW_SIZE,
         maxRequestTime = 30000,
         bookmarkObj,
-        isBookmarked = false, //todo: rework or delete. Arts can be bookmarked on art page.
+        isBookmarked = false, //rework or delete. Arts can be bookmarked on art page.
         DELTASCALE = ('mozInnerScreenX' in window)?70:4,
         previewEventType = (PREVIEW_ON_CLICK)?'click':'mouseenter',
         PAGETYPE = checkPageType();
@@ -111,11 +111,12 @@
     console.log('PAGETYPE: '+ PAGETYPE);
     //Old: 0,1,4,6,8,9,11
     //New: 2,3,7,12,13
-
+    //-----------------------------------------------------------------------------------
+    function resetPreviewSize(){PREVIEW_SIZE = (previewSize)?previewSize:(window.innerHeight>1200 & document.body.clientWidth>1200)?1200:600}
     //===================================================================================
     //**********************************ColorFollowed************************************
     //===================================================================================
-    if ([1,4,6].includes(PAGETYPE)) //+12 in initMutationParentObject(TODO: does it needed now?) | todo: 7
+    if ([1,4,6,7].includes(PAGETYPE)) //+12 in initMutationParentObject -> user may not scroll to bottom, so it is better to stay in mutaionObserver
     {
       checkFollowedArtistsInit();
     }
@@ -130,7 +131,7 @@
         checkFollowedArtists(BOOKMARK_URL+'?type=user');           //public
         checkFollowedArtists(BOOKMARK_URL+'?type=user&rest=hide'); //private
       }
-      else if ([6].includes(PAGETYPE))  colorFollowed(); //only for daily rankings? todo: 7 | for cached case
+      else if ([6].includes(PAGETYPE)) colorFollowed();
     }
     //-----------------------------------------------------------------------------------
     async function checkFollowedArtists(url)
@@ -199,13 +200,13 @@
       while (!artsContainers || artsContainers.length === 0) //first call -> daily rankings, illust page
       {
         console.log('waiting for arts...');
-        await sleep(1000);
+        await sleep(2000);
 
         artsContainers = getArtsContainers();
         ++c;
         if (c>5)
         {
-          console.error('Error while waiting for atrs loading! [Timeout 5s]');
+          console.error('Error while waiting for atrs loading! [Timeout 10s]');
           break;
         }
       }
@@ -250,7 +251,7 @@
         console.log('Succesfully loaded cached followedUsersId: '+ Object.keys(followedUsersId).length);
       }
       //---------------------------------------------------------------------------------
-      artsLoaded = (PAGETYPE===12)?$('.gtm-illust-recommend-user-name').length:$('.ui-profile-popup').length;
+      artsLoaded = (PAGETYPE===12)?$('.gtm-illust-recommend-user-name').length:$('.ui-profile-popup').length; //if it brokes - get info from getArtsContainers()
       console.log('arts loaded: '+artsContainersLength + ' (Total: '+(artsLoaded)+')');
 
       let currentHits = 0;
@@ -265,31 +266,44 @@
         {
           ++currentHits;
           artsContainers[i].setAttribute("style", "background-color: green; !important");
-        };
+        }
       }
       lastHits += currentHits;
       console.log('hits: '+currentHits + ' (Total: '+(lastHits)+')');
     }
     //-----------------------------------------------------------------------------------
-    let getArtsContainers = //todo: simplify if needed
-    ([1,4].includes(PAGETYPE))? document.querySelectorAll('.gtm-illust-recommend-user-name')
-    :([12].includes(PAGETYPE))? document.querySelectorAll('.gtm-illust-recommend-title')
-    :                           $('.ui-profile-popup');
+    let getArtsContainers =
+    ([1,4].includes(PAGETYPE))? () => document.querySelectorAll('.gtm-illust-recommend-user-name')
+    :([12].includes(PAGETYPE))? () => document.querySelectorAll('.gtm-illust-recommend-title')
+    :([6].includes(PAGETYPE))?  () => document.querySelectorAll('.ui-profile-popup')
+    :([7].includes(PAGETYPE))?  () => document.querySelectorAll('a[href*="/member.php?id="]')
+    :                           () => {console.error('UNPROCESSED getArtsContainers() CASE!'); return null}
     //-----------------------------------------------------------------------------------
-    let getUserId = (PAGETYPE===6 || PAGETYPE===1 || PAGETYPE===13) //1[13],6
-    ?function (artContainer)
+    let getUserId = (artContainer) =>
     {
-      let userId = (artContainer.hasAttribute('data-user_id'))
-      ?artContainer.getAttribute('data-user_id')
-      :artContainer.querySelectorAll('.ui-profile-popup')[0].getAttribute('data-user_id');
+      let userId = -1;
+
+      if (typeof artContainer.hasAttribute !== 'function'){
+        console.log(artContainer,'has been filtered out.');
+      }
+      else if (PAGETYPE===1 || PAGETYPE===6){
+        userId = (artContainer.hasAttribute('data-user_id'))
+          ?artContainer.getAttribute('data-user_id')
+          :artContainer.querySelectorAll('.ui-profile-popup')[0].getAttribute('data-user_id');
+      }
+      else if (PAGETYPE===4 || PAGETYPE===12){
+        artContainer = artContainer.querySelectorAll('.gtm-illust-recommend-title')[0] || artContainer; // -_-'
+        userId = artContainer.parentNode.querySelectorAll('[href*="/member.php?id="]')[0].getAttribute('href').split('=').pop();
+      }
+      else if (PAGETYPE===7){
+        userId = artContainer.getAttribute('href').split('=').pop();
+      }
+      else{
+        console.error('UNPROCESSED getUserId() call!');
+      }
+
       return userId;
     }
-    :function (artContainer) //2,4
-    {
-      artContainer = artContainer.querySelectorAll('.gtm-illust-recommend-title')[0] || artContainer; // -_-'
-      let userId = artContainer.parentNode.querySelectorAll('[href*="/member.php?id="]')[0].getAttribute('href').split('=').pop();
-      return userId;
-    };
     //-----------------------------------------------------------------------------------
     function sleep(ms)
     {
@@ -299,11 +313,11 @@
     function getElementByXpath(path)
     {
       return document.evaluate(path, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-    };
+    }
     //-----------------------------------------------------------------------------------
-    let getArtSectionContainers = ([1,12,4,13].includes(PAGETYPE))
-    ?function() {return $('.gtm-illust-recommend-zone');}
-    :function() {return $('.ranking-items');};
+    let getArtSectionContainers =
+    ([1,4,12].includes(PAGETYPE))? () => $('.gtm-illust-recommend-zone')[0]
+    :                              () => $('.ranking-items')[0]; //6
     //-----------------------------------------------------------------------------------
     function createObserver(mainDiv)
     {
@@ -314,6 +328,7 @@
         {
           mutation.addedNodes.forEach(function(node)
           {
+            //console.log(mutation);
             arr.push(node);
           });
         });
@@ -330,25 +345,25 @@
     //-----------------------------------------------------------------------------------
     async function initMutationObject()
     {
-      let mainDiv = getArtSectionContainers()[0];
+      let mainDiv = getArtSectionContainers();
       while(!mainDiv)
       {
         console.log('Waiting for arts container...');
         await sleep(1000);
-        mainDiv = getArtSectionContainers()[0];
+        mainDiv = getArtSectionContainers();
       }
       console.log(mainDiv);
       createObserver(mainDiv);
     }
     //-----------------------------------------------------------------------------------
-    async function initMutationParentObject()
+    async function initMutationParentObject(parentSelector, nodesSelector)
     {
       let observerParent = new MutationObserver(function(mutations)
       {
         let mainDiv;
         mutations.forEach(function(mutation)
         {
-          mainDiv = mutation.addedNodes[0].getElementsByClassName('gtm-illust-recommend-zone');
+          mainDiv = mutation.addedNodes[0].getElementsByClassName(nodesSelector);
           console.log(mainDiv);
           if (mainDiv.length>0)
           {
@@ -364,14 +379,15 @@
         'childList': true
       };
 
-      let parentDiv = getElementByXpath('/html/body/div[1]/div[1]/div/aside[2]/div'); //~todo: replace with selector if possible
+      let parentDiv = getElementByXpath(parentSelector);
       while(!parentDiv)
       {
         console.log('Waiting for getElementByXpath');
         await sleep(1000);
-        parentDiv = getElementByXpath('/html/body/div[1]/div[1]/div/aside[2]/div');
+        parentDiv = getElementByXpath(parentSelector);
       }
       console.log(parentDiv);
+
       observerParent.observe(parentDiv, options2);
       console.log('observerParent set');
     }
@@ -385,7 +401,7 @@
     }
     */
     //-----------------------------------------------------------------------------------
-    function followage(thisObj, toFollow, isNew) //todo?: into async queue
+    function followage(thisObj, toFollow, isNew) //In case of followed check lasting too long, async queue may be a solution
     {
       console.log('toFollow: '+ toFollow);
       let userId;
@@ -423,6 +439,7 @@
       mangaContainer.style.maxWidth = mangaOuterContainer.style.maxWidth = mangaWidth+'px';
       document.body.appendChild(imgContainer);
       document.body.appendChild(mangaOuterContainer);
+      resetPreviewSize();
       //-------------------------------Follow onclick------------------------------------
       let toFollow, isNew, followSelector;
       if ([2,3,7,12].includes(PAGETYPE)){
@@ -442,16 +459,6 @@
         toFollow = (this.textContent == 'Follow');
         followage(this, toFollow, isNew);
       });
-      //-----------------------------Bookmarks ------------------------------------------
-      /*
-      if (PAGETYPE===7) //TODO -> launch form tab
-      {
-        setTimeout(function(){
-          let ttt = $('[href*="/member.php?id="]');
-          console.dir(ttt);
-        }, 4000); -> await while
-      }
-      */
       //----------------------------Bookmark detail page cleaning------------------------
       if (PAGETYPE===4)
       {
@@ -462,9 +469,11 @@
       //-------------------------------Illust page extra check---------------------------
       if (PAGETYPE===12)
       {
-        let zone = document.getElementsByClassName('gtm-illust-recommend-zone')[0];
-        if (zone === undefined)
-          initMutationParentObject();
+        let parentSelector = '/html/body/div[1]/div[1]/div/aside[2]/div',  //replace with selector if possible
+            zoneSelector = 'gtm-illust-recommend-zone',
+            zone = document.getElementsByClassName(zoneSelector)[0];
+
+        if (zone === undefined) initMutationParentObject(parentSelector, zoneSelector);
         else
         {
           console.log(zone);
@@ -477,6 +486,24 @@
       if (PAGETYPE===1 || PAGETYPE===4 || PAGETYPE===6)
       {
         initMutationObject();
+      }
+      //-----------------------------Bookmarks ------------------------------------------
+      if (PAGETYPE===7)
+      {
+        const _a = async () =>
+        {
+          checkFollowedArtistsInit();
+          let mainSelector = '/html/body/div[1]/div[1]/div/div[2]/div[1]/section/ul';
+          let mainDiv = getElementByXpath(mainSelector);
+          while(!mainDiv)
+          {
+            console.log('Waiting for getElementByXpath');
+            await sleep(1000);
+            mainDiv = getElementByXpath(mainSelector);
+          }
+          colorFollowed();
+        };
+        _a();
       }
       //=================================================================================
       //***************************************HOVER*************************************
@@ -539,30 +566,30 @@
       //-----------------------------------DISCOVERY[USERS]------------------------------ //13
       function setDiscoveryUsersPreviewEventListeners()
       {
-        $('body').on(previewEventType, 'a[href*="/artworks/"]', function(e) //todo -> place it down if body.off doesn't work (???)
+        $('body').on(previewEventType, 'a[href*="/artworks/"]', function(e)
         {
           e.preventDefault();
           if      (this.childNodes.length == 0)  setHover(this); //single art
           else if (this.childNodes.length == 1)  setMangaHover(this, this.firstChild.textContent); //manga
         });
-      };
+      }
       //--------------------------------------------------------------------------------- //1->13
       function setTabSwitchingListenerW_U()
       {
-        $('body').on('mouseup','a[href="/discovery/users"]', function() //todo:make into single event handler
+        $('body').on('mouseup','a[href="/discovery/users"]', function()
         {
           console.log('Works -> Users');
           PAGETYPE = 13;
           artsLoaded = lastHits = 0; //clearing loaded arts count when switching on tabs
-          $('body').off(); //may cause some removal of timeout events? todo
+          $('body').off(); //may cause some removal of timeout events?
           setDiscoveryUsersPreviewEventListeners();
           setTabSwitchingListenerU_W();
         });
-      };
+      }
       //--------------------------------------------------------------------------------- //13->1
       function setTabSwitchingListenerU_W()
       {
-        $('body').on('mouseup','a[href="/discovery"]', function() //todo:make into single event handler
+        $('body').on('mouseup','a[href="/discovery"]', function()
         {
           console.log('Users -> Works');
           PAGETYPE = 1;
@@ -574,7 +601,7 @@
           setPreviewEventListeners();
           setTabSwitchingListenerW_U();
         });
-      };
+      }
       //--------------------------------DISCOVERY[Artworks]------------------------------ //1
       if (PAGETYPE === 1) //Works
       {
@@ -651,7 +678,7 @@
             bookmarkObj = $(this.firstChild.firstChild).parent().children("._one-click-bookmark");
             checkBookmark(this);
             setMangaHover(this.firstChild.firstChild, this.children[1].children[1].textContent);
-          };
+          }
         });
       }
       //--------------------------------------BOOKMARKS---------------------------------- //9
@@ -672,7 +699,7 @@
             bookmarkObj = $(this.firstChild.firstChild).parent().children("._one-click-bookmark");
             checkBookmark(this);
             setMangaHover(this.firstChild.firstChild, this.children[1].children[1].textContent);
-          };
+          }
         });
       }
       //------------------------------------Feed('stacc')-------------------------------- //11
@@ -827,7 +854,7 @@
           {
             imgsArr[i] = document.createElement('img');
             mangaContainer.appendChild(imgsArr[i]);
-          };
+          }
           imgsArr[i].src = primaryLink.replace('p0','p'+i);
         }
 
@@ -851,14 +878,14 @@
         adjustMargins(mangaOuterContainer.scrollWidth);
         checkDelay(function(){mangaOuterContainer.style.visibility='visible';});
       }
-    };
+    }
     //-----------------------------------------------------------------------------------
     function parseImgUrl(thisObj, PREVIEW_SIZE)
     {
       let url = (thisObj.src)? thisObj.src: thisObj.style.backgroundImage.slice(5,-2);
       url = url.replace(/\/...x..[0|8]/, '/'+PREVIEW_SIZE+'x'+PREVIEW_SIZE).replace('_80_a2','').replace('_square1200','_master1200').replace('_70','');
       return url;
-    };
+    }
     //-----------------------------------------------------------------------------------
     function adjustMargins(width)
     {
@@ -895,7 +922,7 @@
       let left = box.left + scrollLeft - clientLeft;
 
       return { top: Math.round(top), left: Math.round(left) };
-    };
+    }
     //===================================================================================
     //**************************************Hide*****************************************
     //===================================================================================
@@ -915,12 +942,13 @@
     //===================================================================================
     //***********************************Art Clicks**************************************
     //===================================================================================
-    hoverImg.onmouseup = function (event) //single arts onclick actions
+    //-----------------------------Single arts onclick actions---------------------------
+    hoverImg.onmouseup = function (event)
     {
       onClickActions(this, event, false);
     };
-    //-----------------------------------------------------------------------------------
-    $('body').on('mouseup', 'div#mangaContainer > img', function(event) //manga arts onclick actions
+    //-----------------------------Manga arts onclick actions----------------------------
+    $('body').on('mouseup', 'div#mangaContainer > img', function(event)
     {
       onClickActions(this, event, true);
     });
@@ -965,7 +993,7 @@
         //-------------------------------------------------------------------------------
       }
       //---------------------------------------------------------------------------------
-    };
+    }
     //---------------------------------getOriginalUrl------------------------------------
     async function getOriginalUrl(illustPageUrl, event, pageNum, toSave)
     {
@@ -1000,7 +1028,7 @@
         responseType: 'arraybuffer', //TM
         binary: true, //GM
         headers: {
-          Referer: `https://www.pixiv.net/member_illust.php?mode=medium&illust_id=${illustId}`, //~todo: may need to change to "artworks" in future
+          Referer: `https://www.pixiv.net/en/artworks/${illustId}`,
         },
         onload: function(response)
         {
@@ -1051,6 +1079,7 @@
     {
       mangaWidth = document.body.clientWidth - 80;
       mangaContainer.style.maxWidth = mangaOuterContainer.style.maxWidth = mangaWidth+'px';
+      resetPreviewSize();
     };
     //-----------------------------------------------------------------------------------
     document.onkeyup = function(e) //Enlarge with shift
