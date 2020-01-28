@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом.
 // @author          NightLancerX
-// @version         1.43.1
+// @version         1.43.2
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -292,14 +292,14 @@
       if (typeof artContainer.hasAttribute !== 'function'){
         console.log(artContainer,'has been filtered out.');
       }
-      else if (PAGETYPE===1 || PAGETYPE===6){
+      else if (PAGETYPE===1 || PAGETYPE===6 || PAGETYPE===4){
         userId = (artContainer.hasAttribute('data-user_id'))
           ?artContainer.getAttribute('data-user_id')
           :artContainer.querySelectorAll('.ui-profile-popup')[0].getAttribute('data-user_id');
       }
-      else if (PAGETYPE===4 || PAGETYPE===12){
-        artContainer = artContainer.querySelectorAll('.gtm-illust-recommend-title')[0] || artContainer; // -_-'
-        userId = artContainer.parentNode.querySelectorAll('[href*="/member.php?id="]')[0].getAttribute('href').split('=').pop();
+      else if (PAGETYPE===12){
+        //artContainer = artContainer.querySelectorAll('.gtm-illust-recommend-title')[0] || artContainer; // -_-' //for 4?
+        userId = artContainer.querySelectorAll('[href*="/en/users/"]')[0].getAttribute('href').split('/').pop();
       }
       else if (PAGETYPE===7){
         userId = artContainer.getAttribute('href').split('=').pop();
