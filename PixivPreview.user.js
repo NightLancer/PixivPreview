@@ -489,8 +489,30 @@
       document.body.appendChild(mangaOuterContainer);
       resetPreviewSize();
       //---------------------------------Settings menu-----------------------------------
-      let menuButton = $('[title="Related services"]')[0]; //possible error if not loaded in time
-      console.log(menuButton);
+      let header = $('#js-mount-point-header')[0];
+      // wait for header buttons added to dom
+      let observer = new MutationObserver(function (mutationsList, observer) {
+        // setTimeout to ensure buttons added to dom
+        setTimeout(function() {
+          let buttons = $('#js-mount-point-header button');
+          let menuButton = buttons[buttons.length - 1];
+          console.log(menuButton);
+          menuButton.addEventListener("click", function() {
+            //save setting when menu is "closed"(display == none)
+            if (menu.style.display == 'block') {
+              menu.style.display = 'none';
+              saveSettings();
+              setCurrentSettings();
+            }
+            else {
+              menu.style.display = 'block';
+            }
+          });
+
+          observer.disconnect();
+        }, 50);
+      });
+      observer.observe(header, { childList: true });
       //---------------------------------------------------------------------------------
       let menu = document.createElement("div");
           menu.id = "menu";
@@ -536,19 +558,6 @@
 
       $('#menu').on('click', 'button', function(){
         changeMenuValues(this);
-      });
-      //---------------------------------------------------------------------------------
-      menuButton.addEventListener("click", function()
-      {
-        //save setting when menu is "closed"(display == none)
-        if (menu.style.display == 'block'){
-          menu.style.display = 'none';
-          saveSettings();
-          setCurrentSettings();
-        }
-        else{
-          menu.style.display = 'block';
-        }
       });
       //-------------------------------Follow onclick------------------------------------
       let toFollow, isNew, followSelector;
