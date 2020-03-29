@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом.
 // @author          NightLancerX
-// @version         2.00
+// @version         2.1
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -42,7 +42,7 @@
         {paramIndex:0, array:[0, 500, 1000, 1500, 2000, 3000], name:"DELAY_BEFORE_PREVIEW"},
         {paramIndex:0, array:[0, 600, 1200], name:"PREVIEW_SIZE"},
         {paramIndex:0, array:[false,true], name:"ACCURATE_MANGA_PREVIEW"},
-        {paramIndex:0, array:[false,true], name:"DISABLE_MANGA_PREVIEW_SCROLLLING_PROPAGATION"},
+        {paramIndex:0, array:[false,true], name:"DISABLE_MANGA_PREVIEW_SCROLLING_PROPAGATION"},
         {paramIndex:1, array:[false,true], name:"SCROLL_INTO_VIEW_FOR_SINGLE_IMAGE"},
         {paramIndex:0, array:[false,true], name:"DISABLE_SINGLE_PREVIEW_BACKGROUND_SCROLLING"}
     ];
@@ -51,7 +51,7 @@
     // const DELAY_BEFORE_PREVIEW = 0; //if you need delay before showing art preview, set it here (1000 = 1 second)
     // const PREVIEW_SIZE = 0; //you can manually set size of preview to 1200 or 600 (pixels); Default value (0) means it will be calculated automatically with "live" dependence of current screen size
     // const ACCURATE_MANGA_PREVIEW = false; //if `true` - increases time before manga preview appearing(to 1sec) but shows it at more accurate position considering width(for case of few arts)
-    // const DISABLE_MANGA_PREVIEW_SCROLLLING_PROPAGATION = false; //defines whether to keep on scrolling propagation when reaching end of manga preview container
+    // const DISABLE_MANGA_PREVIEW_SCROLLING_PROPAGATION = false; //defines whether to keep on scrolling propagation when reaching end of manga preview container
     // const SCROLL_INTO_VIEW_FOR_SINGLE_IMAGE = true; //apply scrollIntoView for single preview
     // const DISABLE_SINGLE_PREVIEW_BACKGROUND_SCROLLING = false; //defines background scrolling for single preview when `SCROLL_INTO_VIEW_FOR_SINGLE_IMAGE` set to `true`
 
@@ -489,9 +489,6 @@
       document.body.appendChild(mangaOuterContainer);
       resetPreviewSize();
       //---------------------------------Settings menu-----------------------------------
-      let menuButton = $('[title="Related services"]')[0]; //possible error if not loaded in time
-      console.log(menuButton);
-      //---------------------------------------------------------------------------------
       let menu = document.createElement("div");
           menu.id = "menu";
           menu.style = `
@@ -506,7 +503,6 @@
                         font-size: 14px;
                         line-height: 22px;
                         color: rgb(0, 0, 0);
-                        padding: 5px 5px 5px 20px;
                         border-radius: 15px;
           `;
 
@@ -538,18 +534,30 @@
         changeMenuValues(this);
       });
       //---------------------------------------------------------------------------------
-      menuButton.addEventListener("click", function()
-      {
-        //save setting when menu is "closed"(display == none)
-        if (menu.style.display == 'block'){
-          menu.style.display = 'none';
-          saveSettings();
-          setCurrentSettings();
+      async function initMenu(){
+        let buttons, menuButton; //put to global scope if (menuButton) is needed elsewhere
+
+        while (!menuButton){
+          buttons = $('#js-mount-point-header button');
+          menuButton = buttons[buttons.length - 1]; // last is the menu button
+          console.log(menuButton);
+          await sleep(1000);
         }
-        else{
-          menu.style.display = 'block';
-        }
-      });
+
+        menuButton.addEventListener("click", function()
+        {
+          //save setting when menu is "closed"(display == none)
+          if (menu.style.display == 'block'){
+            menu.style.display = 'none';
+            saveSettings();
+            setCurrentSettings();
+          }
+          else{
+            menu.style.display = 'block';
+          }
+        });
+      }
+      initMenu();
       //-------------------------------Follow onclick------------------------------------
       let toFollow, isNew, followSelector;
       if ([2,7,12].includes(PAGETYPE)){
@@ -1200,7 +1208,7 @@
       }
 
       let scrlLft = mangaContainer.scrollLeft;
-      if ((currentSettings["DISABLE_MANGA_PREVIEW_SCROLLLING_PROPAGATION"]) || ((scrlLft>0 && e.deltaY<0) || ((scrlLft<(mangaContainer.scrollWidth-mangaContainer.clientWidth)) && e.deltaY>0)))
+      if ((currentSettings["DISABLE_MANGA_PREVIEW_SCROLLING_PROPAGATION"]) || ((scrlLft>0 && e.deltaY<0) || ((scrlLft<(mangaContainer.scrollWidth-mangaContainer.clientWidth)) && e.deltaY>0)))
       {
         e.preventDefault();
         mangaContainer.scrollLeft += e.deltaY*DELTASCALE;
