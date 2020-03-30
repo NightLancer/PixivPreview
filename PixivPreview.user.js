@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         2.11
+// @version         2.20
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -179,7 +179,7 @@
     //===================================================================================
     //**********************************ColorFollowed************************************
     //===================================================================================
-    if ([1,4,6,7].includes(PAGETYPE)) //+12 in initMutationParentObject -> user may not scroll to bottom, so it is better to stay in mutaionObserver
+    if ([1,4,6,7,10].includes(PAGETYPE)) //+12 in initMutationParentObject -> user may not scroll to bottom, so it is better to stay in mutaionObserver
     {
       checkFollowedArtistsInit();
     }
@@ -194,7 +194,7 @@
         checkFollowedArtists(BOOKMARK_URL+'?type=user');           //public
         checkFollowedArtists(BOOKMARK_URL+'?type=user&rest=hide'); //private
       }
-      else if ([6].includes(PAGETYPE)) colorFollowed();
+      else if ([6,10].includes(PAGETYPE)) colorFollowed();
     }
     //-----------------------------------------------------------------------------------
     async function checkFollowedArtists(url)
@@ -339,10 +339,14 @@
     function getArtsContainers()
     {
       switch (PAGETYPE){
-        case 1,4: return document.querySelectorAll('.gtm-illust-recommend-user-name');
+        case 1:
+        case 4:
+        case 6:
+        case 10:  return document.querySelectorAll('.ui-profile-popup'); //document.querySelectorAll('.gtm-illust-recommend-user-name');
+
         case 12:  return document.querySelectorAll('.gtm-illust-recommend-title');
-        case 6:   return document.querySelectorAll('.ui-profile-popup');
         case 7:   return document.querySelectorAll('li > div > a'); //('a[href*="/en/artworks/"]'); excessive - need to filter every 2 selectors
+
         default:  console.error('Unprocessed PAGETYPE in getArtsContainers()!');
       }
       return null;
@@ -355,7 +359,7 @@
       if (typeof artContainer.hasAttribute !== 'function'){
         console.log(artContainer,'has been filtered out.');
       }
-      else if (PAGETYPE===1 || PAGETYPE===6 || PAGETYPE===4){
+      else if (PAGETYPE===1 || PAGETYPE===4 || PAGETYPE===6 || PAGETYPE===10){
         userId = (artContainer.hasAttribute('data-user_id'))
           ?artContainer.getAttribute('data-user_id')
           :artContainer.querySelectorAll('.ui-profile-popup')[0].getAttribute('data-user_id');
