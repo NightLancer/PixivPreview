@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         2.20
+// @version         2.21
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -229,8 +229,8 @@
           }
           else
           {
-            if      (doc.querySelectorAll('li.current')[0].textContent==='Public')  CheckedPublic  = true;
-            else if (doc.querySelectorAll('li.current')[0].textContent==='Private') CheckedPrivate = true;
+            if      (doc.querySelectorAll('li.current')[0].textContent==='Public')  CheckedPublic  = true; //soft bug with non-English localization
+            else if (doc.querySelectorAll('li.current')[0].textContent==='Private') CheckedPrivate = true; //'endless'[30s] loading first time, but all works fine
 
             if (CheckedPublic && CheckedPrivate)
             {
@@ -345,7 +345,7 @@
         case 10:  return document.querySelectorAll('.ui-profile-popup'); //document.querySelectorAll('.gtm-illust-recommend-user-name');
 
         case 12:  return document.querySelectorAll('.gtm-illust-recommend-title');
-        case 7:   return document.querySelectorAll('li > div > a'); //('a[href*="/en/artworks/"]'); excessive - need to filter every 2 selectors
+        case 7:   return document.querySelectorAll('li > div > div > a'); //('a[href*="/en/artworks/"]'); excessive - need to filter every 2 selectors
 
         default:  console.error('Unprocessed PAGETYPE in getArtsContainers()!');
       }
@@ -369,7 +369,7 @@
         userId = artContainer.querySelectorAll('[href*="/users/"]')[0].getAttribute('href').split('/').pop();
       }
       else if (PAGETYPE===7){
-        userId = artContainer.parentNode.querySelectorAll('[href*="/users/"]')[0].getAttribute('href').split('/').pop();
+        userId = artContainer.parentNode.parentNode.querySelectorAll('[href*="/users/"]')[0].getAttribute('href').split('/').pop();
       }
       else{
         console.error('UNPROCESSED getUserId() call!');
@@ -562,11 +562,17 @@
       async function initMenu(){
         let buttons, menuButton; //put to global scope if (menuButton) is needed elsewhere
 
+        let c = 0;
         while (!menuButton){
-          buttons = $('#js-mount-point-header button');
+          buttons = $('#js-mount-point-header button'); //TODO: doesn't work on users page. Replace with own button later
           menuButton = buttons[buttons.length - 1]; // last is the menu button
           console.log(menuButton);
           await sleep(1000);
+          ++c;
+          if (c>5){
+            console.log('*Setting menu currently not available on this page*');
+            break;
+          }
         }
 
         menuButton.addEventListener("click", function()
