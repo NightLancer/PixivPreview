@@ -2,10 +2,9 @@
 // @name            Pixiv Arts Preview & Followed Atrists Coloring
 // @name:ru         Pixiv Arts Preview & Followed Atrists Coloring
 // @namespace       Pixiv
-// @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green.
-// @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом.
-// @author          NightLancerX
-// @version         2.1
+// @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
+// @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
+// @version         2.11
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -46,14 +45,35 @@
         {paramIndex:1, array:[false,true], name:"SCROLL_INTO_VIEW_FOR_SINGLE_IMAGE"},
         {paramIndex:0, array:[false,true], name:"DISABLE_SINGLE_PREVIEW_BACKGROUND_SCROLLING"}
     ];
-    //DEFAULT VALUES
-    // const PREVIEW_ON_CLICK = false; //if "true" — showing arts preview after LMB-click on art instead of hovering over it
-    // const DELAY_BEFORE_PREVIEW = 0; //if you need delay before showing art preview, set it here (1000 = 1 second)
-    // const PREVIEW_SIZE = 0; //you can manually set size of preview to 1200 or 600 (pixels); Default value (0) means it will be calculated automatically with "live" dependence of current screen size
-    // const ACCURATE_MANGA_PREVIEW = false; //if `true` - increases time before manga preview appearing(to 1sec) but shows it at more accurate position considering width(for case of few arts)
-    // const DISABLE_MANGA_PREVIEW_SCROLLING_PROPAGATION = false; //defines whether to keep on scrolling propagation when reaching end of manga preview container
-    // const SCROLL_INTO_VIEW_FOR_SINGLE_IMAGE = true; //apply scrollIntoView for single preview
-    // const DISABLE_SINGLE_PREVIEW_BACKGROUND_SCROLLING = false; //defines background scrolling for single preview when `SCROLL_INTO_VIEW_FOR_SINGLE_IMAGE` set to `true`
+    //---------------------------------DEFAULT VALUES------------------------------------
+    // ■ PREVIEW_ON_CLICK =
+    // false : showing preview on mouseover (default)
+    // true : showing preview after LMB-click
+    //
+    // ■ DELAY_BEFORE_PREVIEW =
+    // 0 : no delay before preview (default)
+    // 1000 : 1 second delay (2000 for 2 seconds, etc)
+    //
+    // ■ PREVIEW_SIZE =
+    // 0 : automatically calculate preview size (1200 or 600) depending of current screen size (default)
+    // 600 : up to 600px x 600px
+    // 1200 : up to 1200px x 1200px
+    //
+    // ■ ACCURATE_MANGA_PREVIEW =
+    // false : quicker, but less accurate in some cases (default)
+    // true : takes 1sec before preview showing for more accurate positioning
+    //
+    // ■ DISABLE_MANGA_PREVIEW_SCROLLLING_PROPAGATION =
+    // false : keeping page scrolling after end of manga preview scrolling (default)
+    // true : disable page scrolling when viewing manga preview (move mouse out of preview to re-enable scrolling)
+    //
+    // ■ SCROLL_INTO_VIEW_FOR_SINGLE_IMAGE =
+    // true : preview of single image will smoothly fit to vertical screen border after one scroll (default)
+    // false : manually scrolling (may need in case of forced 1200px vertical preview with small user screen)
+    //
+    // ■ DISABLE_SINGLE_PREVIEW_BACKGROUND_SCROLLING =
+    // false: standard behavior (default)
+    // true : disable page scrolling when viewing single preview (works only if previous setting set to true)
 
     let currentSettings = {};
     //-----------------------------------------------------------------------------------
@@ -127,6 +147,7 @@
       for (let i = 0; i < propList.length; i++){
         currentSettings[propList[i].name] = propList[i].array[propList[i].paramIndex];
       }
+      resetPreviewSize(); //needed because of "auto" feature
     }
     //-----------------------------------------------------------------------------------
     function saveSettings(){
@@ -487,7 +508,6 @@
       mangaContainer.style.maxWidth = mangaOuterContainer.style.maxWidth = mangaWidth+'px';
       document.body.appendChild(imgContainer);
       document.body.appendChild(mangaOuterContainer);
-      resetPreviewSize();
       //---------------------------------Settings menu-----------------------------------
       let menu = document.createElement("div");
           menu.id = "menu";
