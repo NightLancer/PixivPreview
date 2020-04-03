@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         2.22
+// @version         2.3
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -108,7 +108,18 @@
         isBookmarked = false, //rework or delete. Arts can be bookmarked on art page.
         DELTASCALE = ('mozInnerScreenX' in window)?70:4,
         previewEventType,
-        PAGETYPE = checkPageType();
+        PAGETYPE = checkPageType(),
+        followedCheck = {
+          status:0,
+          date:0,
+          saveState(){
+            localStorage.setObj('followedCheck', this);
+          },
+          loadState(){
+            this.status = (localStorage.getObj('followedCheck'))? localStorage.getObj('followedCheck').status: 0;
+            this.date   = (localStorage.getObj('followedCheck'))? localStorage.getObj('followedCheck').date: 0;
+          }
+        };
 
     var timerId, tInt;
     //-----------------------------------------------------------------------------------
@@ -186,15 +197,17 @@
 
     function checkFollowedArtistsInit()
     {
-      if ((Date.now()-23*60*60*1000)>localStorage.getItem('followedCheckDate') && !localStorage.getObj('followedCheckStarted')) //forcing update followed list(in case of errors) at least every 23 hours
-      {
-        console.log('followedCheckStarted');
-        localStorage.setObj('followedCheckCompleted', false);
-        localStorage.setObj('followedCheckStarted', true);
+      followedCheck.loadState();
+      if (((Date.now()-23*60*60*1000) > followedCheck.date) || (followedCheck.status < 2)){
+        console.log('Followed check started');
+
+        followedCheck.status = 1;
+        followedCheck.saveState();
+
         checkFollowedArtists(BOOKMARK_URL+'?type=user');           //public
         checkFollowedArtists(BOOKMARK_URL+'?type=user&rest=hide'); //private
       }
-      else if ([6,10].includes(PAGETYPE)) colorFollowed();
+      if ([6,10].includes(PAGETYPE)) colorFollowed();
     }
     //-----------------------------------------------------------------------------------
     async function checkFollowedArtists(url)
@@ -224,24 +237,24 @@
           let urlTail = $(doc).find('a[rel="next"]').attr('href');
           if (urlTail !== undefined && urlTail.length)
           {
-            console.log(urlTail);
+            console.log(urlTail.split('&').pop());
             checkFollowedArtists(BOOKMARK_URL+urlTail);
           }
           else
           {
-            if      (doc.querySelectorAll('li.current')[0].textContent==='Public')  CheckedPublic  = true; //soft bug with non-English localization
-            else if (doc.querySelectorAll('li.current')[0].textContent==='Private') CheckedPrivate = true; //'endless'[30s] loading first time, but all works fine
+            if      (doc.querySelectorAll("a[href*='bookmark.php?type=user&rest=']")[0].href.match('hide')) CheckedPublic  = true;
+            else if (doc.querySelectorAll("a[href*='bookmark.php?type=user&rest=']")[0].href.match('show')) CheckedPrivate = true;
+
+            console.log(CheckedPublic);
+            console.log(CheckedPrivate);
 
             if (CheckedPublic && CheckedPrivate)
             {
-              localStorage.setObj('followedCheckCompleted', true);
-              localStorage.setObj('followedCheckStarted', false);
               localStorage.setObj('followedUsersId', followedUsersId);
-              localStorage.setObj('followedCheckDate', Date.now());
-              localStorage.setObj('followedCheckError', false);
+              followedCheck.status = 2;
+              followedCheck.date = Date.now();
+              followedCheck.saveState();
               console.log('Followed check completed');
-
-              if (PAGETYPE===6) colorFollowed(); //only for daily rankings? | for loading on same page case
             }
           }
           doc = followedProfiles = null;
@@ -250,9 +263,8 @@
       xhr.onerror = function()
       {
         console.error('ERROR while GETTING subscriptions list!');
-        localStorage.setObj('followedCheckError', true);
-        localStorage.setObj('followedCheckCompleted', false);
-        localStorage.setObj('followedCheckStarted', false);
+        followedCheck.status = -1;
+        followedCheck.saveState();
       };
       xhr.send();
     }
@@ -278,40 +290,34 @@
       //console.log(artsContainersLength);
 
       //wait until last XHR completed if it is not---------------------------------------
-      if (localStorage.getObj('followedCheckCompleted') === null || localStorage.getObj('followedCheckCompleted') === false)
+      followedCheck.loadState();
+
+      if (followedCheck.status == 1)
       {
-        if (localStorage.getObj('followedCheckStarted'))
+        while (!(followedCheck.status == 2))
         {
-          while (!localStorage.getObj('followedCheckCompleted'))
-          {
-            console.log("waiting for followed users..."); //this could happen in case of huge followed users amount
-            await sleep(2000);
+          console.log("waiting for followed users..."); //this could happen in case of huge followed users amount
+          await sleep(2000);
+          followedCheck.loadState();
 
-            if (localStorage.getObj('followedCheckError'))
-            {
-              console.error('ERROR while RECEIVING subscriptions list!');
-              break;
-            }
-
-            ++d;
-            if (d*2000>maxRequestTime)
-            {
-              console.error('ERROR while EXPECTING for subscriptions list!');
-              localStorage.setObj('followedCheckError', true);
-              localStorage.setObj('followedCheckCompleted', false);
-              localStorage.setObj('followedCheckStarted', false);
-              break;
-            }
+          ++d;
+          if (d*2000 > maxRequestTime){
+            console.error(`ERROR while EXPECTING for subscriptions list! [${d*2000}s]`);
+            console.log(`Trying to load cached followedUsersId by date of ${Date(followedCheck.date)} ...`);
+            followedUsersId = localStorage.getObj('followedUsersId');
+            console.log(`Loaded ${Object.keys(followedUsersId).length} followed users`);
+            break;
           }
-          followedUsersId = localStorage.getObj('followedUsersId');
-          console.log('Successfully received followedUsersId: '+ Object.keys(followedUsersId).length);
         }
-        else console.error('Subscriptions check was not STARTED for some reason!');
       }
-      else
-      {
+
+      if (followedCheck.status == 2){
         followedUsersId = localStorage.getObj('followedUsersId');
-        console.log('Successfully loaded cached followedUsersId: '+ Object.keys(followedUsersId).length);
+        console.log(`Loaded ${Object.keys(followedUsersId).length} followed users`);
+      }
+
+      if (followedCheck.status <= 0){
+        console.error(`There was some error during followed users loading [Error Code: ${followedCheck.status}]`);
       }
       //---------------------------------------------------------------------------------
       //artsLoaded = (PAGETYPE===12)?$('.gtm-illust-recommend-user-name').length:$('.ui-profile-popup').length; //if it brokes - get info from getArtsContainers()
