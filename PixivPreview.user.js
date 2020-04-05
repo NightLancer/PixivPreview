@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         2.30
+// @version         2.31
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -110,8 +110,8 @@
         previewEventType,
         PAGETYPE = checkPageType(),
         followedCheck = {
-          status:0,
-          date:0,
+          status:0,                                                                      //-1: error, 0:default, 1:in progress, 2:done
+          date:0,                                                                        //date of last successful check
           saveState(){
             localStorage.setObj('followedCheck', this);
           },
@@ -146,12 +146,11 @@
       if (document.URL.match('https://www.pixiv.net/discovery/users?'))                                     return 13; //Discovery page(users) New +
       if (document.URL.match('https://www.pixiv.net/stacc?'))                                               return 11; //Feed ('stacc') Old + - currently broken
       if (document.URL.match(/https:\/\/www\.pixiv\.net\/(?:en\/)?/))                                       return 10; //Home page
-      //if (document.URL.match('https://www.pixiv.net/member.php?'))                                          return 3; //Artist "Home" page - New +  | Todo: merge 2 and 3 pages?...
 
       return -1;
     }
     console.log('PAGETYPE: '+ PAGETYPE);
-    //Old: 0,1,4,6,9,11
+    //Old: 0,1,4,6,9,10,11
     //New: 2,7,12,13,8
 
     //===================================================================================
@@ -375,7 +374,7 @@
         userId = artContainer.querySelectorAll('[href*="/users/"]')[0].getAttribute('href').split('/').pop();
       }
       else if (PAGETYPE===7){
-        userId = artContainer.parentNode.parentNode.querySelectorAll('[href*="/users/"]')[0].getAttribute('href').split('/').pop();
+        userId = artContainer.parentNode.parentNode.querySelectorAll('[href*="/users/"]')[0].getAttribute('href').split('/').pop(); //TODO: some global reference
       }
       else{
         console.error('UNPROCESSED getUserId() call!');
@@ -532,14 +531,15 @@
                         border-radius: 15px;
                         background: white;
                         font-size: 14px;
-                        line-height: 22px;
+                        line-height: 17px;
                         color: rgb(0, 0, 0);
                         border-radius: 15px;
+                        word-wrap: normal;
           `;
 
       //filling menu fields with values and property names
       for (let i = 0; i < propList.length; i++){
-        menu.innerHTML += `<li><button style = 'width: 40px; margin-right: 5px;'>${propList[i].array[propList[i].paramIndex]}</button>${propList[i].name}</li>`
+        menu.innerHTML += `<li style = 'font:inherit;'><button style = 'width: 40px; padding: 0px; margin-right: 5px;'>${propList[i].array[propList[i].paramIndex]}</button>${propList[i].name}</li>`
       }
 
       document.body.appendChild(menu);
@@ -928,7 +928,7 @@
       }
       */
       //---------------------------------------------------------------------------------
-      if (currentSettings["DELAY_BEFORE_PREVIEW"]>0) $('body').on('mouseleave', 'a[href*="member_illust.php?mode=medium&illust_id="]', function()
+      if (currentSettings["DELAY_BEFORE_PREVIEW"]>0) $('body').on('mouseleave', 'a[href*="/artworks/"]', function()
       {
         clearTimeout(timerId);
       });
