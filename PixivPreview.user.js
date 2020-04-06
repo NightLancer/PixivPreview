@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         2.31
+// @version         2.32
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -116,8 +116,8 @@
             localStorage.setObj('followedCheck', this);
           },
           loadState(){
-            this.status = (localStorage.getObj('followedCheck'))? localStorage.getObj('followedCheck').status: 0;
-            this.date   = (localStorage.getObj('followedCheck'))? localStorage.getObj('followedCheck').date: 0;
+            this.status = (localStorage.getObj('followedCheck') && localStorage.getObj('followedCheck').status)? localStorage.getObj('followedCheck').status: 0;
+            this.date   = (localStorage.getObj('followedCheck') && localStorage.getObj('followedCheck').date)?   localStorage.getObj('followedCheck').date:   0;
           }
         };
 
@@ -129,6 +129,17 @@
     Storage.prototype.getObj = function(key){
       return JSON.parse(this.getItem(key))
     }
+    /*
+    Array.prototype.last = function(){
+      return this[this.length - 1];
+    }
+    Object.prototype.last = function(){
+      return Object.keys(this)[Object.keys(this).length - 1];
+    }
+    Object.prototype.length = function(){
+      return Object.keys(this).length;
+    }
+    */
     //===================================================================================
     //************************************PageType***************************************
     //===================================================================================
@@ -479,24 +490,36 @@
     }
     */
     //-----------------------------------------------------------------------------------
+    function searchNearestNode(el, selector)
+    {
+      let userIdElement = el.querySelectorAll(selector)[0];
+      while ((!userIdElement) && (el != document.body)){
+        el = el.parentNode;
+        userIdElement = el.querySelectorAll(selector)[0];
+      }
+      return userIdElement;
+    }
+    //-----------------------------------------------------------------------------------
     function followage(thisObj, toFollow, isNew) //In case of followed check lasting too long, async queue may be a solution
     {
       console.log('toFollow: '+ toFollow);
       let userId;
       switch (isNew){
         case 0: userId = thisObj.parentNode.parentNode.querySelectorAll('a.user-name')[0].getAttribute('href').split('&')[0].split('=')[1]; break; //OLD
-        case 1: userId = thisObj.parentNode.parentNode.parentNode.querySelectorAll('[href*="/users/"]')[0].getAttribute('href').split('/').pop(); break; //NEW
+        case 1: userId = searchNearestNode(thisObj, '[href*="/users/"]').getAttribute('href').split('/').filter(el => el.match(/\d+/))[0]; break; //NEW
         case 2: userId = thisObj.getAttribute('data-user-id'); break; //recommended users
       }
 
       if (!(userId>0)) console.error(`Wrong userId! ${userId}`);
 
-      if (localStorage.getObj('followedCheckCompleted')) //at least basic check until queue is developed
+      if (localStorage.getObj('followedCheck').status == 2) //at least basic check until queue is developed
       {
         let followedUsersId = localStorage.getObj('followedUsersId'); //local
         if (toFollow){
           followedUsersId[userId] = true;
-          //if ([2,7,12].includes(PAGETYPE)) initFollowagePreview();
+          if ([2,7,12].includes(PAGETYPE)){
+            initFollowagePreview();
+          }
         }
         else
           delete followedUsersId[userId];
@@ -505,6 +528,31 @@
         console.log('userId ' + userId + [(toFollow)?' added to':' deleted from'] + ' localStorage. Followed: '+ Object.keys(followedUsersId).length);
       }
       else console.error('Slow down! You have subscribed too many to handle this by now! Wait for the next updates or let me know.');
+    }
+    //-------------------------------------Followage------------------------------------- //2,7,12
+    function initFollowagePreview() //todo: broken
+    {
+      let b = false;
+
+      $('body').on(previewEventType, '.gtm-recommend-user-thumbnail', function(e)
+      {
+        e.preventDefault();
+        //let top = window.innerHeight - previewSize - 5 + window.scrollY + 'px';
+        let top = window.scrollY + 5 + 'px';
+        setHover(this.firstChild.firstChild, top);
+
+        if (!b){ //todo: beautify this later
+          //console.log(111);
+          let a = $('.gtm-recommend-user-thumbnail')[0];
+          let scroll = $(a).parents('ul')[1].parentNode;
+          scroll.onwheel = function(ev)
+          {
+            ev.preventDefault();
+            scroll.scrollLeft += ev.deltaY*DELTASCALE;
+          };
+          b = true;
+        }
+      });
     }
     //===================================================================================
     if      (PAGETYPE===0 || PAGETYPE===1)                  siteImgMaxWidth = 198;
@@ -576,7 +624,7 @@
           await sleep(1000);
           ++c;
           if (c>5){
-            console.log('*Setting menu currently not available on this page*');
+            console.log('*Setting menu currently unavailable on this page*');
             break;
           }
         }
@@ -701,24 +749,6 @@
             setHover(this);
             imgContainer.style.top = getOffsetRect(this).top+200+'px';
           }
-        });
-      }
-      //-------------------------------------Followage----------------------------------- //2,7,12
-      function initFollowagePreview() //todo: broken
-      {
-        $('body').on(previewEventType, '.gtm-recommend-user-thumbnail', function(e)
-        {
-          e.preventDefault();
-
-          let top = window.innerHeight - previewSize - 5 + window.scrollY + 'px';
-          setHover(this.firstChild.firstChild, top);
-
-          let scroll = getElementByXpath('/html/body/div[6]/div/div/div/div/ul');
-          scroll.onwheel = function(ev)
-          {
-            ev.preventDefault();
-            scroll.scrollLeft += ev.deltaY*DELTASCALE;
-          };
         });
       }
       //--------------------NEW ILLUSTRATIONS, DISCOVERY[ARTWORKS] AND SEARCH------------ //0,1,8
@@ -998,6 +1028,7 @@
     //-----------------------------------------------------------------------------------
     function adjustSinglePreview(dcw, l, contentWidth)
     {
+      if (l<0) l = 5; //followage preview
       let d = dcw - l - contentWidth - 5; //5 - padding - todo...
       imgContainer.style.left = (d>=0)?l+'px':l+d+'px';
       checkDelay(function(){imgContainer.style.display='block';});
