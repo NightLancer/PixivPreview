@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         2.32
+// @version         2.33
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -161,9 +161,12 @@
       return -1;
     }
     console.log('PAGETYPE: '+ PAGETYPE);
-    //Old: 0,1,4,6,9,10,11
-    //New: 2,7,12,13,8
-
+    //Old:          0,1,  4,6,    9,10,11
+    //New:              2,    7,8,        12,13
+    //==============--------------------------
+    //Coloring:     - 1,- 4,6,7,~ ~ 10,~~ 12 -- //not actual: 4
+    //Profile card: 0,1,-,4,6,± ~ 9,10,11 ±± -- //~todo: 7,12
+    //On following: - 1,2,- 6 - ~ - -- -- 12,13
     //===================================================================================
     function setCurrentSettings(){
       for (let i = 0; i < propList.length; i++){
@@ -503,12 +506,7 @@
     function followage(thisObj, toFollow, isNew) //In case of followed check lasting too long, async queue may be a solution
     {
       console.log('toFollow: '+ toFollow);
-      let userId;
-      switch (isNew){
-        case 0: userId = thisObj.parentNode.parentNode.querySelectorAll('a.user-name')[0].getAttribute('href').split('&')[0].split('=')[1]; break; //OLD
-        case 1: userId = searchNearestNode(thisObj, '[href*="/users/"]').getAttribute('href').split('/').filter(el => el.match(/\d+/))[0]; break; //NEW
-        case 2: userId = thisObj.getAttribute('data-user-id'); break; //recommended users
-      }
+      let userId = searchNearestNode(thisObj, '[href*="/users/"]').getAttribute('href').split('/').filter(el => el.match(/\d+/))[0];
 
       if (!(userId>0)) console.error(`Wrong userId! ${userId}`);
 
@@ -529,8 +527,8 @@
       }
       else console.error('Slow down! You have subscribed too many to handle this by now! Wait for the next updates or let me know.');
     }
-    //-------------------------------------Followage------------------------------------- //2,7,12
-    function initFollowagePreview() //todo: broken
+    //-------------------------------------Followage-------------------------------------
+    function initFollowagePreview()
     {
       let b = false;
 
@@ -631,36 +629,31 @@
 
         menuButton.addEventListener("click", function()
         {
-          //save setting when menu is "closed"(display == none)
-          if (menu.style.display == 'block'){
-            menu.style.display = 'none';
-            saveSettings();
-            setCurrentSettings();
-          }
-          else{
-            menu.style.display = 'block';
-          }
+          menu.style.display = 'block';
         });
       }
+      //---------------------------------------------------------------------------------
+      $(document).mouseup(function (e){
+        if (($(menu).has(e.target).length === 0) && (menu.style.display == 'block')){
+          menu.style.display = 'none';
+          saveSettings();
+          setCurrentSettings();
+        }
+      });
+      //---------------------------------------------------------------------------------
       initMenu();
       //-------------------------------Follow onclick------------------------------------
-      let toFollow, isNew, followSelector;
+      let toFollow, followSelector;
       if ([2,7,12].includes(PAGETYPE)){
         followSelector = '[data-click-label*="follow"]';
-        isNew = 1;
       }
-      else if([13].includes(PAGETYPE)){
+      else if([1,6,13].includes(PAGETYPE)){
         followSelector = '.follow-button';
-        isNew = 2;
-      }
-      else {
-        followSelector = '.follow-button';
-        isNew = 0;
       }
 
       $('body').on('mouseup', followSelector, function(){
-        toFollow = (this.textContent == 'Follow');
-        followage(this, toFollow, isNew);
+        toFollow = (this.textContent == 'Follow'); //~mustn't work on non-English locale
+        followage(this, toFollow);
       });
       //----------------------------Bookmark detail page cleaning------------------------
       if (PAGETYPE===4)
@@ -704,6 +697,10 @@
           PAGETYPE = 7;
           bookmarksInit();
         });
+        $('body').on('mouseup', 'a[href*="/illustrations"]', function(){ ///???
+          console.log('PAGETYPE: '+ PAGETYPE+' -> 2');
+          PAGETYPE = 2;
+        });
         // $('body').on('mouseup', 'a[href*="/member.php?id="]', function(){
         //   console.log('PAGETYPE: '+ PAGETYPE+' -> 3');
         //   PAGETYPE = 3;
@@ -743,6 +740,7 @@
       {
         $('body').on(previewEventType, 'a[href*="/artworks/"]', function(e)
         {
+          console.log('Profile card');
           e.preventDefault();
           if (this.childNodes.length === 0) //for preventing issues with 4 and 6 pages
           {
@@ -865,7 +863,7 @@
             setHover(this.childNodes[0]); //todo? - zero child-node trying?
           }
           //manga-style arts hover-------------------------------------------------------
-          else
+          else // if (this.parentNode.firstChild.childNodes.length===2)
           {
             bookmarkObj = this.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0];
             setMangaHover(this.childNodes[0], this.parentNode.firstChild.childNodes[1].textContent);
