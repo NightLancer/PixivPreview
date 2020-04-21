@@ -25,7 +25,7 @@ For larger amount of artworks, horisontal scrollbar is appeared, but scrolling v
 ■ The names of the authors(users) you are already subscribed to are highlighted with green.
 <img src=http://i.prntscr.com/xa2ErFzkQOGLloz9kAHRZQ.png><br>
 
-Settings menu is available by the clicking on "Related services" icon, that is located in right top corner of site page. Settings are saved and immediately applied after menu is closed by the second click on "Related services" button.
+Settings menu is available by the clicking on "Related services" icon, that is located in right top corner of site page. Settings are saved and immediately applied after menu is closed by the clicking on any other space.
 <img src=http://i.prntscr.com/22_SOQ3kQBSj_IW-uvvVnw.png><br>
 
 Preferences:<br>
