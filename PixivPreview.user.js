@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         2.33
+// @version         2.33.5
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -39,7 +39,7 @@
     //---------------------------***CUSTOM PREFERENCES***--------------------------------
     let propList = [
         {paramIndex:0, array:[false,true], name:"PREVIEW_ON_CLICK"},
-        {paramIndex:0, array:[0, 500, 1000, 1500, 2000, 3000], name:"DELAY_BEFORE_PREVIEW"},
+        {paramIndex:0, array:[0, 100, 200, 300, 500, 1000, 1500], name:"DELAY_BEFORE_PREVIEW"},
         {paramIndex:0, array:[0, 600, 1200], name:"PREVIEW_SIZE"},
         {paramIndex:0, array:[false,true], name:"ACCURATE_MANGA_PREVIEW"},
         {paramIndex:0, array:[false,true], name:"DISABLE_MANGA_PREVIEW_SCROLLING_PROPAGATION"},
@@ -212,7 +212,7 @@
     {
       followedCheck.loadState();
       if (((Date.now()-23*60*60*1000) > followedCheck.date) || (followedCheck.status < 2)){
-        console.log('Followed check started');
+        console.log('*Followed check started*');
 
         followedCheck.status = 1;
         followedCheck.saveState();
@@ -230,48 +230,45 @@
       let xhr = new XMLHttpRequest();
       xhr.open('GET', url, true);
       xhr.timeout = 15000;
-      xhr.onreadystatechange = function ()
+      xhr.onload = function ()
       {
-        if (xhr.readyState == 4 && xhr.status == 200)
+        console.log("XHR done");
+
+        let doc = document.implementation.createHTMLDocument("Followed");
+        doc.documentElement.innerHTML = xhr.responseText;
+
+        let followedProfiles = doc.querySelectorAll('div>a.ui-profile-popup');
+        for(let i = 0; i < followedProfiles.length; i++)
         {
-          console.log("XHR done");
-
-          let doc = document.implementation.createHTMLDocument("Followed");
-          doc.documentElement.innerHTML = xhr.responseText;
-
-          let followedProfiles = doc.querySelectorAll('div>a.ui-profile-popup');
-          for(let i = 0; i < followedProfiles.length; i++)
-          {
-            //followedUsersId.push(followedProfiles[i].getAttribute("data-user_id"));
-            followedUsersId[followedProfiles[i].getAttribute("data-user_id")] = true;
-          }
-          console.log(Object.keys(followedUsersId).length);
-
-          let urlTail = $(doc).find('a[rel="next"]').attr('href');
-          if (urlTail !== undefined && urlTail.length)
-          {
-            console.log(urlTail.split('&').pop());
-            checkFollowedArtists(BOOKMARK_URL+urlTail);
-          }
-          else
-          {
-            if      (doc.querySelectorAll("a[href*='bookmark.php?type=user&rest=']")[0].href.match('hide')) CheckedPublic  = true;
-            else if (doc.querySelectorAll("a[href*='bookmark.php?type=user&rest=']")[0].href.match('show')) CheckedPrivate = true;
-
-            console.log(CheckedPublic);
-            console.log(CheckedPrivate);
-
-            if (CheckedPublic && CheckedPrivate)
-            {
-              localStorage.setObj('followedUsersId', followedUsersId);
-              followedCheck.status = 2;
-              followedCheck.date = Date.now();
-              followedCheck.saveState();
-              console.log('Followed check completed');
-            }
-          }
-          doc = followedProfiles = null;
+          //followedUsersId.push(followedProfiles[i].getAttribute("data-user_id"));
+          followedUsersId[followedProfiles[i].getAttribute("data-user_id")] = true;
         }
+        console.log(Object.keys(followedUsersId).length);
+
+        let urlTail = $(doc).find('a[rel="next"]').attr('href');
+        if (urlTail !== undefined && urlTail.length)
+        {
+          console.log(urlTail.split('&').pop());
+          checkFollowedArtists(BOOKMARK_URL+urlTail);
+        }
+        else
+        {
+          if      (doc.querySelectorAll("a[href*='bookmark.php?type=user&rest=']")[0].href.match('hide')) CheckedPublic  = true;
+          else if (doc.querySelectorAll("a[href*='bookmark.php?type=user&rest=']")[0].href.match('show')) CheckedPrivate = true;
+
+          console.log(CheckedPublic);
+          console.log(CheckedPrivate);
+
+          if (CheckedPublic && CheckedPrivate)
+          {
+            localStorage.setObj('followedUsersId', followedUsersId);
+            followedCheck.status = 2;
+            followedCheck.date = Date.now();
+            followedCheck.saveState();
+            console.log('*Followed check completed*');
+          }
+        }
+        doc = followedProfiles = null;
       };
       xhr.onerror = function()
       {
@@ -279,6 +276,12 @@
         followedCheck.status = -1;
         followedCheck.saveState();
       };
+      xhr.ontimeout = function()
+      {
+        console.error(`XMLHttpRequest timeout error [${xhr.timeout}]s`);
+        followedCheck.status = -1;
+        followedCheck.saveState();
+      }
       xhr.send();
     }
     //-----------------------------------------------------------------------------------
@@ -388,7 +391,7 @@
         userId = artContainer.querySelectorAll('[href*="/users/"]')[0].getAttribute('href').split('/').pop();
       }
       else if (PAGETYPE===7){
-        userId = artContainer.parentNode.parentNode.querySelectorAll('[href*="/users/"]')[0].getAttribute('href').split('/').pop(); //TODO: some global reference
+        userId = searchNearestNode(artContainer,'[href*="/users/"]').getAttribute('href').split('/').pop(); //artContainer.parentNode.parentNode.querySelectorAll('[href*="/users/"]')[0]//
       }
       else{
         console.error('UNPROCESSED getUserId() call!');
@@ -495,12 +498,12 @@
     //-----------------------------------------------------------------------------------
     function searchNearestNode(el, selector)
     {
-      let userIdElement = el.querySelectorAll(selector)[0];
-      while ((!userIdElement) && (el != document.body)){
+      let nearestNode = el.querySelectorAll(selector)[0];
+      while ((!nearestNode) && (el != document.body)){
         el = el.parentNode;
-        userIdElement = el.querySelectorAll(selector)[0];
+        nearestNode = el.querySelectorAll(selector)[0];
       }
-      return userIdElement;
+      return nearestNode;
     }
     //-----------------------------------------------------------------------------------
     function followage(thisObj, toFollow, isNew) //In case of followed check lasting too long, async queue may be a solution
@@ -651,10 +654,12 @@
         followSelector = '.follow-button';
       }
 
-      $('body').on('mouseup', followSelector, function(){
-        toFollow = (this.textContent == 'Follow'); //~mustn't work on non-English locale
-        followage(this, toFollow);
-      });
+      if([1,2,6,7,12,13].includes(PAGETYPE)){
+        $('body').on('mouseup', followSelector, function(){
+          toFollow = (this.textContent == 'Follow'); //~mustn't work on non-English locale
+          followage(this, toFollow);
+        });
+      }
       //----------------------------Bookmark detail page cleaning------------------------
       if (PAGETYPE===4)
       {
@@ -683,6 +688,12 @@
           colorFollowed(); //process missed arts containers
           createObserver(zone);
         }
+        //some ads removing--------------------------------------------------------------
+        setTimeout(()=>{
+          document.querySelectorAll('iframe').forEach((el)=>{el.remove()});
+          document.querySelectorAll('a[href*="/premium"]').forEach((el)=>{el.remove()});
+          console.log('ads cleared');
+        },2000);
       }
       //-----------------------------Init illust fetch listener--------------------------
       if (PAGETYPE===1 || PAGETYPE===4 || PAGETYPE===6)
@@ -1220,16 +1231,13 @@
       let xhr = new XMLHttpRequest();
       xhr.responseType = 'json';
       xhr.open("GET", illustPageUrl, true);
-      xhr.onreadystatechange = function ()
+      xhr.onload = function ()
       {
-        if (xhr.readyState == 4 && xhr.status == 200)
-        {
-          let originalArtUrl = this.response.body.urls.original;
-          if (pageNum>0) originalArtUrl = originalArtUrl.replace('p0','p'+pageNum);
+        let originalArtUrl = this.response.body.urls.original;
+        if (pageNum>0) originalArtUrl = originalArtUrl.replace('p0','p'+pageNum);
 
-          if (toSave)    saveImgByUrl(originalArtUrl);
-          else           window.open(originalArtUrl, '_blank');
-        }
+        if (toSave)    saveImgByUrl(originalArtUrl);
+        else           window.open(originalArtUrl, '_blank');
       };
       xhr.send();
     }
