@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         2.33.5
+// @version         2.34
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -161,11 +161,11 @@
       return -1;
     }
     console.log('PAGETYPE: '+ PAGETYPE);
-    //Old:          0,1,  4,6,    9,10,11
-    //New:              2,    7,8,        12,13
+    //Old:          0,1,  4,6,    9,  ,11
+    //New:              2,    7,8,  10    12,13
     //==============--------------------------
-    //Coloring:     - 1,- 4,6,7,~ ~ 10,~~ 12 -- //not actual: 4
-    //Profile card: 0,1,-,4,6,± ~ 9,10,11 ±± -- //~todo: 7,12
+    //Coloring:     - 1,- 4,6,7,~ ~ ±±,~~ 12 -- //?todo: 10 | not actual: 4
+    //Profile card: 0,1,-,4,6,± ~ 9,~~,11 ±± -- //~todo: 7,10,12
     //On following: - 1,2,- 6 - ~ - -- -- 12,13
     //===================================================================================
     function setCurrentSettings(){
@@ -203,7 +203,7 @@
     //===================================================================================
     //**********************************ColorFollowed************************************
     //===================================================================================
-    if ([1,4,6,7,10].includes(PAGETYPE)) //+12 in initMutationParentObject -> user may not scroll to bottom, so it is better to stay in mutaionObserver
+    if ([1,4,6,7].includes(PAGETYPE)) //+12 in initMutationParentObject -> user may not scroll to bottom, so it is better to stay in mutaionObserver
     {
       checkFollowedArtistsInit();
     }
@@ -220,7 +220,7 @@
         checkFollowedArtists(BOOKMARK_URL+'?type=user');           //public
         checkFollowedArtists(BOOKMARK_URL+'?type=user&rest=hide'); //private
       }
-      if ([6,10].includes(PAGETYPE)) colorFollowed();
+      if ([6].includes(PAGETYPE)) colorFollowed();  //TODO: 10 into mutaionObserver
     }
     //-----------------------------------------------------------------------------------
     async function checkFollowedArtists(url)
@@ -363,11 +363,12 @@
       switch (PAGETYPE){
         case 1:
         case 4:
-        case 6:
-        case 10:  return document.querySelectorAll('.ui-profile-popup'); //document.querySelectorAll('.gtm-illust-recommend-user-name');
+        case 6:  return document.querySelectorAll('.ui-profile-popup'); //document.querySelectorAll('.gtm-illust-recommend-user-name');
 
-        case 12:  return document.querySelectorAll('.gtm-illust-recommend-title');
-        case 7:   return document.querySelectorAll('a[href*="/artworks/"]:only-child'); //('li > div > div > a'); Done?
+        case 12: return document.querySelectorAll('.gtm-illust-recommend-title');
+
+        case 7:
+        case 10: return document.querySelectorAll('a[href*="/artworks/"]:only-child'); //('li > div > div > a'); Done?
 
         default:  console.error('Unprocessed PAGETYPE in getArtsContainers()!');
       }
@@ -381,7 +382,7 @@
       if (typeof artContainer.hasAttribute !== 'function'){
         console.log(artContainer,'has been filtered out.');
       }
-      else if (PAGETYPE===1 || PAGETYPE===4 || PAGETYPE===6 || PAGETYPE===10){
+      else if (PAGETYPE===1 || PAGETYPE===4 || PAGETYPE===6){
         userId = (artContainer.hasAttribute('data-user_id'))
           ?artContainer.getAttribute('data-user_id')
           :artContainer.querySelectorAll('.ui-profile-popup')[0].getAttribute('data-user_id');
@@ -390,7 +391,7 @@
         //artContainer = artContainer.querySelectorAll('.gtm-illust-recommend-title')[0] || artContainer; // -_-' //for 4?
         userId = artContainer.querySelectorAll('[href*="/users/"]')[0].getAttribute('href').split('/').pop();
       }
-      else if (PAGETYPE===7){
+      else if (PAGETYPE===7 || PAGETYPE===10){
         userId = searchNearestNode(artContainer,'[href*="/users/"]').getAttribute('href').split('/').pop(); //artContainer.parentNode.parentNode.querySelectorAll('[href*="/users/"]')[0]//
       }
       else{
@@ -557,7 +558,7 @@
     }
     //===================================================================================
     if      (PAGETYPE===0 || PAGETYPE===1)                  siteImgMaxWidth = 198;
-    else if (PAGETYPE===4 || PAGETYPE===9 || PAGETYPE===10) siteImgMaxWidth = 150;
+    else if (PAGETYPE===4 || PAGETYPE===9)                  siteImgMaxWidth = 150;
     else if (PAGETYPE===6 || PAGETYPE===11)                 siteImgMaxWidth = 240;
     //-----------------------------------------------------------------------------------
     $(document).ready(function ()
@@ -656,7 +657,7 @@
 
       if([1,2,6,7,12,13].includes(PAGETYPE)){
         $('body').on('mouseup', followSelector, function(){
-          toFollow = (this.textContent == 'Follow'); //~mustn't work on non-English locale
+          toFollow = (this.textContent == 'Follow'); //~mustn't work on non-English locale| todo: add some locale-specific text condition?
           followage(this, toFollow);
         });
       }
@@ -747,7 +748,7 @@
       //***************************************HOVER*************************************
       //=================================================================================
       //------------------------------------Profile card--------------------------------- //0,1,4,6,8,9,11
-      if ([0,1,4,6,9,10,11].includes(PAGETYPE))
+      if ([0,1,4,6,9,11].includes(PAGETYPE))
       {
         $('body').on(previewEventType, 'a[href*="/artworks/"]', function(e)
         {
@@ -841,7 +842,7 @@
         setPreviewEventListeners();
       }
       //--------------------ARTIST WORKS, "TOP" PAGES, Someone's Bookmarks--------------- //2,7,12
-      else if (PAGETYPE === 2 || PAGETYPE === 7 || PAGETYPE === 12 || PAGETYPE === 8)     //TODO!!! do smthng with that amorphous pixiv styleshit!
+      else if (PAGETYPE === 2 || PAGETYPE === 7 || PAGETYPE === 12 || PAGETYPE === 8  || PAGETYPE === 10)     //TODO!!! do smthng with that amorphous pixiv styleshit!
       {
         /*
         $('body').on(previewEventType, 'a[href*="member_illust.php?mode=medium&illust_id="] > div:only-child', function()
@@ -881,8 +882,8 @@
           }
         });
       }
-      //----------------------DAILY RANKINGS & BOOKMARK INFORMATION PAGES---------------- //4,6 [10]
-      else if (PAGETYPE === 4 || PAGETYPE === 6 || PAGETYPE === 10)
+      //----------------------DAILY RANKINGS & BOOKMARK INFORMATION PAGES---------------- //4,6
+      else if (PAGETYPE === 4 || PAGETYPE === 6)
       {
         $('body').on(previewEventType, 'a[href*="/artworks/"]', function(e) //direct div selector works badly with "::before"
         {
@@ -994,7 +995,7 @@
 
       //adjusting preview position considering expected image width
       //---------------------------------------------------------------------------------
-      let l = (![2,7,12,13].includes(PAGETYPE)) //more accurate on discovery users
+      let l = (![2,7,10,12,13].includes(PAGETYPE)) //more accurate on discovery users
           ?getOffsetRect(thisObj.parentNode.parentNode).left
           :getOffsetRect(thisObj).left;
       let dcw = document.body.clientWidth;
@@ -1004,7 +1005,7 @@
         adjustSinglePreview(dcw, l, hoverImg.naturalWidth);
       }
       else{
-        if (![2,7,12,13].includes(PAGETYPE)){
+        if (![2,7,10,12,13].includes(PAGETYPE)){
           let previewWidth = previewSize*(((PAGETYPE==6)?thisObj.clientWidth:thisObj.parentNode.parentNode.clientWidth)/siteImgMaxWidth)+5; //if not on NEW layout - width is predictable
           adjustSinglePreview(dcw, l, previewWidth);
         }
