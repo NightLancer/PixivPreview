@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         2.34
+// @version         2.35
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -19,6 +19,7 @@
 // @match           https://www.pixiv.net/*users/*
 // @connect         i.pximg.net
 // @connect         techorus-cdn.com
+// @connect         i-cf.pximg.net
 // @homepageURL     https://github.com/NightLancer/PixivPreview
 // @downloadURL     https://github.com/NightLancer/PixivPreview/raw/master/PixivPreview.user.js
 // @license         MIT License
@@ -156,11 +157,11 @@
       if (document.URL.match(/https:\/\/www\.pixiv\.net\/(?:en\/)?artworks/))                               return 12; //Illust page - New* +
       if (document.URL.match('https://www.pixiv.net/discovery/users?'))                                     return 13; //Discovery page(users) New +
       if (document.URL.match('https://www.pixiv.net/stacc?'))                                               return 11; //Feed ('stacc') Old + - currently broken
-      if (document.URL.match(/https:\/\/www\.pixiv\.net\/(?:en\/)?/))                                       return 10; //Home page
+      if (document.URL.match(/https:\/\/www\.pixiv\.net\/(?:en\/)?/))                                       return 10; //Home page New | actually means any other page...
 
       return -1;
     }
-    console.log('PAGETYPE: '+ PAGETYPE);
+    console.log('PAGETYPE:',PAGETYPE);
     //Old:          0,1,  4,6,    9,  ,11
     //New:              2,    7,8,  10    12,13
     //==============--------------------------
@@ -203,7 +204,7 @@
     //===================================================================================
     //**********************************ColorFollowed************************************
     //===================================================================================
-    if ([1,4,6,7].includes(PAGETYPE)) //+12 in initMutationParentObject -> user may not scroll to bottom, so it is better to stay in mutaionObserver
+    if ([1,4,6,7,10].includes(PAGETYPE)) //+12 in initMutationParentObject -> user may not scroll to bottom, so it is better to stay in mutaionObserver
     {
       checkFollowedArtistsInit();
     }
@@ -220,7 +221,12 @@
         checkFollowedArtists(BOOKMARK_URL+'?type=user');           //public
         checkFollowedArtists(BOOKMARK_URL+'?type=user&rest=hide'); //private
       }
-      if ([6].includes(PAGETYPE)) colorFollowed();  //TODO: 10 into mutaionObserver
+      if ([6].includes(PAGETYPE))
+        colorFollowed();
+      if ([10].includes(PAGETYPE)){
+        followedUsersId = localStorage.getObj('followedUsersId');
+        console.log('Loaded', Object.keys(followedUsersId).length, 'followed users');
+      }
     }
     //-----------------------------------------------------------------------------------
     async function checkFollowedArtists(url)
@@ -253,8 +259,8 @@
         }
         else
         {
-          if      (doc.querySelectorAll("a[href*='bookmark.php?type=user&rest=']")[0].href.match('hide')) CheckedPublic  = true;
-          else if (doc.querySelectorAll("a[href*='bookmark.php?type=user&rest=']")[0].href.match('show')) CheckedPrivate = true;
+          if      (doc.querySelector("a[href*='bookmark.php?type=user&rest=']").href.match('hide')) CheckedPublic  = true;
+          else if (doc.querySelector("a[href*='bookmark.php?type=user&rest=']").href.match('show')) CheckedPrivate = true;
 
           console.log(CheckedPublic);
           console.log(CheckedPrivate);
@@ -278,7 +284,7 @@
       };
       xhr.ontimeout = function()
       {
-        console.error(`XMLHttpRequest timeout error [${xhr.timeout}]s`);
+        console.error(`XMLHttpRequest timeout error [${xhr.timeout/1000}s]`);
         followedCheck.status = -1;
         followedCheck.saveState();
       }
@@ -318,8 +324,8 @@
 
           ++d;
           if (d*2000 > maxRequestTime){
-            console.error(`ERROR while EXPECTING for subscriptions list! [${d*2000}s]`);
-            console.log(`Trying to load cached followedUsersId by date of ${Date(followedCheck.date)} ...`);
+            console.error(`ERROR while EXPECTING for subscriptions list! [${d*2000/1000}s]`);
+            console.log(`Trying to load cached followedUsersId by date of ${new Date(followedCheck.date).toLocaleString()} ...`);
             followedUsersId = localStorage.getObj('followedUsersId');
             console.log(`Loaded ${Object.keys(followedUsersId).length} followed users`);
             break;
@@ -327,7 +333,7 @@
         }
       }
 
-      if (followedCheck.status == 2){
+      if (followedCheck.status == 2 && PAGETYPE != 10){ //some optimization for heavily loaded home page
         followedUsersId = localStorage.getObj('followedUsersId');
         console.log(`Loaded ${Object.keys(followedUsersId).length} followed users`);
       }
@@ -338,7 +344,7 @@
       //---------------------------------------------------------------------------------
       //artsLoaded = (PAGETYPE===12)?$('.gtm-illust-recommend-user-name').length:$('.ui-profile-popup').length; //if it brokes - get info from getArtsContainers()
       //console.log('arts loaded: '+artsContainersLength + ' (Total: '+(artsLoaded)+')');
-      console.log(`arts loaded: ${artsContainersLength} Total: ${getArtsContainers().length}`);
+      console.log('arts loaded:', artsContainersLength, 'Total:', getArtsContainers().length);
 
       let currentHits = 0;
       let userId = 0;
@@ -385,11 +391,11 @@
       else if (PAGETYPE===1 || PAGETYPE===4 || PAGETYPE===6){
         userId = (artContainer.hasAttribute('data-user_id'))
           ?artContainer.getAttribute('data-user_id')
-          :artContainer.querySelectorAll('.ui-profile-popup')[0].getAttribute('data-user_id');
+          :artContainer.querySelector('.ui-profile-popup').getAttribute('data-user_id');
       }
       else if (PAGETYPE===12){
         //artContainer = artContainer.querySelectorAll('.gtm-illust-recommend-title')[0] || artContainer; // -_-' //for 4?
-        userId = artContainer.querySelectorAll('[href*="/users/"]')[0].getAttribute('href').split('/').pop();
+        userId = artContainer.querySelector('[href*="/users/"]').getAttribute('href').split('/').pop();
       }
       else if (PAGETYPE===7 || PAGETYPE===10){
         userId = searchNearestNode(artContainer,'[href*="/users/"]').getAttribute('href').split('/').pop(); //artContainer.parentNode.parentNode.querySelectorAll('[href*="/users/"]')[0]//
@@ -413,10 +419,25 @@
     //-----------------------------------------------------------------------------------
     let getArtSectionContainers =
     ([1,4,12].includes(PAGETYPE))? () => $('.gtm-illust-recommend-zone')[0]
+    :[10].includes(PAGETYPE)?      () => $("div[id='root']>div:nth-child(2)")[0]
     :                              () => $('.ranking-items')[0]; //6
     //-----------------------------------------------------------------------------------
-    function createObserver(mainDiv)
+    function createObserver(mainDiv, options)
     {
+      // let observer = new MutationObserver(function(mutations)
+      // {
+      //   let arr = [];
+      //   mutations.forEach(function(mutation)
+      //   {
+      //     mutation.addedNodes.forEach(function(node)
+      //     {
+      //       //console.log(mutation);
+      //       if (PAGETYPE != 10) arr.push(node);
+      //     });
+      //   });
+      //   colorFollowed(arr);
+      // });
+
       let observer = new MutationObserver(function(mutations)
       {
         let arr = [];
@@ -424,22 +445,26 @@
         {
           mutation.addedNodes.forEach(function(node)
           {
-            //console.log(mutation);
-            arr.push(node);
+            //console.log(node);
+            if (PAGETYPE != 10){
+              arr.push(node);
+            }
+            else if (node.nodeName == "IMG" && node.matches('img:not([class*=" "])')){    //todo: very unstable condition(>=2 img classes)
+              arr.push(node.searchNearestNode('a[href*="/artworks/"]'));
+            }
+            else if (node.nodeName == "DIV"){
+              node.querySelectorAll('a[href*="/artworks/"]:only-child').forEach((el)=>arr.push(el));
+            }
           });
         });
-        colorFollowed(arr);
+        if (PAGETYPE != 10 || arr.length>0) colorFollowed(arr);
       });
-
-      let options = {
-        'childList': true
-      };
 
       observer.observe(mainDiv, options);
       console.log('Observer has been set');
     }
     //-----------------------------------------------------------------------------------
-    async function initMutationObject()
+    async function initMutationObject(options)
     {
       let mainDiv = getArtSectionContainers();
       while(!mainDiv)
@@ -449,10 +474,10 @@
         mainDiv = getArtSectionContainers();
       }
       console.log(mainDiv);
-      createObserver(mainDiv);
+      createObserver(mainDiv, options);
     }
     //-----------------------------------------------------------------------------------
-    async function initMutationParentObject(parentSelector, nodesSelector)
+    async function initMutationParentObject(parentSelector, nodesSelector, options)
     {
       let observerParent = new MutationObserver(function(mutations)
       {
@@ -465,12 +490,13 @@
           {
             checkFollowedArtistsInit();
 
-            createObserver(mainDiv[0]);
+            createObserver(mainDiv[0], options);
             observerParent.disconnect();
             observerParent = null;
           }
         });
       });
+
       let options2 = {
         'childList': true
       };
@@ -499,10 +525,10 @@
     //-----------------------------------------------------------------------------------
     function searchNearestNode(el, selector)
     {
-      let nearestNode = el.querySelectorAll(selector)[0];
+      let nearestNode = el.querySelector(selector);
       while ((!nearestNode) && (el != document.body)){
         el = el.parentNode;
-        nearestNode = el.querySelectorAll(selector)[0];
+        nearestNode = el.querySelector(selector);
       }
       return nearestNode;
     }
@@ -634,6 +660,7 @@
         menuButton.addEventListener("click", function()
         {
           menu.style.display = 'block';
+          let menuTimer = setTimeout(()=>{menu.style.display = 'none'}, 60*1000); //closing menu after 60s to prevent "hanging" it in one tab
         });
       }
       //---------------------------------------------------------------------------------
@@ -681,7 +708,7 @@
             zoneSelector = 'gtm-illust-recommend-zone',
             zone = document.getElementsByClassName(zoneSelector)[0];
 
-        if (zone === undefined) initMutationParentObject(parentSelector, zoneSelector);
+        if (zone === undefined) initMutationParentObject(parentSelector, zoneSelector, {'childList': true});
         else
         {
           console.log(zone);
@@ -699,7 +726,12 @@
       //-----------------------------Init illust fetch listener--------------------------
       if (PAGETYPE===1 || PAGETYPE===4 || PAGETYPE===6)
       {
-        initMutationObject();
+        initMutationObject({'childList': true});
+      }
+      //-------------------------------Home page listener--------------------------------
+      if (PAGETYPE===10)
+      {
+        initMutationObject({'childList': true, 'subtree': true});
       }
       //---------------------------------Pixiv Member pages------------------------------
       if (PAGETYPE===2|| PAGETYPE===3 || PAGETYPE===7)
@@ -841,8 +873,8 @@
       {
         setPreviewEventListeners();
       }
-      //--------------------ARTIST WORKS, "TOP" PAGES, Someone's Bookmarks--------------- //2,7,12
-      else if (PAGETYPE === 2 || PAGETYPE === 7 || PAGETYPE === 12 || PAGETYPE === 8  || PAGETYPE === 10)     //TODO!!! do smthng with that amorphous pixiv styleshit!
+      //---------ARTIST WORKS, "TOP" PAGES, Home page, Search, Someone's Bookmarks------- //2,7,8,10,12
+      else if (PAGETYPE === 2 || PAGETYPE === 7 || PAGETYPE === 12 || PAGETYPE === 8 || PAGETYPE === 10)     //TODO!!! do smthng with that amorphous pixiv styleshit!
       {
         /*
         $('body').on(previewEventType, 'a[href*="member_illust.php?mode=medium&illust_id="] > div:only-child', function()
@@ -1084,13 +1116,13 @@
           imgsArr[i].src = primaryLink.replace('p0','p'+i);
         }
 
-        if (currentSettings["ACCURATE_MANGA_PREVIEW"] == true || currentSettings["DELAY_BEFORE_PREVIEW"] > 1000) //more accurate frame adjusting
+        if (currentSettings["ACCURATE_MANGA_PREVIEW"] == true || currentSettings["DELAY_BEFORE_PREVIEW"] >= 1000) //more accurate frame adjusting
         {
           setTimeout(function()
           {
             adjustMargins(mangaOuterContainer.scrollWidth);
             checkDelay(function(){mangaOuterContainer.style.visibility='visible';});
-          }, 1000);
+          }, currentSettings["DELAY_BEFORE_PREVIEW"]);
         }
         else //some blind frame adjusting
         {
