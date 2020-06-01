@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         2.35
+// @version         2.35.1
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -21,19 +21,22 @@
 // @connect         techorus-cdn.com
 // @connect         i-cf.pximg.net
 // @homepageURL     https://github.com/NightLancer/PixivPreview
-// @downloadURL     https://github.com/NightLancer/PixivPreview/raw/master/PixivPreview.user.js
-// @license         MIT License
+// @supportURL      https://greasyfork.org/uk/users/167506-nightlancerx
+// @downloadURL     https://greasyfork.org/scripts/39387-pixiv-arts-preview-followed-atrists-coloring/code/Pixiv%20Arts%20Preview%20%20Followed%20Atrists%20Coloring.user.js
+// @license         MIT; https://github.com/NightLancer/PixivPreview/blob/master/LICENSE
+// @copyright       NightLancerX
 // @grant           GM_xmlhttpRequest
 // @grant           GM.xmlHttpRequest
 // @require         https://code.jquery.com/jquery-3.3.1.min.js
 // @require         https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/1.3.8/FileSaver.min.js
+// @noframes
 // ==/UserScript==
 //=======================================================================================
 (function ()
 {
   'use strict';
 
-  if (window.top == window.self && window.jQuery) jQuery(function($)
+  if (window.top == window.self && window.jQuery) jQuery(function($) //window.top check may be useless because of @noframes
   {
     console.log('MyPixivJS');
 
@@ -165,9 +168,9 @@
     //Old:          0,1,  4,6,    9,  ,11
     //New:              2,    7,8,  10    12,13
     //==============--------------------------
-    //Coloring:     - 1,- 4,6,7,~ ~ ±±,~~ 12 -- //?todo: 10 | not actual: 4
+    //Coloring:     - 1,- 4,6,7,~ ~ 10,~~ 12 -- //not actual: 4
     //Profile card: 0,1,-,4,6,± ~ 9,~~,11 ±± -- //~todo: 7,10,12
-    //On following: - 1,2,- 6 - ~ - -- -- 12,13
+    //On following: - 1,2,- 6 - ~ - ?? -- 12,13 //10:useless on its page, but may be useful for anothers
     //===================================================================================
     function setCurrentSettings(){
       for (let i = 0; i < propList.length; i++){
@@ -342,8 +345,6 @@
         console.error(`There was some error during followed users loading [Error Code: ${followedCheck.status}]`);
       }
       //---------------------------------------------------------------------------------
-      //artsLoaded = (PAGETYPE===12)?$('.gtm-illust-recommend-user-name').length:$('.ui-profile-popup').length; //if it brokes - get info from getArtsContainers()
-      //console.log('arts loaded: '+artsContainersLength + ' (Total: '+(artsLoaded)+')');
       console.log('arts loaded:', artsContainersLength, 'Total:', getArtsContainers().length);
 
       let currentHits = 0;
@@ -1122,7 +1123,7 @@
           {
             adjustMargins(mangaOuterContainer.scrollWidth);
             checkDelay(function(){mangaOuterContainer.style.visibility='visible';});
-          }, currentSettings["DELAY_BEFORE_PREVIEW"]);
+          }, Math.max(1000, currentSettings["DELAY_BEFORE_PREVIEW"]));
         }
         else //some blind frame adjusting
         {
