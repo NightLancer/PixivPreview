@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         2.35.1
+// @version         2.35.3
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -420,7 +420,7 @@
     //-----------------------------------------------------------------------------------
     let getArtSectionContainers =
     ([1,4,12].includes(PAGETYPE))? () => $('.gtm-illust-recommend-zone')[0]
-    :[10].includes(PAGETYPE)?      () => $("div[id='root']>div:nth-child(2)")[0]
+    :[10].includes(PAGETYPE)?      () => $("div[id='root']>div:nth-child(3)")[0]
     :                              () => $('.ranking-items')[0]; //6
     //-----------------------------------------------------------------------------------
     function createObserver(mainDiv, options)
@@ -451,7 +451,7 @@
               arr.push(node);
             }
             else if (node.nodeName == "IMG" && node.matches('img:not([class*=" "])')){    //todo: very unstable condition(>=2 img classes)
-              arr.push(node.searchNearestNode('a[href*="/artworks/"]'));
+              arr.push(searchNearestNode(node, 'a[href*="/artworks/"]'));
             }
             else if (node.nodeName == "DIV"){
               node.querySelectorAll('a[href*="/artworks/"]:only-child').forEach((el)=>arr.push(el));
@@ -647,7 +647,11 @@
 
         let c = 0;
         while (!menuButton){
-          buttons = document.querySelectorAll('body > div:nth-child(1) > div:nth-child(1) button'); //$('#js-mount-point-header button'); (Replace with own button later?...)
+          if (PAGETYPE === 10)
+            buttons = document.querySelectorAll('body > div#root > div:nth-child(2)');
+          else
+            buttons = document.querySelectorAll('body > div:nth-child(1) > div:nth-child(1) button'); //$('#js-mount-point-header button'); (Replace with own button later?...)
+
           menuButton = buttons[buttons.length - 1]; // last is the menu button
           console.log(menuButton);
           await sleep(1000);
