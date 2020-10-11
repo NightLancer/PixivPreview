@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         2.35.5
+// @version         2.35.9
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -23,8 +23,7 @@
 // @homepageURL     https://github.com/NightLancer/PixivPreview
 // @supportURL      https://greasyfork.org/uk/users/167506-nightlancerx
 // @downloadURL     https://greasyfork.org/scripts/39387-pixiv-arts-preview-followed-atrists-coloring/code/Pixiv%20Arts%20Preview%20%20Followed%20Atrists%20Coloring.user.js
-// @updateURL       https://greasyfork.org/scripts/39387-pixiv-arts-preview-followed-atrists-coloring/code/Pixiv%20Arts%20Preview%20%20Followed%20Atrists%20Coloring.meta.js
-// @license         MIT
+// @license         MIT; https://github.com/NightLancer/PixivPreview/blob/master/LICENSE
 // @copyright       NightLancerX
 // @grant           GM_xmlhttpRequest
 // @grant           GM.xmlHttpRequest
@@ -414,10 +413,12 @@
       return new Promise(resolve => setTimeout(resolve, ms));
     }
     //-----------------------------------------------------------------------------------
+    /* //no use anymore? -> to delete
     function getElementByXpath(path)
     {
       return document.evaluate(path, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
     }
+    */
     //-----------------------------------------------------------------------------------
     let getArtSectionContainers =
     ([1,4,12].includes(PAGETYPE))? () => $('.gtm-illust-recommend-zone')[0]
@@ -426,20 +427,6 @@
     //-----------------------------------------------------------------------------------
     function createObserver(mainDiv, options)
     {
-      // let observer = new MutationObserver(function(mutations)
-      // {
-      //   let arr = [];
-      //   mutations.forEach(function(mutation)
-      //   {
-      //     mutation.addedNodes.forEach(function(node)
-      //     {
-      //       //console.log(mutation);
-      //       if (PAGETYPE != 10) arr.push(node);
-      //     });
-      //   });
-      //   colorFollowed(arr);
-      // });
-
       let observer = new MutationObserver(function(mutations)
       {
         let arr = [];
@@ -503,12 +490,12 @@
         'childList': true
       };
 
-      let parentDiv = getElementByXpath(parentSelector);
+      let parentDiv = document.querySelectorAll(parentSelector)[1];
       while(!parentDiv)
       {
-        console.log('Waiting for getElementByXpath [main]');
+        console.log('Waiting for parentDiv [main]');
         await sleep(1000);
-        parentDiv = getElementByXpath(parentSelector);
+        parentDiv = document.querySelectorAll(parentSelector)[1];
       }
       console.log(parentDiv);
 
@@ -648,8 +635,8 @@
 
         let c = 0;
         while (!menuButton){
-          if (PAGETYPE === 10)
-            buttons = document.querySelectorAll('body > div#root > div> div:nth-child(1) button');
+          if ([2,7,8,10,12].includes(PAGETYPE))
+            buttons = document.querySelectorAll('body > div#root > div > div:nth-child(1) button');
           else
             buttons = document.querySelectorAll('body > div:nth-child(1) > div:nth-child(1) button'); //$('#js-mount-point-header button'); (Replace with own button later?...)
 
@@ -709,8 +696,7 @@
       //-------------------------------Illust page extra check---------------------------
       if (PAGETYPE===12)
       {
-        //replace with selector if possible
-        let parentSelector = '/html/body/div[1]/div[2]/div/aside[2]/div',
+        let parentSelector = 'aside > div', // [1]
             zoneSelector = 'gtm-illust-recommend-zone',
             zone = document.getElementsByClassName(zoneSelector)[0];
 
@@ -727,7 +713,7 @@
           document.querySelectorAll('iframe').forEach((el)=>{el.remove()});
           document.querySelectorAll('a[href*="/premium"]').forEach((el)=>{el.remove()});
           console.log('ads cleared');
-        },2000);
+        },3000);
       }
       //-----------------------------Init illust fetch listener--------------------------
       if (PAGETYPE===1 || PAGETYPE===4 || PAGETYPE===6)
@@ -747,17 +733,12 @@
           PAGETYPE = 7;
           bookmarksInit();
         });
-        $('body').on('mouseup', 'a[href*="/illustrations"]', function(){ ///???
+        $('body').on('mouseup', 'a[href*="/illustrations"]', function(){
           console.log('PAGETYPE: '+ PAGETYPE+' -> 2');
           PAGETYPE = 2;
         });
-        // $('body').on('mouseup', 'a[href*="/member.php?id="]', function(){
-        //   console.log('PAGETYPE: '+ PAGETYPE+' -> 3');
-        //   PAGETYPE = 3;
-        // });
-        //
-        // $('body').on('mouseup', 'a[href*="&type=illust"]', function(){
-        //   console.log('PAGETYPE: '+ PAGETYPE+' -> 2');
+        // $('body').on('mouseup', 'a[href*="/manga"]', function(){ ///???
+        //   console.log('PAGETYPE: '+ PAGETYPE+' -> X[3?]');
         //   PAGETYPE = 2;
         // });
       }
@@ -765,13 +746,13 @@
       async function bookmarksInit()
       {
         checkFollowedArtistsInit();
-        let mainSelector = '/html/body/div[1]/div[2]/div/div[2]/div[1]/section/ul';
-        let mainDiv = getElementByXpath(mainSelector);
+
+        let mainDiv = document.querySelector('section');
         while(!mainDiv)
         {
-          console.log('Waiting for getElementByXpath [bookmarksInit]');
+          console.log('Waiting for arts section [bookmarksInit]');
           await sleep(1000);
-          mainDiv = getElementByXpath(mainSelector);
+          mainDiv = document.querySelector('section');
         }
         console.log(mainDiv);
 
@@ -781,6 +762,15 @@
       if (PAGETYPE===7)
       {
         bookmarksInit();
+      }
+      //---------------------------------Async page change-------------------------------
+      if ([2,7,8,10,12].includes(PAGETYPE))
+      {
+        $('body').on('mouseup', 'a[href="/"], a[href="/en/"]', function(){
+          console.log('PAGETYPE: '+ PAGETYPE+' -> 10');
+          PAGETYPE = 10;
+          //TODO: rework all functions for page depending!!!
+        });
       }
       //=================================================================================
       //***************************************HOVER*************************************
@@ -794,7 +784,7 @@
           e.preventDefault();
           if (this.childNodes.length === 0) //for preventing issues with 4 and 6 pages
           {
-            setHover(this);
+            setHover(this, undefined, true);
             imgContainer.style.top = getOffsetRect(this).top+200+'px';
           }
         });
@@ -1022,7 +1012,7 @@
       else callback();
     }
     //-----------------------------------------------------------------------------------
-    function setHover(thisObj, top)
+    function setHover(thisObj, top, profileCard)
     {
       clearTimeout(timerId);
       clearTimeout(tInt);
@@ -1037,14 +1027,14 @@
           ?getOffsetRect(thisObj.parentNode.parentNode).left
           :getOffsetRect(thisObj).left;
       let dcw = document.body.clientWidth;
-      let previewWidth = 0;
+      let previewWidth = previewSize;
 
       if (hoverImg.naturalWidth>0){ //cached (previously viewed)
         adjustSinglePreview(dcw, l, hoverImg.naturalWidth);
       }
       else{
-        if (![2,7,10,12,13].includes(PAGETYPE)){
-          let previewWidth = previewSize*(((PAGETYPE==6)?thisObj.clientWidth:thisObj.parentNode.parentNode.clientWidth)/siteImgMaxWidth)+5; //if not on NEW layout - width is predictable
+        if (![2,7,10,12,13].includes(PAGETYPE) && !profileCard){
+          previewWidth = previewSize*(((PAGETYPE==6)?thisObj.clientWidth:thisObj.parentNode.parentNode.clientWidth)/siteImgMaxWidth)+5; //if not on NEW layout - width is predictable
           adjustSinglePreview(dcw, l, previewWidth);
         }
         else{
@@ -1056,7 +1046,6 @@
             tInt = setInterval(function(){
               if (hoverImg.naturalWidth>0){
                 clearTimeout(tInt);
-                //elementMouseIsOver = document.elementFromPoint(x, y); if (thisObj != elementMouseIsOver) break;
                 adjustSinglePreview(dcw, l, hoverImg.naturalWidth); //position mismatching due to old `thisObj` => clearing in hoverImg.mouseleave
                 ++tLimit;
               }
@@ -1252,7 +1241,7 @@
             pageNum = src.substring(src.indexOf("_")+2, src.lastIndexOf("_"));
           }
 
-          getOriginalUrl(ajaxIllustUrl, event, pageNum, toSave);
+          getOriginalUrl(ajaxIllustUrl, pageNum, toSave);
         }
         //-----------------------------Alt + LMB-click-----------------------------------
         else if (event.altKey) {
@@ -1265,7 +1254,7 @@
       //---------------------------------------------------------------------------------
     }
     //---------------------------------getOriginalUrl------------------------------------
-    async function getOriginalUrl(illustPageUrl, event, pageNum, toSave)
+    async function getOriginalUrl(illustPageUrl, pageNum, toSave)
     {
       let xhr = new XMLHttpRequest();
       xhr.responseType = 'json';
