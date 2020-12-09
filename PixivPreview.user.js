@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         2.35.9
+// @version         2.36
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -170,7 +170,7 @@
     //==============--------------------------
     //Coloring:     - 1,- 4,6,7,~ ~ 10,~~ 12 -- //not actual: 4
     //Profile card: 0,1,-,4,6,± ~ 9,~~,11 ±± -- //~todo: 7,10,12
-    //On following: - 1,2,- 6 - ~ - ?? -- 12,13 //10:useless on its page, but may be useful for anothers
+    //On following: - 1,2,- 6 - ~ - ?? -- 12,13 //10:useless on its page, but may be useful for other
     //===================================================================================
     function setCurrentSettings(){
       for (let i = 0; i < propList.length; i++){
@@ -207,7 +207,7 @@
     //===================================================================================
     //**********************************ColorFollowed************************************
     //===================================================================================
-    if ([1,4,6,7,10].includes(PAGETYPE)) //+12 in initMutationParentObject -> user may not scroll to bottom, so it is better to stay in mutaionObserver
+    if ([1,4,6,7,8,10].includes(PAGETYPE)) //+12 in initMutationParentObject -> user may not scroll to bottom, so it is better to stay in mutaionObserver
     {
       checkFollowedArtistsInit();
     }
@@ -224,11 +224,15 @@
         checkFollowedArtists(BOOKMARK_URL+'?type=user');           //public
         checkFollowedArtists(BOOKMARK_URL+'?type=user&rest=hide'); //private
       }
-      if ([6].includes(PAGETYPE))
-        colorFollowed();
-      if ([10].includes(PAGETYPE)){
-        followedUsersId = localStorage.getObj('followedUsersId');
-        console.log('Loaded', Object.keys(followedUsersId).length, 'followed users');
+      else{
+        //console.log(`followedCheck is up to date of ${new Date(followedCheck.date).toLocaleString()}`);
+
+        if ([6].includes(PAGETYPE))
+          colorFollowed();
+        if ([10].includes(PAGETYPE)){
+          followedUsersId = localStorage.getObj('followedUsersId');
+          console.log('Loaded', Object.keys(followedUsersId).length, 'followed users');
+        }
       }
     }
     //-----------------------------------------------------------------------------------
@@ -375,6 +379,7 @@
         case 12: return document.querySelectorAll('.gtm-illust-recommend-title');
 
         case 7:
+        case 8:
         case 10: return document.querySelectorAll('a[href*="/artworks/"]:only-child'); //('li > div > div > a'); Done?
 
         default:  console.error('Unprocessed PAGETYPE in getArtsContainers()!');
@@ -400,6 +405,11 @@
       }
       else if (PAGETYPE===7 || PAGETYPE===10){
         userId = searchNearestNode(artContainer,'[href*="/users/"]').getAttribute('href').split('/').pop(); //artContainer.parentNode.parentNode.querySelectorAll('[href*="/users/"]')[0]//
+                                                                                          //Array.slice(artcontainers).map((e) => searchNearestNode(e,'[href*="/users/"]').getAttribute('href').split('/').pop() )
+      }
+      else if(PAGETYPE===8){
+        let node = searchNearestNode(artContainer,'[href*="/users/"]');
+        userId = (node)? node.getAttribute('href').split('/').pop(): -1;
       }
       else{
         console.error('UNPROCESSED getUserId() call!');
@@ -422,8 +432,11 @@
     //-----------------------------------------------------------------------------------
     let getArtSectionContainers =
     ([1,4,12].includes(PAGETYPE))? () => $('.gtm-illust-recommend-zone')[0]
+    :[6].includes(PAGETYPE)?       () => $('.ranking-items')[0]
+    :[8].includes(PAGETYPE)?       () => $("section>div>ul")[0]
     :[10].includes(PAGETYPE)?      () => $("div[id='root']>div>div:nth-child(2)")[0]
-    :                              () => $('.ranking-items')[0]; //6
+    //:[7].includes(PAGETYPE)?       () => $('section')[0] //no need - single page without autoloading
+    :                              () => -1;
     //-----------------------------------------------------------------------------------
     function createObserver(mainDiv, options)
     {
@@ -681,6 +694,24 @@
           followage(this, toFollow);
         });
       }
+      if ([8].includes(PAGETYPE))
+      {
+        setTimeout(() => {
+          //var buttonF = document.evaluate("//button[contains(., 'Follow')]", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+          //let _cl = Array.slice(document.evaluate("//button[contains(., 'Add to your favorites')]", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue.classList) //this button contains same classes we need
+          //followSelector = '.' + (_cl.pop() && _cl).join('.'); //...except from last one, so we "pop" it out
+
+          //followSelector = '.' + document.evaluate("//button[contains(., 'Add to your favorites')]", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue.classList[0];
+          followSelector = '.' + document.evaluate("//button[text() = 'Add to your favorites' or text() = 'Edit your favorite tags']", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue.classList[0];
+
+          $('body').on('mouseup', followSelector, function(){
+            if (this.textContent.includes("Follow")){ //need to filter first button since classes is matching; Includes "Following" as well
+              toFollow = (this.textContent == 'Follow');
+              followage(this, toFollow);
+            }
+          });
+        }, 5000);
+      }
       //----------------------------Bookmark detail page cleaning------------------------
       if (PAGETYPE===4)
       {
@@ -709,14 +740,21 @@
           createObserver(zone);
         }
         //some ads removing--------------------------------------------------------------
+        /*
         setTimeout(()=>{
           document.querySelectorAll('iframe').forEach((el)=>{el.remove()});
           document.querySelectorAll('a[href*="/premium"]').forEach((el)=>{el.remove()});
           console.log('ads cleared');
         },3000);
+        */
       }
       //-----------------------------Init illust fetch listener--------------------------
       if (PAGETYPE===1 || PAGETYPE===4 || PAGETYPE===6)
+      {
+        initMutationObject({'childList': true});
+      }
+      //----------------------------------Search (tags)----------------------------------
+      if (PAGETYPE===8)
       {
         initMutationObject({'childList': true});
       }
@@ -824,7 +862,7 @@
         });
       }
       //--------------------------------------------------------------------------------- //1->13
-      function setTabSwitchingListenerW_U()
+      function setTabSwitchingListenerW_U() //no need anymore?
       {
         $('body').on('mouseup','a[href="/discovery/users"]', function()
         {
@@ -837,7 +875,7 @@
         });
       }
       //--------------------------------------------------------------------------------- //13->1
-      function setTabSwitchingListenerU_W()
+      function setTabSwitchingListenerU_W() //no need anymore?
       {
         $('body').on('mouseup','a[href="/discovery"]', function()
         {
@@ -845,7 +883,7 @@
           PAGETYPE = 1;
           artsLoaded = lastHits = 0; //not necessary
           checkFollowedArtistsInit();
-          initMutationObject();
+          initMutationObject(); //??? without `options`? todo
 
           $('body').off();//(previewEventType, 'a[href*="member_illust.php?mode=medium&illust_id="]', discoveryUsersPreview);
           setPreviewEventListeners();
@@ -855,16 +893,16 @@
       //--------------------------------DISCOVERY[Artworks]------------------------------ //1
       if (PAGETYPE === 1) //Works
       {
-        setTabSwitchingListenerW_U();
+        setTabSwitchingListenerW_U(); //pixiv has deleted async loading from this pages?
         setPreviewEventListeners();
       }
       //----------------------------------DISCOVERY[Users]------------------------------- //13
       else if (PAGETYPE === 13) //Users
       {
-        setTabSwitchingListenerU_W();
+        setTabSwitchingListenerU_W(); //pixiv has deleted async loading from this pages?
         setDiscoveryUsersPreviewEventListeners();
       }
-      //----------------------------NEW ILLUSTRATIONS AND SEARCH------------------------- //0,8
+      //----------------------------------NEW ILLUSTRATIONS------------------------------ //0
       else if (PAGETYPE === 0)
       {
         setPreviewEventListeners();
@@ -899,13 +937,13 @@
           //single art hover-------------------------------------------------------------
           if (this.parentNode.firstChild.childNodes.length===1) //single
           {
-            bookmarkObj = this.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0];
+            //bookmarkObj = this.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0]; //todo
             setHover(this.childNodes[0]); //todo? - zero child-node trying?
           }
           //manga-style arts hover-------------------------------------------------------
           else // if (this.parentNode.firstChild.childNodes.length===2)
           {
-            bookmarkObj = this.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0];
+            //bookmarkObj = this.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0];
             setMangaHover(this.childNodes[0], this.parentNode.firstChild.childNodes[1].textContent);
           }
         });
