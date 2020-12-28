@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         2.36
+// @version         2.40
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -168,7 +168,7 @@
     //Old:          0,1,  4,6,    9,  ,11
     //New:              2,    7,8,  10    12,13
     //==============--------------------------
-    //Coloring:     - 1,- 4,6,7,~ ~ 10,~~ 12 -- //not actual: 4
+    //Coloring:     - 1,- 4,6,7,8 ~ 10,~~ 12 -- //not actual: 4
     //Profile card: 0,1,-,4,6,± ~ 9,~~,11 ±± -- //~todo: 7,10,12
     //On following: - 1,2,- 6 - ~ - ?? -- 12,13 //10:useless on its page, but may be useful for other
     //===================================================================================
@@ -207,7 +207,7 @@
     //===================================================================================
     //**********************************ColorFollowed************************************
     //===================================================================================
-    if ([1,4,6,7,8,10].includes(PAGETYPE)) //+12 in initMutationParentObject -> user may not scroll to bottom, so it is better to stay in mutaionObserver
+    if ([1,4,6,7,8,10,12].includes(PAGETYPE)) //not critical to refresh at any time
     {
       checkFollowedArtistsInit();
     }
@@ -430,41 +430,61 @@
     }
     */
     //-----------------------------------------------------------------------------------
-    let getArtSectionContainers =
-    ([1,4,12].includes(PAGETYPE))? () => $('.gtm-illust-recommend-zone')[0]
-    :[6].includes(PAGETYPE)?       () => $('.ranking-items')[0]
-    :[8].includes(PAGETYPE)?       () => $("section>div>ul")[0]
-    :[10].includes(PAGETYPE)?      () => $("div[id='root']>div>div:nth-child(2)")[0]
-    //:[7].includes(PAGETYPE)?       () => $('section')[0] //no need - single page without autoloading
-    :                              () => -1;
-    //-----------------------------------------------------------------------------------
-    function createObserver(mainDiv, options)
+    function getArtSectionContainers()
     {
-      let observer = new MutationObserver(function(mutations)
+      switch(PAGETYPE)
       {
-        let arr = [];
-        mutations.forEach(function(mutation)
-        {
-          mutation.addedNodes.forEach(function(node)
-          {
-            //console.log(node);
-            if (PAGETYPE != 10){
-              arr.push(node);
-            }
-            else if (node.nodeName == "IMG" && node.matches('img:not([class*=" "])')){    //todo: very unstable condition(>=2 img classes)
-              arr.push(searchNearestNode(node, 'a[href*="/artworks/"]'));
-            }
-            else if (node.nodeName == "DIV"){
-              node.querySelectorAll('a[href*="/artworks/"]:only-child').forEach((el)=>arr.push(el));
-            }
-          });
-        });
-        if (PAGETYPE != 10 || arr.length>0) colorFollowed(arr);
-      });
+        case 1,4: return $('.gtm-illust-recommend-zone')[0]
+        case 6:   return $('.ranking-items')[0]
+        case 8:   return $("section>div>ul")[0]
+        case 10:  return $("div[id='root']>div>div:nth-child(2)")[0]
+        case 12:  return $('.gtm-illust-recommend-zone ul')[0]
 
-      observer.observe(mainDiv, options);
-      console.log('Observer has been set');
+        default: return 0;
+      }
     }
+    //-----------------------------------------------------------------------------------
+    let observer = {
+      mutationObserver: null,
+
+      init(func){
+        this.mutationObserver = new MutationObserver((mutations)=>{func(mutations)});
+      },
+
+      observe(mainDiv, options){
+        this.mutationObserver.observe(mainDiv, options);
+        console.log('Observer has been set');
+      },
+
+      disconnect(){
+        this.mutationObserver.disconnect();
+      }
+    }
+    //-----------------------------------------------------------------------------------
+    let renewObserver = Object.assign({}, observer); //copy new instance of object
+    //-----------------------------------------------------------------------------------
+    function observerBody(mutations)
+    {
+      let arr = [];
+      mutations.forEach(function(mutation)
+      {
+        mutation.addedNodes.forEach(function(node)
+        {
+          if (PAGETYPE != 10){
+            arr.push(node);
+          }
+          else if (node.nodeName == "IMG" && node.matches('img:not([class*=" "])')){    //todo: very unstable condition(>=2 img classes)
+            arr.push(searchNearestNode(node, 'a[href*="/artworks/"]'));
+          }
+          else if (node.nodeName == "DIV"){
+            node.querySelectorAll('a[href*="/artworks/"]:only-child').forEach((el)=>arr.push(el));
+          }
+        });
+      });
+      if (PAGETYPE != 10 || arr.length>0) colorFollowed(arr);
+    }
+    //-----------------------------------------------------------------------------------
+    observer.init(observerBody);
     //-----------------------------------------------------------------------------------
     async function initMutationObject(options)
     {
@@ -476,54 +496,8 @@
         mainDiv = getArtSectionContainers();
       }
       console.log(mainDiv);
-      createObserver(mainDiv, options);
+      observer.observe(mainDiv, options)
     }
-    //-----------------------------------------------------------------------------------
-    async function initMutationParentObject(parentSelector, nodesSelector, options)
-    {
-      let observerParent = new MutationObserver(function(mutations)
-      {
-        let mainDiv;
-        mutations.forEach(function(mutation)
-        {
-          mainDiv = mutation.addedNodes[0].getElementsByClassName(nodesSelector);
-          console.log(mainDiv);
-          if (mainDiv.length>0)
-          {
-            checkFollowedArtistsInit();
-
-            createObserver(mainDiv[0], options);
-            observerParent.disconnect();
-            observerParent = null;
-          }
-        });
-      });
-
-      let options2 = {
-        'childList': true
-      };
-
-      let parentDiv = document.querySelectorAll(parentSelector)[1];
-      while(!parentDiv)
-      {
-        console.log('Waiting for parentDiv [main]');
-        await sleep(1000);
-        parentDiv = document.querySelectorAll(parentSelector)[1];
-      }
-      console.log(parentDiv);
-
-      observerParent.observe(parentDiv, options2);
-      console.log('observerParent set');
-    }
-    //-----------------------------------------------------------------------------------
-    /*
-    function initGallery() {
-      let _ttt = $('figure > div[role="presentation"]');
-      let _sss = _ttt[0].textContent.split("⧸").pop(); //NOT slash! charCodeAt(0) == 10744
-      console.log(_ttt);
-      console.log(_sss);
-    }
-    */
     //-----------------------------------------------------------------------------------
     function searchNearestNode(el, selector)
     {
@@ -681,152 +655,142 @@
       initMenu();
       //-------------------------------Follow onclick------------------------------------
       let toFollow, followSelector;
-      if ([2,7,12].includes(PAGETYPE)){
-        followSelector = '[data-click-label*="follow"]';
-      }
-      else if([1,6,13].includes(PAGETYPE)){
-        followSelector = '.follow-button';
-      }
-
-      if([1,2,6,7,12,13].includes(PAGETYPE)){
-        $('body').on('mouseup', followSelector, function(){
-          toFollow = (this.textContent == 'Follow'); //~mustn't work on non-English locale| todo: add some locale-specific text condition?
-          followage(this, toFollow);
-        });
-      }
-      if ([8].includes(PAGETYPE))
+      //---------------------------------------------------------------------------------
+      function reInitFollowagePreview()
       {
-        setTimeout(() => {
-          //var buttonF = document.evaluate("//button[contains(., 'Follow')]", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-          //let _cl = Array.slice(document.evaluate("//button[contains(., 'Add to your favorites')]", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue.classList) //this button contains same classes we need
-          //followSelector = '.' + (_cl.pop() && _cl).join('.'); //...except from last one, so we "pop" it out
+        if ([2,7,12].includes(PAGETYPE)){
+          followSelector = '[data-click-label*="follow"]';
+        }
+        else if([1,6,13].includes(PAGETYPE)){
+          followSelector = '.follow-button';
+        }
 
-          //followSelector = '.' + document.evaluate("//button[contains(., 'Add to your favorites')]", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue.classList[0];
-          followSelector = '.' + document.evaluate("//button[text() = 'Add to your favorites' or text() = 'Edit your favorite tags']", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue.classList[0];
+        $('body').off('mouseup', followSelector); //clearing previous events
 
+        if([1,2,6,7,12,13].includes(PAGETYPE)){
           $('body').on('mouseup', followSelector, function(){
-            if (this.textContent.includes("Follow")){ //need to filter first button since classes is matching; Includes "Following" as well
-              toFollow = (this.textContent == 'Follow');
-              followage(this, toFollow);
-            }
+            toFollow = (this.textContent == 'Follow'); //~mustn't work on non-English locale| todo: add some locale-specific text condition?
+            followage(this, toFollow);
           });
-        }, 5000);
-      }
-      //----------------------------Bookmark detail page cleaning------------------------
-      if (PAGETYPE===4)
-      {
-        let _bkmrklst = $('.bookmark-list-unit')[0];
-        _bkmrklst.parentNode.removeChild(_bkmrklst);
-        _bkmrklst = null;
-      }
-      //------------------------------Dayli rankings ad cleaning-------------------------
-      if (PAGETYPE===6)
-      {
-        $('.ad-printservice').remove();
-      }
-      //-------------------------------Illust page extra check---------------------------
-      if (PAGETYPE===12)
-      {
-        let parentSelector = 'aside > div', // [1]
-            zoneSelector = 'gtm-illust-recommend-zone',
-            zone = document.getElementsByClassName(zoneSelector)[0];
-
-        if (zone === undefined) initMutationParentObject(parentSelector, zoneSelector, {'childList': true});
-        else
+        }
+        if ([8].includes(PAGETYPE))
         {
-          console.log(zone);
+          setTimeout(() => {
+            //followSelector = '.' + document.evaluate("//button[contains(., 'Add to your favorites')]", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue.classList[0];
+            followSelector = '.' + document.evaluate("//button[text() = 'Add to your favorites' or text() = 'Edit your favorite tags']", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue.classList[0];
+
+            $('body').on('mouseup', followSelector, function(){
+              if (this.textContent.includes("Follow")){ //need to filter first button since classes is matching; Includes "Following" as well
+                toFollow = (this.textContent == 'Follow');
+                followage(this, toFollow);
+              }
+            });
+          }, 5000);
+        }
+      }
+      //---------------------------------------------------------------------------------
+      reInitFollowagePreview();
+      //=================================================================================
+      function reInitMutationObservers()
+      {
+        //----------------------------Bookmark detail page cleaning----------------------
+        if (PAGETYPE===4)
+        {
+          let _bkmrklst = $('.bookmark-list-unit')[0];
+          _bkmrklst.parentNode.removeChild(_bkmrklst);
+          _bkmrklst = null;
+        }
+        //------------------------------Dayli rankings ad cleaning-----------------------
+        if (PAGETYPE===6)
+        {
+          $('.ad-printservice').remove();
+        }
+        //-------------------------------Illust page extra check-------------------------
+        if (PAGETYPE===12)
+        {
+          initMutationObject({'childList': true});
+        }
+        //-----------------------------Init illust fetch listener------------------------
+        if (PAGETYPE===1 || PAGETYPE===4 || PAGETYPE===6)
+        {
+          initMutationObject({'childList': true});
+        }
+        //----------------------------------Search (tags)--------------------------------
+        if (PAGETYPE===8)
+        {
+          initMutationObject({'childList': true});
+        }
+        //-------------------------------Home page listener------------------------------
+        if (PAGETYPE===10)
+        {
+          initMutationObject({'childList': true, 'subtree': true});
+        }
+        //---------------------------------Pixiv Member pages----------------------------
+        if (PAGETYPE===2 || PAGETYPE===7)
+        {
+          $('body').off('mouseup', 'a[href*="bookmarks/artworks"]');
+          $('body').off('mouseup', 'a[href*="/illustrations"]');
+
+          $('body').on('mouseup', 'a[href*="bookmarks/artworks"]', function(){
+            console.log('PAGETYPE: '+ PAGETYPE+' -> 7');
+            PAGETYPE = 7;
+            bookmarksInit();
+          });
+          $('body').on('mouseup', 'a[href*="/illustrations"]', function(){
+            console.log('PAGETYPE: '+ PAGETYPE+' -> 2');
+            PAGETYPE = 2;
+          });
+          // $('body').on('mouseup', 'a[href*="/manga"]', function(){ ///???
+          //   console.log('PAGETYPE: '+ PAGETYPE+' -> X[3?]');
+          //   PAGETYPE = 2;
+          // });
+        }
+        //-------------------------------------------------------------------------------
+        async function bookmarksInit()
+        {
           checkFollowedArtistsInit();
-          colorFollowed(); //process missed arts containers
-          createObserver(zone);
-        }
-        //some ads removing--------------------------------------------------------------
-        /*
-        setTimeout(()=>{
-          document.querySelectorAll('iframe').forEach((el)=>{el.remove()});
-          document.querySelectorAll('a[href*="/premium"]').forEach((el)=>{el.remove()});
-          console.log('ads cleared');
-        },3000);
-        */
-      }
-      //-----------------------------Init illust fetch listener--------------------------
-      if (PAGETYPE===1 || PAGETYPE===4 || PAGETYPE===6)
-      {
-        initMutationObject({'childList': true});
-      }
-      //----------------------------------Search (tags)----------------------------------
-      if (PAGETYPE===8)
-      {
-        initMutationObject({'childList': true});
-      }
-      //-------------------------------Home page listener--------------------------------
-      if (PAGETYPE===10)
-      {
-        initMutationObject({'childList': true, 'subtree': true});
-      }
-      //---------------------------------Pixiv Member pages------------------------------
-      if (PAGETYPE===2|| PAGETYPE===3 || PAGETYPE===7)
-      {
-        $('body').on('mouseup', 'a[href*="bookmarks/artworks"]', function(){
-          console.log('PAGETYPE: '+ PAGETYPE+' -> 7');
-          PAGETYPE = 7;
-          bookmarksInit();
-        });
-        $('body').on('mouseup', 'a[href*="/illustrations"]', function(){
-          console.log('PAGETYPE: '+ PAGETYPE+' -> 2');
-          PAGETYPE = 2;
-        });
-        // $('body').on('mouseup', 'a[href*="/manga"]', function(){ ///???
-        //   console.log('PAGETYPE: '+ PAGETYPE+' -> X[3?]');
-        //   PAGETYPE = 2;
-        // });
-      }
-      //-------------------------------
-      async function bookmarksInit()
-      {
-        checkFollowedArtistsInit();
 
-        let mainDiv = document.querySelector('section');
-        while(!mainDiv)
+          let mainDiv = document.querySelector('section');
+          while(!mainDiv)
+          {
+            console.log('Waiting for arts section [bookmarksInit]');
+            await sleep(1000);
+            mainDiv = document.querySelector('section');
+          }
+          console.log(mainDiv);
+
+          colorFollowed();
+        }
+        //------------------------------------Bookmarks----------------------------------
+        if (PAGETYPE===7)
         {
-          console.log('Waiting for arts section [bookmarksInit]');
-          await sleep(1000);
-          mainDiv = document.querySelector('section');
+          bookmarksInit();
         }
-        console.log(mainDiv);
-
-        colorFollowed();
-      }
-      //------------------------------------Bookmarks------------------------------------
-      if (PAGETYPE===7)
-      {
-        bookmarksInit();
-      }
-      //---------------------------------Async page change-------------------------------
-      if ([2,7,8,10,12].includes(PAGETYPE))
-      {
-        $('body').on('mouseup', 'a[href="/"], a[href="/en/"]', function(){
-          console.log('PAGETYPE: '+ PAGETYPE+' -> 10');
-          PAGETYPE = 10;
-          //TODO: rework all functions for page depending!!!
-        });
-      }
+      } //reInitMutationObservers()
+      //-------------------------------------------------------------------------------
+      reInitMutationObservers();
       //=================================================================================
       //***************************************HOVER*************************************
       //=================================================================================
       //------------------------------------Profile card--------------------------------- //0,1,4,6,8,9,11
-      if ([0,1,4,6,9,11].includes(PAGETYPE))
+      function initProfileCard()
       {
-        $('body').on(previewEventType, 'a[href*="/artworks/"]', function(e)
+        if ([0,1,4,6,9,11].includes(PAGETYPE)) //todo:need to check later
         {
-          console.log('Profile card');
-          e.preventDefault();
-          if (this.childNodes.length === 0) //for preventing issues with 4 and 6 pages
+          $('body').on(previewEventType, 'a[href*="/artworks/"]', function(e)
           {
-            setHover(this, undefined, true);
-            imgContainer.style.top = getOffsetRect(this).top+200+'px';
-          }
-        });
+            console.log('Profile card');
+            e.preventDefault();
+            if (this.childNodes.length === 0) //for preventing issues with 4 and 6 pages
+            {
+              setHover(this, undefined, true);
+              imgContainer.style.top = getOffsetRect(this).top+200+'px';
+            }
+          });
+        }
       }
+
+      initProfileCard();
       //--------------------NEW ILLUSTRATIONS, DISCOVERY[ARTWORKS] AND SEARCH------------ //0,1,8
       function setPreviewEventListeners()
       {
@@ -883,162 +847,194 @@
           PAGETYPE = 1;
           artsLoaded = lastHits = 0; //not necessary
           checkFollowedArtistsInit();
-          initMutationObject(); //??? without `options`? todo
+          initMutationObject({'childList': true});
 
-          $('body').off();//(previewEventType, 'a[href*="member_illust.php?mode=medium&illust_id="]', discoveryUsersPreview);
+          $('body').off();
           setPreviewEventListeners();
           setTabSwitchingListenerW_U();
         });
       }
-      //--------------------------------DISCOVERY[Artworks]------------------------------ //1
-      if (PAGETYPE === 1) //Works
+      //=================================================================================
+      //*******************************Initialize Preview Listeners**********************
+      //=================================================================================
+      function initPreviewListeners()
       {
-        setTabSwitchingListenerW_U(); //pixiv has deleted async loading from this pages?
-        setPreviewEventListeners();
-      }
-      //----------------------------------DISCOVERY[Users]------------------------------- //13
-      else if (PAGETYPE === 13) //Users
-      {
-        setTabSwitchingListenerU_W(); //pixiv has deleted async loading from this pages?
-        setDiscoveryUsersPreviewEventListeners();
-      }
-      //----------------------------------NEW ILLUSTRATIONS------------------------------ //0
-      else if (PAGETYPE === 0)
-      {
-        setPreviewEventListeners();
-      }
-      //---------ARTIST WORKS, "TOP" PAGES, Home page, Search, Someone's Bookmarks------- //2,7,8,10,12
-      else if (PAGETYPE === 2 || PAGETYPE === 7 || PAGETYPE === 12 || PAGETYPE === 8 || PAGETYPE === 10)     //TODO!!! do smthng with that amorphous pixiv styleshit!
-      {
-        /*
-        $('body').on(previewEventType, 'a[href*="member_illust.php?mode=medium&illust_id="] > div:only-child', function()
+        //--------------------------------DISCOVERY[Artworks]---------------------------- //1
+        if (PAGETYPE === 1) //Works
         {
-          //single art hover-------------------------------------------------------------
-          if (this.firstChild.childNodes.length===1) //single
-          {
-            //console.log('single');
-            bookmarkObj = this.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0];
-            //checkBookmark_NewLayout(this);
-            setHover(this.childNodes[1]);
-          }
-          //manga-style arts hover-------------------------------------------------------
-          else
-          {
-            //console.log('manga');
-            bookmarkObj = this.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0];
-            //checkBookmark_NewLayout(this);
-            setMangaHover(this.childNodes[1], this.firstChild.childNodes[1].textContent);
-          }
-        });
-        */
-        $('body').on(previewEventType, 'a[href*="/artworks/"] > div:nth-child(2) ', function(e)
+          setTabSwitchingListenerW_U(); //pixiv has deleted async loading from this pages?
+          setPreviewEventListeners();
+        }
+        //----------------------------------DISCOVERY[Users]----------------------------- //13
+        else if (PAGETYPE === 13) //Users
         {
-          e.preventDefault();
-          //single art hover-------------------------------------------------------------
-          if (this.parentNode.firstChild.childNodes.length===1) //single
-          {
-            //bookmarkObj = this.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0]; //todo
-            setHover(this.childNodes[0]); //todo? - zero child-node trying?
-          }
-          //manga-style arts hover-------------------------------------------------------
-          else // if (this.parentNode.firstChild.childNodes.length===2)
-          {
-            //bookmarkObj = this.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0];
-            setMangaHover(this.childNodes[0], this.parentNode.firstChild.childNodes[1].textContent);
-          }
-        });
-      }
-      //----------------------DAILY RANKINGS & BOOKMARK INFORMATION PAGES---------------- //4,6
-      else if (PAGETYPE === 4 || PAGETYPE === 6)
-      {
-        $('body').on(previewEventType, 'a[href*="/artworks/"]', function(e) //direct div selector works badly with "::before"
+          setTabSwitchingListenerU_W(); //pixiv has deleted async loading from this pages?
+          setDiscoveryUsersPreviewEventListeners();
+        }
+        //----------------------------------NEW ILLUSTRATIONS---------------------------- //0
+        else if (PAGETYPE === 0)
         {
-          e.preventDefault();
-
-          if (this.childNodes.length == 1 && this.childNodes[0].nodeName=="DIV") //single art
-          {
-            bookmarkObj = $(this.firstChild.firstChild).parent().children("._one-click-bookmark");
-            checkBookmark(this);
-            setHover(this.firstChild.firstChild);
-          }
-          else if (this.children[1] && this.children[1].className == 'page-count') //manga
-          {
-            bookmarkObj = $(this.firstChild.firstChild).parent().children("._one-click-bookmark");
-            checkBookmark(this);
-            setMangaHover(this.firstChild.firstChild, this.children[1].children[1].textContent);
-          }
-        });
-      }
-      //--------------------------------------BOOKMARKS---------------------------------- //9
-      else if (PAGETYPE === 9)
-      {
-        $('body').on(previewEventType, '.work', function(e) //direct div selector works badly with "::before"
+          setPreviewEventListeners();
+        }
+        //---------ARTIST WORKS, "TOP" PAGES, Home page, Search, Someone's Bookmarks----- //2,7,8,10,12
+        else if (PAGETYPE === 2 || PAGETYPE === 7 || PAGETYPE === 12 || PAGETYPE === 8 || PAGETYPE === 10)     //TODO!!! do smthng with that amorphous pixiv styleshit!
         {
-          e.preventDefault();
-
-          if (this.childNodes.length == 1 && this.childNodes[0].nodeName=="DIV") //single art
+          /*
+          $('body').on(previewEventType, 'a[href*="member_illust.php?mode=medium&illust_id="] > div:only-child', function()
           {
-            bookmarkObj = $(this.firstChild.firstChild).parent().children("._one-click-bookmark");
-            checkBookmark(this);
-            setHover(this.firstChild.firstChild);
-          }
-          else if (this.children[1] && this.children[1].className == 'page-count') //manga
-          {
-            bookmarkObj = $(this.firstChild.firstChild).parent().children("._one-click-bookmark");
-            checkBookmark(this);
-            setMangaHover(this.firstChild.firstChild, this.children[1].children[1].textContent);
-          }
-        });
-      }
-      //------------------------------------Feed('stacc')-------------------------------- //11 - currently broken
-      /*
-      else if (PAGETYPE === 11)
-      {
-        $('body').on(previewEventType, 'a[href*="member_illust.php?mode=medium&illust_id="]', function(e)
-        {
-          e.preventDefault();
-
-          if (this.childNodes.length == 1 && this.childNodes[0].nodeName=="DIV")
-          {
-            if ($(this).hasClass('multiple')) //manga
+            //single art hover-------------------------------------------------------------
+            if (this.firstChild.childNodes.length===1) //single
             {
-              let link = 'https://www.pixiv.net/ajax/illust/' + this.href.split('&')[1].split('=')[1];
-              let that = this;
-
-              let xhr = new XMLHttpRequest();
-              xhr.responseType = 'json';
-              xhr.open("GET", link, true);
-              xhr.onreadystatechange = function ()
-              {
-                if (xhr.readyState == 4 && xhr.status == 200)
-                {
-                  let count = this.response.body.pageCount;
-                  console.log(count);
-                  setMangaHover(that.childNodes[1].childNodes[1], count);
-
-                  if (!(that.parentNode.parentNode.parentNode.parentNode.getElementsByClassName('imageCount').length>0)) //todo?..
-                  {
-                    let s = document.createElement('span');
-                    s.className = 'imageCount';
-                    s.style = 'position:relative; display: inline-block; float: right; top:-240px;'
-                    s.textContent = count;
-                    that.parentNode.parentNode.parentNode.parentNode.appendChild(s);
-                  }
-                }
-              };
-              xhr.send();
+              //console.log('single');
+              bookmarkObj = this.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0];
+              //checkBookmark_NewLayout(this);
+              setHover(this.childNodes[1]);
             }
-            else setHover(this.childNodes[1].childNodes[1]); //single art
-          }
-        });
+            //manga-style arts hover-------------------------------------------------------
+            else
+            {
+              //console.log('manga');
+              bookmarkObj = this.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0];
+              //checkBookmark_NewLayout(this);
+              setMangaHover(this.childNodes[1], this.firstChild.childNodes[1].textContent);
+            }
+          });
+          */
+          $('body').on(previewEventType, 'a[href*="/artworks/"] > div:nth-child(2) ', function(e)
+          {
+            e.preventDefault();
+            //single art hover-----------------------------------------------------------
+            if (this.parentNode.firstChild.childNodes.length===1) //single
+            {
+              //bookmarkObj = this.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0]; //todo
+              setHover(this.childNodes[0]); //todo? - zero child-node trying?
+            }
+            //manga-style arts hover-----------------------------------------------------
+            else // if (this.parentNode.firstChild.childNodes.length===2)
+            {
+              //bookmarkObj = this.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0];
+              setMangaHover(this.childNodes[0], this.parentNode.firstChild.childNodes[1].textContent);
+            }
+          });
+        }
+        //----------------------DAILY RANKINGS & BOOKMARK INFORMATION PAGES-------------- //4,6
+        else if (PAGETYPE === 4 || PAGETYPE === 6)
+        {
+          $('body').on(previewEventType, 'a[href*="/artworks/"]', function(e) //direct div selector works badly with "::before"
+          {
+            e.preventDefault();
+
+            if (this.childNodes.length == 1 && this.childNodes[0].nodeName=="DIV") //single art
+            {
+              bookmarkObj = $(this.firstChild.firstChild).parent().children("._one-click-bookmark");
+              checkBookmark(this);
+              setHover(this.firstChild.firstChild);
+            }
+            else if (this.children[1] && this.children[1].className == 'page-count') //manga
+            {
+              bookmarkObj = $(this.firstChild.firstChild).parent().children("._one-click-bookmark");
+              checkBookmark(this);
+              setMangaHover(this.firstChild.firstChild, this.children[1].children[1].textContent);
+            }
+          });
+        }
+        //--------------------------------------BOOKMARKS-------------------------------- //9
+        else if (PAGETYPE === 9)
+        {
+          $('body').on(previewEventType, '.work', function(e) //direct div selector works badly with "::before"
+          {
+            e.preventDefault();
+
+            if (this.childNodes.length == 1 && this.childNodes[0].nodeName=="DIV") //single art
+            {
+              bookmarkObj = $(this.firstChild.firstChild).parent().children("._one-click-bookmark");
+              checkBookmark(this);
+              setHover(this.firstChild.firstChild);
+            }
+            else if (this.children[1] && this.children[1].className == 'page-count') //manga
+            {
+              bookmarkObj = $(this.firstChild.firstChild).parent().children("._one-click-bookmark");
+              checkBookmark(this);
+              setMangaHover(this.firstChild.firstChild, this.children[1].children[1].textContent);
+            }
+          });
+        }
+        //------------------------------------Feed('stacc')------------------------------ //11 - currently broken
+        /*
+        else if (PAGETYPE === 11)
+        {
+          $('body').on(previewEventType, 'a[href*="member_illust.php?mode=medium&illust_id="]', function(e)
+          {
+            e.preventDefault();
+
+            if (this.childNodes.length == 1 && this.childNodes[0].nodeName=="DIV")
+            {
+              if ($(this).hasClass('multiple')) //manga
+              {
+                let link = 'https://www.pixiv.net/ajax/illust/' + this.href.split('&')[1].split('=')[1];
+                let that = this;
+
+                let xhr = new XMLHttpRequest();
+                xhr.responseType = 'json';
+                xhr.open("GET", link, true);
+                xhr.onreadystatechange = function ()
+                {
+                  if (xhr.readyState == 4 && xhr.status == 200)
+                  {
+                    let count = this.response.body.pageCount;
+                    console.log(count);
+                    setMangaHover(that.childNodes[1].childNodes[1], count);
+
+                    if (!(that.parentNode.parentNode.parentNode.parentNode.getElementsByClassName('imageCount').length>0)) //todo?..
+                    {
+                      let s = document.createElement('span');
+                      s.className = 'imageCount';
+                      s.style = 'position:relative; display: inline-block; float: right; top:-240px;'
+                      s.textContent = count;
+                      that.parentNode.parentNode.parentNode.parentNode.appendChild(s);
+                    }
+                  }
+                };
+                xhr.send();
+              }
+              else setHover(this.childNodes[1].childNodes[1]); //single art
+            }
+          });
+        }
+        */
+        //-------------------------------------------------------------------------------
       }
-      */
       //---------------------------------------------------------------------------------
+      initPreviewListeners();
+      //=================================================================================
       if (currentSettings["DELAY_BEFORE_PREVIEW"]>0) $('body').on('mouseleave', 'a[href*="/artworks/"]', function()
       {
         clearTimeout(timerId);
       });
-    });
+      //---------------------------------Async page change-------------------------------
+      function renewAll()
+      {
+        if (PAGETYPE != checkPageType())
+        {
+          console.log('PAGETYPE:', PAGETYPE, '->', PAGETYPE = checkPageType());
+
+          observer.disconnect();
+
+          if ([8,10].includes(PAGETYPE)) colorFollowed(); //extra coloring for missing arts
+
+          reInitMutationObservers();
+          initPreviewListeners();
+          initMenu();
+
+          reInitFollowagePreview();
+          initProfileCard();
+        }
+      }
+      //---------------------------------------------------------------------------------
+      renewObserver.init(renewAll);
+      renewObserver.observe($('body')[0], {childList: true, subtree: true});
+      //---------------------------------------------------------------------------------
+    }); //end of document.ready
     //===================================================================================
     //-----------------------------------------------------------------------------------
     function checkDelay(callback)
