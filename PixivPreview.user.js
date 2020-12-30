@@ -169,7 +169,7 @@
     //New:              2,    7,8,  10    12,13
     //==============--------------------------
     //Coloring:     - 1,- 4,6,7,8 ~ 10,~~ 12 -- //not actual: 4
-    //Profile card: 0,1,-,4,6,± ~ 9,~~,11 ±± -- //~todo: 7,10,12
+    //Profile card: 0,1,-,4,6,± ~ 9,~~,-- ±± -- //~todo: 7,10,12
     //On following: - 1,2,- 6 - ~ - ?? -- 12,13 //10:useless on its page, but may be useful for other
     //===================================================================================
     function setCurrentSettings(){
@@ -387,11 +387,11 @@
       return null;
     }
     //-----------------------------------------------------------------------------------
-    let getUserId = (artContainer) =>
+    function getUserId(artContainer)
     {
       let userId = -1;
 
-      if (typeof artContainer.hasAttribute !== 'function'){
+      if (!artContainer || typeof artContainer.hasAttribute !== 'function'){
         console.log(artContainer,'has been filtered out.');
       }
       else if (PAGETYPE===1 || PAGETYPE===4 || PAGETYPE===6){
@@ -434,7 +434,9 @@
     {
       switch(PAGETYPE)
       {
-        case 1,4: return $('.gtm-illust-recommend-zone')[0]
+        case 1:
+        case 4:   return $('.gtm-illust-recommend-zone')[0]
+
         case 6:   return $('.ranking-items')[0]
         case 8:   return $("section>div>ul")[0]
         case 10:  return $("div[id='root']>div>div:nth-child(2)")[0]
@@ -664,6 +666,11 @@
         else if([1,6,13].includes(PAGETYPE)){
           followSelector = '.follow-button';
         }
+        else{
+          followSelector = "";
+          console.info("Follow selector doesn't found!");
+          return -1;
+        }
 
         $('body').off('mouseup', followSelector); //clearing previous events
 
@@ -775,9 +782,9 @@
       //------------------------------------Profile card--------------------------------- //0,1,4,6,8,9,11
       function initProfileCard()
       {
-        if ([0,1,4,6,9,11].includes(PAGETYPE)) //todo:need to check later
+        if ([0,1,4,6,9].includes(PAGETYPE))
         {
-          $('body').on(previewEventType, 'a[href*="/artworks/"]', function(e)
+          $('body').on(previewEventType, 'section._profile-popup a[href*="/artworks/"]', function(e)
           {
             console.log('Profile card');
             e.preventDefault();
@@ -804,7 +811,7 @@
         });
 
         //manga-style arts hover---------------------------------------------------------
-        $('body').on(previewEventType, 'a[href*="/artworks/"] > div:nth-child(2) ', function(e)
+        $('body').on(previewEventType, 'a[href*="/artworks/"] > div:nth-child(2)', function(e)
         {
           e.preventDefault();
           if (this.parentNode.firstChild.childNodes.length)
@@ -826,21 +833,29 @@
         });
       }
       //--------------------------------------------------------------------------------- //1->13
-      function setTabSwitchingListenerW_U() //no need anymore?
+      function setTabSwitchingListenerW_U() //no need anymore? - excessive for now
       {
+        $('body').off('mouseup','a[href="/discovery"]');
+
         $('body').on('mouseup','a[href="/discovery/users"]', function()
         {
           console.log('Works -> Users');
           PAGETYPE = 13;
           artsLoaded = lastHits = 0; //clearing loaded arts count when switching on tabs
-          $('body').off(); //may cause some removal of timeout events?
+
+          $('body').off(previewEventType, 'a[href*="/artworks/"]');
+          $('body').off(previewEventType, 'a[href*="/artworks/"] > div:only-child');
+          $('body').off(previewEventType, 'a[href*="/artworks/"] > div:nth-child(2)');
+
           setDiscoveryUsersPreviewEventListeners();
           setTabSwitchingListenerU_W();
         });
       }
       //--------------------------------------------------------------------------------- //13->1
-      function setTabSwitchingListenerU_W() //no need anymore?
+      function setTabSwitchingListenerU_W() //no need anymore? - excessive for now
       {
+        $('body').off('mouseup','a[href="/discovery/users"]');
+
         $('body').on('mouseup','a[href="/discovery"]', function()
         {
           console.log('Users -> Works');
@@ -849,7 +864,10 @@
           checkFollowedArtistsInit();
           initMutationObject({'childList': true});
 
-          $('body').off();
+          $('body').off(previewEventType, 'a[href*="/artworks/"]');
+          $('body').off(previewEventType, 'a[href*="/artworks/"] > div:only-child');
+          $('body').off(previewEventType, 'a[href*="/artworks/"] > div:nth-child(2)');
+
           setPreviewEventListeners();
           setTabSwitchingListenerW_U();
         });
@@ -1019,6 +1037,7 @@
           console.log('PAGETYPE:', PAGETYPE, '->', PAGETYPE = checkPageType());
 
           observer.disconnect();
+          $('body').off(previewEventType, 'a[href*="/artworks/"]');
 
           if ([8,10].includes(PAGETYPE)) colorFollowed(); //extra coloring for missing arts
 
