@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         2.41
+// @version         2.42
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -30,6 +30,7 @@
 // @require         https://code.jquery.com/jquery-3.3.1.min.js
 // @require         https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/1.3.8/FileSaver.min.js
 // @noframes
+// ==/UserScript==
 // ==/UserScript==
 //=======================================================================================
 (function ()
@@ -168,9 +169,9 @@
     //Old:          0,1,  4,6,    9,  ,11
     //New:              2,    7,8,  10    12,13
     //==============--------------------------
-    //Coloring:     - 1,- 4,6,7,8 ~ 10,~~ 12 -- //not actual: 4
-    //Profile card: 0,1,-,4,6,± ~ 9,~~,-- ±± -- //~todo: 7,10,12
-    //On following: - 1,2,- 6 - ~ - ?? -- 12,13 //10:useless on its page, but may be useful for other
+    //Coloring:     = 1,= 4,6,7,8 ~ 10,~~ 12 -- //not actual: 4
+    //Profile card: 0,1,=,4,6,7 8 9,10,-- 12 -- //
+    //On following: = 1,2,- 6 7 8 = ?? -- 12,13 //10:useless on its page, but may be useful for other
     //===================================================================================
     function setCurrentSettings(){
       for (let i = 0; i < propList.length; i++){
@@ -673,7 +674,7 @@
         else if([1,6,13].includes(PAGETYPE)){
           followSelector = '.follow-button';
         }
-        else{
+        else if (PAGETYPE != 8){
           followSelector = "";
           console.info("Follow selector doesn't found!");
           return -1;
@@ -802,6 +803,17 @@
             }
           });
         }
+        else if ([7,8,10,12].includes(PAGETYPE))
+        {
+          $('body').on(previewEventType, 'div[role="none"] a[href*="/artworks/"]', function(e)
+          {
+            console.log('Profile card');
+            e.preventDefault();
+
+            setHover(this.childNodes[1].firstChild, undefined, true);
+            imgContainer.style.top = getOffsetRect(this).top+112+5+'px';
+          });
+        }
       }
 
       initProfileCard();
@@ -902,43 +914,24 @@
           setPreviewEventListeners();
         }
         //---------ARTIST WORKS, "TOP" PAGES, Home page, Search, Someone's Bookmarks----- //2,7,8,10,12
-        else if (PAGETYPE === 2 || PAGETYPE === 7 || PAGETYPE === 12 || PAGETYPE === 8 || PAGETYPE === 10)     //TODO!!! do smthng with that amorphous pixiv styleshit!
+        else if (PAGETYPE === 2 || PAGETYPE === 7 || PAGETYPE === 12 || PAGETYPE === 8 || PAGETYPE === 10)
         {
-          /*
-          $('body').on(previewEventType, 'a[href*="member_illust.php?mode=medium&illust_id="] > div:only-child', function()
-          {
-            //single art hover-------------------------------------------------------------
-            if (this.firstChild.childNodes.length===1) //single
-            {
-              //console.log('single');
-              bookmarkObj = this.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0];
-              //checkBookmark_NewLayout(this);
-              setHover(this.childNodes[1]);
-            }
-            //manga-style arts hover-------------------------------------------------------
-            else
-            {
-              //console.log('manga');
-              bookmarkObj = this.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0];
-              //checkBookmark_NewLayout(this);
-              setMangaHover(this.childNodes[1], this.firstChild.childNodes[1].textContent);
-            }
-          });
-          */
           $('body').on(previewEventType, 'a[href*="/artworks/"] > div:nth-child(2) ', function(e)
           {
+            if ($(this).parents('[role="none"]').length > 0) return; //filtering preview card
+
             e.preventDefault();
             //single art hover-----------------------------------------------------------
-            if (this.parentNode.firstChild.childNodes.length===1) //single
+            if (this.parentNode.firstChild.childNodes.length===1)
             {
+              setHover(this.childNodes[0]);
               //bookmarkObj = this.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0]; //todo
-              setHover(this.childNodes[0]); //todo? - zero child-node trying?
             }
             //manga-style arts hover-----------------------------------------------------
             else // if (this.parentNode.firstChild.childNodes.length===2)
             {
-              //bookmarkObj = this.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0];
               setMangaHover(this.childNodes[0], this.parentNode.firstChild.childNodes[1].textContent);
+              //bookmarkObj = this.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0];
             }
           });
         }
