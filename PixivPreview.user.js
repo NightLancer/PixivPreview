@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         2.40.1
+// @version         2.41
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -201,7 +201,7 @@
     loadSavedSettings();
     setCurrentSettings();
     //-----------------------------------------------------------------------------------
-    previewEventType = (currentSettings["PREVIEW_ON_CLICK"])?'click':'mouseenter';
+    previewEventType = (currentSettings["PREVIEW_ON_CLICK"])?'mouseup':'mouseenter';
 
     function resetPreviewSize(){previewSize = (currentSettings["PREVIEW_SIZE"])?currentSettings["PREVIEW_SIZE"]:(window.innerHeight>1200 & document.body.clientWidth>1200)?1200:600}
     //===================================================================================
@@ -391,8 +391,11 @@
     {
       let userId = -1;
 
-      if (!artContainer || typeof artContainer.hasAttribute !== 'function'){
-        console.log(artContainer,'has been filtered out.');
+      if (typeof artContainer.hasAttribute !== 'function'){
+        console.log(artContainer, 'has been filtered out.');
+      }
+      else if(!artContainer){
+        console.error('UNPROCESSED getUserId() call!');
       }
       else if (PAGETYPE===1 || PAGETYPE===4 || PAGETYPE===6){
         userId = (artContainer.hasAttribute('data-user_id'))
@@ -401,18 +404,15 @@
       }
       else if (PAGETYPE===12){
         //artContainer = artContainer.querySelectorAll('.gtm-illust-recommend-title')[0] || artContainer; // -_-' //for 4?
-        userId = artContainer.querySelector('[href*="/users/"]').getAttribute('href').split('/').pop();
+        userId = artContainer.querySelector('[href*="/users/"]').getAttribute('href').split('/').pop(); //searchNearestNode if needed
       }
       else if (PAGETYPE===7 || PAGETYPE===10){
         userId = searchNearestNode(artContainer,'[href*="/users/"]').getAttribute('href').split('/').pop(); //artContainer.parentNode.parentNode.querySelectorAll('[href*="/users/"]')[0]//
-                                                                                          //Array.slice(artcontainers).map((e) => searchNearestNode(e,'[href*="/users/"]').getAttribute('href').split('/').pop() )
+        //Array.slice(artcontainers).map((e) => searchNearestNode(e,'[href*="/users/"]').getAttribute('href').split('/').pop() )
       }
       else if(PAGETYPE===8){
         let node = searchNearestNode(artContainer,'[href*="/users/"]');
         userId = (node)? node.getAttribute('href').split('/').pop(): -1;
-      }
-      else{
-        console.error('UNPROCESSED getUserId() call!');
       }
 
       return +userId;
@@ -435,12 +435,12 @@
       switch(PAGETYPE)
       {
         case 1:
-        case 4:   return $('.gtm-illust-recommend-zone')[0]
+        case 4:  return $('.gtm-illust-recommend-zone')[0]
 
-        case 6:   return $('.ranking-items')[0]
-        case 8:   return $("section>div>ul")[0]
-        case 10:  return $("div[id='root']>div>div:nth-child(2)")[0]
-        case 12:  return $('.gtm-illust-recommend-zone ul')[0]
+        case 6:  return $('.ranking-items')[0]
+        case 8:  return $("section>div>ul")[0]
+        case 10: return $("div[id='root']>div>div:nth-child(2)")[0]
+        case 12: return $('.gtm-illust-recommend-zone ul')[0]
 
         default: return 0;
       }
@@ -472,18 +472,25 @@
       {
         mutation.addedNodes.forEach(function(node)
         {
-          if (PAGETYPE != 10){
+          if (PAGETYPE == 10){
+            if (node.nodeName == "IMG" && node.matches('img:not([class*=" "])')){    //todo: very unstable condition(>=2 img classes)
+              arr.push(searchNearestNode(node, 'a[href*="/artworks/"]'));
+            }
+            else if (node.nodeName == "DIV"){
+              node.querySelectorAll('a[href*="/artworks/"]:only-child').forEach((el)=>arr.push(el));
+            }
+          }
+          else if (PAGETYPE == 12 && (!!node.querySelector('iframe'))){
+            node.remove(); //filtering promo blocks
+          }
+          else{
             arr.push(node);
           }
-          else if (node.nodeName == "IMG" && node.matches('img:not([class*=" "])')){    //todo: very unstable condition(>=2 img classes)
-            arr.push(searchNearestNode(node, 'a[href*="/artworks/"]'));
-          }
-          else if (node.nodeName == "DIV"){
-            node.querySelectorAll('a[href*="/artworks/"]:only-child').forEach((el)=>arr.push(el));
-          }
+
         });
       });
-      if (PAGETYPE != 10 || arr.length>0) colorFollowed(arr);
+
+      if (arr.length>0) colorFollowed(arr);
     }
     //-----------------------------------------------------------------------------------
     observer.init(observerBody);
