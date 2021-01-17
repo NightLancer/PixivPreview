@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         2.42
+// @version         2.42.1
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -202,7 +202,7 @@
     loadSavedSettings();
     setCurrentSettings();
     //-----------------------------------------------------------------------------------
-    previewEventType = (currentSettings["PREVIEW_ON_CLICK"])?'mouseup':'mouseenter';
+    previewEventType = (currentSettings["PREVIEW_ON_CLICK"])?'click':'mouseenter';
 
     function resetPreviewSize(){previewSize = (currentSettings["PREVIEW_SIZE"])?currentSettings["PREVIEW_SIZE"]:(window.innerHeight>1200 & document.body.clientWidth>1200)?1200:600}
     //===================================================================================
@@ -711,11 +711,9 @@
         //----------------------------Bookmark detail page cleaning----------------------
         if (PAGETYPE===4)
         {
-          let _bkmrklst = $('.bookmark-list-unit')[0];
-          _bkmrklst.parentNode.removeChild(_bkmrklst);
-          _bkmrklst = null;
+          $('.bookmark-list-unit')[0].remove();
         }
-        //------------------------------Dayli rankings ad cleaning-----------------------
+        //------------------------------Daily rankings ad cleaning-----------------------
         if (PAGETYPE===6)
         {
           $('.ad-printservice').remove();
