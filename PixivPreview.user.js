@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         2.42.1
+// @version         2.43
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -531,7 +531,7 @@
         let followedUsersId = localStorage.getObj('followedUsersId'); //local
         if (toFollow){
           followedUsersId[userId] = true;
-          if ([2,7,12].includes(PAGETYPE)){
+          if ([2,12].includes(PAGETYPE)){
             initFollowagePreview();
           }
         }
@@ -544,28 +544,31 @@
       else console.error('Slow down! You have subscribed too many to handle this by now! Wait for the next updates or let me know.');
     }
     //-------------------------------------Followage-------------------------------------
-    function initFollowagePreview()
+    async function initFollowagePreview()
     {
-      let b = false;
+      let recommendationBlock;
 
-      $('body').on(previewEventType, '.gtm-recommend-user-thumbnail', function(e)
+      while(!recommendationBlock)
+      {
+        console.log('Waiting for FollowagePreview');
+        await sleep(1000);
+        recommendationBlock = document.evaluate("//div[contains(., 'Recommended users')]", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+      }
+      console.log('*FollowagePreview loaded*');
+
+      let scroll = recommendationBlock.querySelector('button + div > div:first-child');
+      scroll.onwheel = function(ev)
+      {
+        ev.preventDefault();
+        scroll.scrollLeft += ev.deltaY*DELTASCALE;
+      };
+
+      $(recommendationBlock).on(previewEventType, 'a:not([href*="/users/"]) img', function(e)
       {
         e.preventDefault();
         //let top = window.innerHeight - previewSize - 5 + window.scrollY + 'px';
         let top = window.scrollY + 5 + 'px';
-        setHover(this.firstChild.firstChild, top);
-
-        if (!b){ //todo: beautify this later
-          //console.log(111);
-          let a = $('.gtm-recommend-user-thumbnail')[0];
-          let scroll = $(a).parents('ul')[1].parentNode;
-          scroll.onwheel = function(ev)
-          {
-            ev.preventDefault();
-            scroll.scrollLeft += ev.deltaY*DELTASCALE;
-          };
-          b = true;
-        }
+        setHover(this, top);
       });
     }
     //===================================================================================
@@ -668,39 +671,22 @@
       //---------------------------------------------------------------------------------
       function reInitFollowagePreview()
       {
-        if ([2,7,12].includes(PAGETYPE)){
-          followSelector = '[data-click-label*="follow"]';
+        if ([2,7,8,12].includes(PAGETYPE)){
+          followSelector = 'button:contains("Follow")'; //'.gtm-profile-follow-button-follow';
         }
         else if([1,6,13].includes(PAGETYPE)){
           followSelector = '.follow-button';
         }
-        else if (PAGETYPE != 8){
-          followSelector = "";
-          console.info("Follow selector doesn't found!");
-          return -1;
-        }
+        else return 0;
 
         $('body').off('mouseup', followSelector); //clearing previous events
 
-        if([1,2,6,7,12,13].includes(PAGETYPE)){
+        if([1,2,6,7,8,12,13].includes(PAGETYPE))
+        {
           $('body').on('mouseup', followSelector, function(){
             toFollow = (this.textContent == 'Follow'); //~mustn't work on non-English locale| todo: add some locale-specific text condition?
             followage(this, toFollow);
           });
-        }
-        if ([8].includes(PAGETYPE))
-        {
-          setTimeout(() => {
-            //followSelector = '.' + document.evaluate("//button[contains(., 'Add to your favorites')]", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue.classList[0];
-            followSelector = '.' + document.evaluate("//button[text() = 'Add to your favorites' or text() = 'Edit your favorite tags']", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue.classList[0];
-
-            $('body').on('mouseup', followSelector, function(){
-              if (this.textContent.includes("Follow")){ //need to filter first button since classes is matching; Includes "Following" as well
-                toFollow = (this.textContent == 'Follow');
-                followage(this, toFollow);
-              }
-            });
-          }, 5000);
         }
       }
       //---------------------------------------------------------------------------------
@@ -797,7 +783,7 @@
             if (this.childNodes.length === 0) //for preventing issues with 4 and 6 pages
             {
               setHover(this, undefined, true);
-              imgContainer.style.top = getOffsetRect(this).top+200+'px';
+              imgContainer.style.top = getOffsetRect(this).top+200+'px'; //todo: readjust preview position, constant to the right of profile, ~auto-height
             }
           });
         }
