@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         2.43
+// @version         2.44
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -49,7 +49,8 @@
         {paramIndex:0, array:[false,true], name:"ACCURATE_MANGA_PREVIEW"},
         {paramIndex:0, array:[false,true], name:"DISABLE_MANGA_PREVIEW_SCROLLING_PROPAGATION"},
         {paramIndex:1, array:[false,true], name:"SCROLL_INTO_VIEW_FOR_SINGLE_IMAGE"},
-        {paramIndex:0, array:[false,true], name:"DISABLE_SINGLE_PREVIEW_BACKGROUND_SCROLLING"}
+        {paramIndex:0, array:[false,true], name:"DISABLE_SINGLE_PREVIEW_BACKGROUND_SCROLLING"},
+        {paramIndex:0, array:[false,true], name:"HIDE_PEOPLE_WHO_BOOKMARKED_THIS"}
     ];
     //---------------------------------DEFAULT VALUES------------------------------------
     // ■ PREVIEW_ON_CLICK =
@@ -80,7 +81,11 @@
     // ■ DISABLE_SINGLE_PREVIEW_BACKGROUND_SCROLLING =
     // false: standard behavior (default)
     // true : disable page scrolling when viewing single preview (works only if previous setting set to true)
-
+    //
+    // ■ HIDE_PEOPLE_WHO_BOOKMARKED_THIS =
+    // false: don't change `bookmark_detail.php` page (default)
+    // true: hide "People who bookmarked this" section
+    
     let currentSettings = {};
     //-----------------------------------------------------------------------------------
     let hoverImg = document.createElement('img');
@@ -192,7 +197,7 @@
         propList[i].paramIndex = localStorage.getObj(propList[i].name) || propList[i].paramIndex; //load saved setting value, or let default if not found
 
         if ((propList[i].paramIndex < 0) || (propList[i].paramIndex >= propList[i].array.length)){
-          propList[i].paramIndex = 0;
+          propList[i].paramIndex = 0; // "0" is not default for all settings...
           console.error(`localStorage error! Setting ${propList[i].name} has been reset to default value! [${propList[i].array[propList[i].paramIndex]}]`);
         }
       }
@@ -697,7 +702,8 @@
         //----------------------------Bookmark detail page cleaning----------------------
         if (PAGETYPE===4)
         {
-          $('.bookmark-list-unit')[0].remove();
+          if (currentSettings["HIDE_PEOPLE_WHO_BOOKMARKED_THIS"])
+            $('.bookmark-list-unit')[0].remove();
         }
         //------------------------------Daily rankings ad cleaning-----------------------
         if (PAGETYPE===6)
