@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         2.44
+// @version         2.45
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -85,13 +85,13 @@
     // ■ HIDE_PEOPLE_WHO_BOOKMARKED_THIS =
     // false: don't change `bookmark_detail.php` page (default)
     // true: hide "People who bookmarked this" section
-    
+
     let currentSettings = {};
     //-----------------------------------------------------------------------------------
     let hoverImg = document.createElement('img');
 
     let imgContainer = document.createElement('div');
-        imgContainer.style = 'position:absolute; display:block; z-index:1000; background:#222; padding:5px; margin:-5px;';
+        imgContainer.style = 'position:absolute; display:block; visibility:visible; z-index:1000; background:#222; padding:5px; margin:-5px;';
         imgContainer.appendChild(hoverImg);
 
     let mangaContainer = document.createElement('div');
@@ -207,7 +207,7 @@
     loadSavedSettings();
     setCurrentSettings();
     //-----------------------------------------------------------------------------------
-    previewEventType = (currentSettings["PREVIEW_ON_CLICK"])?'click':'mouseenter';
+    previewEventType = (currentSettings["PREVIEW_ON_CLICK"])?'click':'mouseenter';       //need to be 'click' for overwriting default site event handlers
 
     function resetPreviewSize(){previewSize = (currentSettings["PREVIEW_SIZE"])?currentSettings["PREVIEW_SIZE"]:(window.innerHeight>1200 & document.body.clientWidth>1200)?1200:600}
     //===================================================================================
@@ -786,11 +786,8 @@
           {
             console.log('Profile card');
             e.preventDefault();
-            if (this.childNodes.length === 0) //for preventing issues with 4 and 6 pages
-            {
-              setHover(this, undefined, true);
-              imgContainer.style.top = getOffsetRect(this).top+200+'px'; //todo: readjust preview position, constant to the right of profile, ~auto-height
-            }
+
+            setHover(this, getOffsetRect(this).top+200+'px', true);
           });
         }
         else if ([7,8,10,12].includes(PAGETYPE))
@@ -800,8 +797,7 @@
             console.log('Profile card');
             e.preventDefault();
 
-            setHover(this.childNodes[1].firstChild, undefined, true);
-            imgContainer.style.top = getOffsetRect(this).top+112+5+'px';
+            setHover(this.childNodes[1].firstChild, getOffsetRect(this).top+112+5+'px', true);
           });
         }
       }
@@ -1058,8 +1054,10 @@
     function setHover(thisObj, top, profileCard)
     {
       clearTimeout(timerId);
-      clearTimeout(tInt);
+      clearInterval(tInt);
+      imgContainer.style.visibility = 'hidden';
       mangaOuterContainer.style.visibility = 'hidden';
+      hoverImg.src=''; //just in case
 
       hoverImg.src = parseImgUrl(thisObj, previewSize);
       imgContainer.style.top = top || getOffsetRect(thisObj.parentNode.parentNode).top+'px';
@@ -1074,30 +1072,37 @@
 
       if (hoverImg.naturalWidth>0){ //cached (previously viewed)
         adjustSinglePreview(dcw, l, hoverImg.naturalWidth);
+        //console.log("cached");
       }
       else{
         if (![2,7,10,12,13].includes(PAGETYPE) && !profileCard){
           previewWidth = previewSize*(((PAGETYPE==6)?thisObj.clientWidth:thisObj.parentNode.parentNode.clientWidth)/siteImgMaxWidth)+5; //if not on NEW layout - width is predictable
           adjustSinglePreview(dcw, l, previewWidth);
+          //console.log("count");
         }
         else{
           if (dcw - l - previewSize - 5 > 0){ //if it is obvious that preview will fit on the screen then there is no need in setInterval(trying to use as minimun setInterval`s as possible)
             imgContainer.style.left = l+'px';
-            checkDelay(function(){imgContainer.style.display='block';});
+            checkDelay(function(){imgContainer.style.visibility = 'visible';});
+            //console.log("excessive");
           }else{ //when on NEW layout - need to wait until image width is received
-            let tLimit;
+            let tLimit = 0;
+
             tInt = setInterval(function(){
               if (hoverImg.naturalWidth>0){
-                clearTimeout(tInt);
+                clearInterval(tInt);
                 adjustSinglePreview(dcw, l, hoverImg.naturalWidth); //position mismatching due to old `thisObj` => clearing in hoverImg.mouseleave
-                ++tLimit;
               }
-              if (tLimit*20>3000){ //in case of loading errors
-                clearTimeout(tInt);
+              ++tLimit;
+              console.log(tInt, tLimit);
+
+              if (tLimit*40>3000){ //timeout 3s in case of loading errors
+                clearInterval(tInt);
                 hoverImg.src='';
                 console.error('setInterval error');
+                return;
               }
-            }, 20);
+            }, 40);
           }
         }
       }
@@ -1111,14 +1116,14 @@
       if (l<0) l = 5; //followage preview
       let d = dcw - l - contentWidth - 5; //5 - padding - todo...
       imgContainer.style.left = (d>=0)?l+'px':l+d+'px';
-      checkDelay(function(){imgContainer.style.display='block';});
+      checkDelay(function(){imgContainer.style.visibility = 'visible';});
     }
     //-----------------------------------------------------------------------------------
     function setMangaHover(thisObj, count)
     {
       clearTimeout(timerId);
-      clearTimeout(tInt);
-      imgContainer.style.display='none'; //just in case
+      clearInterval(tInt);
+      imgContainer.style.visibility = 'hidden'; //just in case
 
       mangaOuterContainer.style.top = getOffsetRect(thisObj.parentNode.parentNode).top+'px';
       if (!currentSettings["ACCURATE_MANGA_PREVIEW"]) mangaOuterContainer.style.left = '30px';
@@ -1230,15 +1235,15 @@
     //===================================================================================
     imgContainer.onmouseleave = function()
     {
-      imgContainer.style.display='none';
+      imgContainer.style.visibility = 'hidden';
       hoverImg.src='';
       clearTimeout(timerId);
-      clearTimeout(tInt);
+      clearInterval(tInt);
     };
     //-----------------------------------------------------------------------------------
     mangaOuterContainer.onmouseleave = function()
     {
-      mangaOuterContainer.style.visibility='hidden';
+      mangaOuterContainer.style.visibility = 'hidden';
       clearTimeout(timerId);
     };
     //===================================================================================
