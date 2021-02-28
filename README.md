@@ -60,6 +60,10 @@ false : manually scrolling (may need in case of forced 1200px vertical preview w
 false: standard behavior (default)<br>
 true : disable page scrolling when viewing single preview (works only if previous setting set to `true`)<br>
 <br>
+■ HIDE_PEOPLE_WHO_BOOKMARKED_THIS =<br>
+false: don't change `bookmark_detail.php` page (default)<br>
+true: hide "People who bookmarked this" section<br>
+<br>
 Supported pages:<br>
 - New illustrations<br>
 - Discovery<br>
