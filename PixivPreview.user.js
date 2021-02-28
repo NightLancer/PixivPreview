@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         2.45
+// @version         2.45.1
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -30,7 +30,6 @@
 // @require         https://code.jquery.com/jquery-3.3.1.min.js
 // @require         https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/1.3.8/FileSaver.min.js
 // @noframes
-// ==/UserScript==
 // ==/UserScript==
 //=======================================================================================
 (function ()
@@ -1094,7 +1093,7 @@
                 adjustSinglePreview(dcw, l, hoverImg.naturalWidth); //position mismatching due to old `thisObj` => clearing in hoverImg.mouseleave
               }
               ++tLimit;
-              console.log(tInt, tLimit);
+              //console.log(tInt, tLimit);
 
               if (tLimit*40>3000){ //timeout 3s in case of loading errors
                 clearInterval(tInt);
