@@ -8,8 +8,8 @@ Features:<br>
 • Opening source of artwork in new tab in one click (LMB).<br>
 • MMB-click on preview opens corresponding artwork page.<br>
 • Instantly save the original art by clicking Ctrl+LMB on the art preview.<br>
-• Quick add to bookmarks by clicking ALT+LMB on the art preview.<br>
-• Repeat ALT-LMB combination again for quick unfavoriting/opening bookmark tags edition page.<br>
+• Quick add to bookmarks by clicking ALT+LMB on the art preview(works partially for now).<br>
+• Makes recommendation block(appearing after follow) scrollable, arts preview also available.<br>
 
 ■ Preview of single artworks appears in left top corner of image block.
 <img src=http://i.prntscr.com/4LvnU6EITOmbB8VKMmBcog.png><br>
@@ -39,8 +39,8 @@ true : showing preview after LMB-click<br>
 0 : no delay before preview (default)<br>
 1000 : 1 second delay (2000 for 2 seconds, etc)<br>
 <br>
-■ previewSize =<br>
-0 : automatically calculate preview size (1200 or 600) depending of current screen size (default)<br>
+■ PREVIEW_SIZE =<br>
+auto : automatically calculate preview size (1200 or 600) depending of current screen size (default)<br>
 600 : up to 600px x 600px<br>
 1200 : up to 1200px x 1200px<br>
 <br>
