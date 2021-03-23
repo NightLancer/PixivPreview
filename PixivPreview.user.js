@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         2.45.1
+// @version         2.45.2
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -44,7 +44,7 @@
     let propList = [
         {paramIndex:0, array:[false,true], name:"PREVIEW_ON_CLICK"},
         {paramIndex:0, array:[0, 100, 200, 300, 500, 1000, 1500], name:"DELAY_BEFORE_PREVIEW"},
-        {paramIndex:0, array:[0, 600, 1200], name:"PREVIEW_SIZE"},
+        {paramIndex:0, array:["auto", 600, 1200], name:"PREVIEW_SIZE"},
         {paramIndex:0, array:[false,true], name:"ACCURATE_MANGA_PREVIEW"},
         {paramIndex:0, array:[false,true], name:"DISABLE_MANGA_PREVIEW_SCROLLING_PROPAGATION"},
         {paramIndex:1, array:[false,true], name:"SCROLL_INTO_VIEW_FOR_SINGLE_IMAGE"},
@@ -61,7 +61,7 @@
     // 1000 : 1 second delay (2000 for 2 seconds, etc)
     //
     // ■ PREVIEW_SIZE =
-    // 0 : automatically calculate preview size (1200 or 600) depending of current screen size (default)
+    // auto : automatically calculate preview size (1200 or 600) depending of current screen size (default)
     // 600 : up to 600px x 600px
     // 1200 : up to 1200px x 1200px
     //
@@ -125,8 +125,10 @@
             localStorage.setObj('followedCheck', this);
           },
           loadState(){
-            this.status = (localStorage.getObj('followedCheck') && localStorage.getObj('followedCheck').status)? localStorage.getObj('followedCheck').status: 0;
-            this.date   = (localStorage.getObj('followedCheck') && localStorage.getObj('followedCheck').date)?   localStorage.getObj('followedCheck').date:   0;
+            this.status = localStorage.getObj('followedCheck') && localStorage.getObj('followedCheck').status || 0;
+            this.date   = localStorage.getObj('followedCheck') && localStorage.getObj('followedCheck').date   || 0;
+            //this.status = localStorage.getObj('followedCheck')?.status || 0;           //wanna use this,
+            //this.date   = localStorage.getObj('followedCheck')?.date   || 0;           //but compatibility... -_-
           }
         };
 
@@ -173,7 +175,7 @@
     //Old:          0,1,  4,6,    9,  ,11
     //New:              2,    7,8,  10    12,13
     //==============--------------------------
-    //Coloring:     = 1,= 4,6,7,8 ~ 10,~~ 12 -- //not actual: 4
+    //Coloring:     = 1,= 4,6,7,8 ~ 10,~~ 12 -- //
     //Profile card: 0,1,=,4,6,7 8 9,10,-- 12 -- //
     //On following: = 1,2,- 6 7 8 = ?? -- 12,13 //10:useless on its page, but may be useful for other
     //===================================================================================
@@ -208,7 +210,7 @@
     //-----------------------------------------------------------------------------------
     previewEventType = (currentSettings["PREVIEW_ON_CLICK"])?'click':'mouseenter';       //need to be 'click' for overwriting default site event handlers
 
-    function resetPreviewSize(){previewSize = (currentSettings["PREVIEW_SIZE"])?currentSettings["PREVIEW_SIZE"]:(window.innerHeight>1200 & document.body.clientWidth>1200)?1200:600}
+    function resetPreviewSize(){previewSize = (currentSettings["PREVIEW_SIZE"] > 0)?currentSettings["PREVIEW_SIZE"]:(window.innerHeight>1200 & document.body.clientWidth>1200)?1200:600}
     //===================================================================================
     //**********************************ColorFollowed************************************
     //===================================================================================
@@ -503,11 +505,15 @@
     async function initMutationObject(options)
     {
       let mainDiv = getArtSectionContainers();
+      let c = 0;
       while(!mainDiv)
       {
         console.log('Waiting for arts container...');
         await sleep(1000);
         mainDiv = getArtSectionContainers();
+
+        ++c;
+        if (c>10) {console.error('Error while waiting for arts containers! [Timeout 10s]'); return -1}
       }
       console.log(mainDiv);
       observer.observe(mainDiv, options)
@@ -551,12 +557,16 @@
     async function initFollowagePreview()
     {
       let recommendationBlock;
+      let c = 0;
 
       while(!recommendationBlock)
       {
         console.log('Waiting for FollowagePreview');
         await sleep(1000);
         recommendationBlock = document.evaluate("//div[contains(., 'Recommended users')]", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+
+        ++c;
+        if (c>10) {console.error("Error while waiting for recommendationBlock! [Timeout 10s]"); return -1}
       }
       console.log('*FollowagePreview loaded*');
 
@@ -654,11 +664,13 @@
           }
         }
 
-        menuButton.addEventListener("click", function()
-        {
-          menu.style.display = 'block';
-          let menuTimer = setTimeout(()=>{menu.style.display = 'none'}, 60*1000); //closing menu after 60s to prevent "hanging" it in one tab
-        });
+        if (menuButton)
+          menuButton.addEventListener("click", function(){
+            menu.style.display = 'block';
+            let menuTimer = setTimeout(()=>{menu.style.display = 'none'}, 60*1000); //closing menu after 60s to prevent "hanging" it in one tab
+          })
+        else
+          console.error("menuButton is undefined!");
       }
       //---------------------------------------------------------------------------------
       $(document).mouseup(function (e){
@@ -744,22 +756,21 @@
             console.log('PAGETYPE: '+ PAGETYPE+' -> 2');
             PAGETYPE = 2;
           });
-          // $('body').on('mouseup', 'a[href*="/manga"]', function(){ ///???
-          //   console.log('PAGETYPE: '+ PAGETYPE+' -> X[3?]');
-          //   PAGETYPE = 2;
-          // });
         }
         //-------------------------------------------------------------------------------
         async function bookmarksInit()
         {
           checkFollowedArtistsInit();
-
+          let c = 0;
           let mainDiv = document.querySelector('section');
           while(!mainDiv)
           {
             console.log('Waiting for arts section [bookmarksInit]');
             await sleep(1000);
             mainDiv = document.querySelector('section');
+
+            ++c;
+            if (c>10) {console.error('Error while waiting for arts section [bookmarksInit]! [Timeout 10s]'); break;}
           }
           console.log(mainDiv);
 
@@ -1133,7 +1144,7 @@
       imgsArrInit(parseImgUrl(thisObj, previewSize), +count);
     }
     //-----------------------------------------------------------------------------------
-    function imgsArrInit(primaryLink, l)
+    function imgsArrInit(primaryLink, count)
     {
       let currentImgId = getImgId(primaryLink);
       //console.log('lastImgId: ' + lastImgId);
@@ -1148,7 +1159,7 @@
 
         lastImgId = currentImgId;
 
-        for(let i=0; i<l; i++)
+        for(let i=0; i<count; i++)
         {
           if (!(!!imgsArr[i])) //if [i] img element doesn't exist
           {
@@ -1168,7 +1179,7 @@
         }
         else //some blind frame adjusting
         {
-          adjustMargins(l*previewSize);
+          adjustMargins(count*previewSize);
           checkDelay(function(){mangaOuterContainer.style.visibility='visible';});
         }
       }
@@ -1280,6 +1291,7 @@
 
           //Single (general url)
           let ajaxIllustUrl = 'https://www.pixiv.net/ajax/illust/' + illustId;
+          //https://www.pixiv.net/rpc/index.php?mode=get_illust_detail_by_ids&illust_ids=
 
           //Manga
           if (isManga)
@@ -1308,7 +1320,7 @@
       xhr.open("GET", illustPageUrl, true);
       xhr.onload = function ()
       {
-        let originalArtUrl = this.response.body.urls.original;
+        let originalArtUrl = this.response.body.urls.original; //this.response.body.url.big;
         if (pageNum>0) originalArtUrl = originalArtUrl.replace('p0','p'+pageNum);
 
         if (toSave)    saveImgByUrl(originalArtUrl);
