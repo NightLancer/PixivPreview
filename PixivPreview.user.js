@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         2.45.2
+// @version         2.46
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -103,9 +103,8 @@
 
     let imgsArr = [], //for manga-style image packs...
         followedUsersId = {}, //storing followed users pixiv ID
-        BOOKMARK_URL = 'https://www.pixiv.net/bookmark.php',
-        CheckedPublic = false,
-        CheckedPrivate = false,
+        BOOKMARK_URL = 'https://www.pixiv.net/ajax/user/XXXXXXXX/following?&limit=100&tag=&lang=en',//&offset=0&rest=show'
+        USER_ID,
         artsLoaded = 0,
         lastHits = 0,
         lastImgId = -1,
@@ -216,10 +215,18 @@
     //===================================================================================
     if ([1,4,6,7,8,10,12].includes(PAGETYPE)) //not critical to refresh at any time
     {
-      checkFollowedArtistsInit();
+      checkFollowedArtists();
     }
-
-    function checkFollowedArtistsInit()
+    //-----------------------------------------------------------------------------------
+    function makeArgs(baseUrl, total){
+      let arr = [];
+      for(let i = 1; i < Math.ceil(total / 100); i++){                                   //from 1 - because we already have first 100 users
+        arr.push(baseUrl + "&offset=" + i + "00");
+      }
+      return arr;
+    }
+    //-----------------------------------------------------------------------------------
+    async function checkFollowedArtists()
     {
       followedCheck.loadState();
       if (((Date.now()-23*60*60*1000) > followedCheck.date) || (followedCheck.status < 2)){
@@ -228,8 +235,39 @@
         followedCheck.status = 1;
         followedCheck.saveState();
 
-        checkFollowedArtists(BOOKMARK_URL+'?type=user');           //public
-        checkFollowedArtists(BOOKMARK_URL+'?type=user&rest=hide'); //private
+        //get user id via redirection
+        await new Promise(function (resolve){
+          var xhr = new XMLHttpRequest();
+          xhr.responseType = 'document';
+          xhr.open('GET', "https://www.pixiv.net/bookmark.php", true);
+          xhr.onload = function(){
+              USER_ID = this.response.URL.match(/\d+/)[0];
+              BOOKMARK_URL = BOOKMARK_URL.replace('XXXXXXXX', USER_ID);
+              resolve(true);
+          };
+          xhr.send();
+        });
+
+        //make first requestFollowed separately for obtaining count of followed users, both public/private
+        let response0 = await Promise.all([requestFollowed(BOOKMARK_URL+'&rest=show&offset=0'), requestFollowed(BOOKMARK_URL+'&rest=hide&offset=0')]);
+        for(const i of response0) i.body.users.forEach(user => followedUsersId[user.userId] = true);
+
+        let args = [];
+        let len = response0.map(r => r.body.total);
+
+        args =      makeArgs(BOOKMARK_URL+'&rest=show', len[0]);  //public
+        args.concat(makeArgs(BOOKMARK_URL+'&rest=hide', len[1])); //private
+
+        let responseArray = await Promise.all(args.map(requestFollowed));
+        for(const r of responseArray) r.body.users.forEach(user => followedUsersId[user.userId] = true);
+
+        //TODO - into one object?
+        localStorage.setObj('followedUsersId', followedUsersId);
+        followedCheck.status = 2;
+        followedCheck.date = Date.now();
+        followedCheck.saveState();
+        console.log('*Followed check completed*');
+        console.log('Obtained', Object.keys(followedUsersId).length, 'followed users');
       }
       else{
         //console.log(`followedCheck is up to date of ${new Date(followedCheck.date).toLocaleString()}`);
@@ -243,66 +281,27 @@
       }
     }
     //-----------------------------------------------------------------------------------
-    async function checkFollowedArtists(url)
+    async function requestFollowed(url)
     {
-      if (url === undefined || url.length === 0) return; //just in case
+      return new Promise(function (resolve, reject){
+        let xhr = new XMLHttpRequest();
+        xhr.responseType = 'json';
+        xhr.timeout = 10000;
+        xhr.open('GET', url, true);
 
-      let xhr = new XMLHttpRequest();
-      xhr.open('GET', url, true);
-      xhr.timeout = 15000;
-      xhr.onload = function ()
-      {
-        console.log("XHR done");
+        xhr.onload = function(){
+          if (xhr.status == 200)
+            resolve(this.response);
+          else
+            reject({status: this.status, statusText: this.statusText});
+        };
 
-        let doc = document.implementation.createHTMLDocument("Followed");
-        doc.documentElement.innerHTML = xhr.responseText;
+        xhr.onerror = xhr.ontimeout = function(){
+          reject({status: this.status, statusText: this.statusText});
+        };
 
-        let followedProfiles = doc.querySelectorAll('div>a.ui-profile-popup');
-        for(let i = 0; i < followedProfiles.length; i++)
-        {
-          //followedUsersId.push(followedProfiles[i].getAttribute("data-user_id"));
-          followedUsersId[followedProfiles[i].getAttribute("data-user_id")] = true;
-        }
-        console.log(Object.keys(followedUsersId).length);
-
-        let urlTail = $(doc).find('a[rel="next"]').attr('href');
-        if (urlTail !== undefined && urlTail.length)
-        {
-          console.log(urlTail.split('&').pop());
-          checkFollowedArtists(BOOKMARK_URL+urlTail);
-        }
-        else
-        {
-          if      (doc.querySelector("a[href*='bookmark.php?type=user&rest=']").href.match('hide')) CheckedPublic  = true;
-          else if (doc.querySelector("a[href*='bookmark.php?type=user&rest=']").href.match('show')) CheckedPrivate = true;
-
-          console.log(CheckedPublic);
-          console.log(CheckedPrivate);
-
-          if (CheckedPublic && CheckedPrivate)
-          {
-            localStorage.setObj('followedUsersId', followedUsersId);
-            followedCheck.status = 2;
-            followedCheck.date = Date.now();
-            followedCheck.saveState();
-            console.log('*Followed check completed*');
-          }
-        }
-        doc = followedProfiles = null;
-      };
-      xhr.onerror = function()
-      {
-        console.error('ERROR while GETTING subscriptions list!');
-        followedCheck.status = -1;
-        followedCheck.saveState();
-      };
-      xhr.ontimeout = function()
-      {
-        console.error(`XMLHttpRequest timeout error [${xhr.timeout/1000}s]`);
-        followedCheck.status = -1;
-        followedCheck.saveState();
-      }
-      xhr.send();
+        xhr.send();
+      });
     }
     //-----------------------------------------------------------------------------------
     async function colorFollowed(artsContainers)
@@ -341,7 +340,15 @@
             console.error(`ERROR while EXPECTING for subscriptions list! [${d*2000/1000}s]`);
             console.log(`Trying to load cached followedUsersId by date of ${new Date(followedCheck.date).toLocaleString()} ...`);
             followedUsersId = localStorage.getObj('followedUsersId');
-            console.log(`Loaded ${Object.keys(followedUsersId).length} followed users`);
+            if (followedUsersId && Object.keys(followedUsersId).length > 0){
+              console.log("Loaded cached", Object.keys(followedUsersId).length, "followed users");
+            }
+            else{
+              console.error('There is no locally stored followed users entries!');
+              followedCheck.status = -1;
+              followedCheck.saveState();
+            }
+
             break;
           }
         }
@@ -652,7 +659,7 @@
           if ([2,7,8,10,12].includes(PAGETYPE))
             buttons = document.querySelectorAll('body > div#root > div > div:nth-child(1) button');
           else
-            buttons = document.querySelectorAll('body > div:nth-child(1) > div:nth-child(1) button'); //$('#js-mount-point-header button'); (Replace with own button later?...)
+            buttons = document.querySelectorAll('body > div#js-mount-point-header > div:nth-child(1) button'); //$('#js-mount-point-header button'); (Replace with own button later?...)
 
           menuButton = buttons[buttons.length - 1]; // last is the menu button
           console.log(menuButton);
@@ -760,7 +767,7 @@
         //-------------------------------------------------------------------------------
         async function bookmarksInit()
         {
-          checkFollowedArtistsInit();
+          await checkFollowedArtists();
           let c = 0;
           let mainDiv = document.querySelector('section');
           while(!mainDiv)
@@ -770,11 +777,12 @@
             mainDiv = document.querySelector('section');
 
             ++c;
-            if (c>10) {console.error('Error while waiting for arts section [bookmarksInit]! [Timeout 10s]'); break;}
+            if (c>10) {console.error('Error while waiting for arts section [bookmarksInit]! [Timeout 10s]'); return -1;}
           }
           console.log(mainDiv);
 
           colorFollowed();
+          //Promise.all([checkFollowedArtists(), getArtsSection()]).then(v => colorFollowed(), e => {console.log(e); console.trace();}); //TODO
         }
         //------------------------------------Bookmarks----------------------------------
         if (PAGETYPE===7)
@@ -876,7 +884,7 @@
           console.log('Users -> Works');
           PAGETYPE = 1;
           artsLoaded = lastHits = 0; //not necessary
-          checkFollowedArtistsInit();
+          checkFollowedArtists();
           initMutationObject({'childList': true});
 
           $('body').off(previewEventType, 'a[href*="/artworks/"]');
@@ -1413,3 +1421,5 @@
     //===================================================================================
   });
 }) (); //function
+//Global TODO: hiding already viewed arts on Daily Rankings when moving to older dates
+//             arts viewed history extending for 10000 entries(as in premium)
