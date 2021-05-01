@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         2.46
+// @version         2.46.1
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -108,7 +108,7 @@
         artsLoaded = 0,
         lastHits = 0,
         lastImgId = -1,
-        previewSize,
+        PREVIEWSIZE,
         siteImgMaxWidth = 184, //2,7,12 [NEW]| quite useless on this pages because of square previews...
         mangaWidth = 1200,
         maxRequestTime = 30000,
@@ -209,7 +209,7 @@
     //-----------------------------------------------------------------------------------
     previewEventType = (currentSettings["PREVIEW_ON_CLICK"])?'click':'mouseenter';       //need to be 'click' for overwriting default site event handlers
 
-    function resetPreviewSize(){previewSize = (currentSettings["PREVIEW_SIZE"] > 0)?currentSettings["PREVIEW_SIZE"]:(window.innerHeight>1200 & document.body.clientWidth>1200)?1200:600}
+    function resetPreviewSize(){PREVIEWSIZE = (currentSettings["PREVIEW_SIZE"] > 0)?currentSettings["PREVIEW_SIZE"]:(window.innerHeight>1200 & document.body.clientWidth>1200)?1200:600}
     //===================================================================================
     //**********************************ColorFollowed************************************
     //===================================================================================
@@ -235,21 +235,22 @@
         followedCheck.status = 1;
         followedCheck.saveState();
 
-        //get user id via redirection
-        await new Promise(function (resolve){
-          var xhr = new XMLHttpRequest();
-          xhr.responseType = 'document';
-          xhr.open('GET', "https://www.pixiv.net/bookmark.php", true);
-          xhr.onload = function(){
-              USER_ID = this.response.URL.match(/\d+/)[0];
-              BOOKMARK_URL = BOOKMARK_URL.replace('XXXXXXXX', USER_ID);
-              resolve(true);
-          };
-          xhr.send();
-        });
+        //get user id via cookie
+        USER_ID = document.cookie.match(/user_id=\d+/)[0].split("=").pop();
+        BOOKMARK_URL = BOOKMARK_URL.replace("XXXXXXXX", USER_ID);
 
         //make first requestFollowed separately for obtaining count of followed users, both public/private
-        let response0 = await Promise.all([requestFollowed(BOOKMARK_URL+'&rest=show&offset=0'), requestFollowed(BOOKMARK_URL+'&rest=hide&offset=0')]);
+        let response0 = [];
+        try{
+          response0 = await Promise.all([requestFollowed(BOOKMARK_URL+'&rest=show&offset=0'), requestFollowed(BOOKMARK_URL+'&rest=hide&offset=0')]);
+        }
+        catch(error){
+          console.error(error);
+          followedCheck.status = -1;
+          followedCheck.saveState();
+          return -1;
+        }
+
         for(const i of response0) i.body.users.forEach(user => followedUsersId[user.userId] = true);
 
         let args = [];
@@ -258,6 +259,7 @@
         args =      makeArgs(BOOKMARK_URL+'&rest=show', len[0]);  //public
         args.concat(makeArgs(BOOKMARK_URL+'&rest=hide', len[1])); //private
 
+        //100 parallel requests
         let responseArray = await Promise.all(args.map(requestFollowed));
         for(const r of responseArray) r.body.users.forEach(user => followedUsersId[user.userId] = true);
 
@@ -293,11 +295,11 @@
           if (xhr.status == 200)
             resolve(this.response);
           else
-            reject({status: this.status, statusText: this.statusText});
+            reject({status: this.status, message: this.response.message, url:this.responseURL});
         };
 
         xhr.onerror = xhr.ontimeout = function(){
-          reject({status: this.status, statusText: this.statusText});
+          reject({status: this.status, message: this.response.message, url:this.responseURL});
         };
 
         xhr.send();
@@ -409,19 +411,17 @@
         console.log(artContainer, 'has been filtered out.');
       }
       else if(!artContainer){
-        console.error('UNPROCESSED getUserId() call!');
+        console.error('UNPROCESSED getUserId() call!'); //move this up?
       }
       else if (PAGETYPE===1 || PAGETYPE===4 || PAGETYPE===6){
-        userId = (artContainer.hasAttribute('data-user_id'))
-          ?artContainer.getAttribute('data-user_id')
-          :artContainer.querySelector('.ui-profile-popup').getAttribute('data-user_id');
+        userId = artContainer.getAttribute('data-user_id') || artContainer.querySelector('.ui-profile-popup').getAttribute('data-user_id');
       }
       else if (PAGETYPE===12){
         //artContainer = artContainer.querySelectorAll('.gtm-illust-recommend-title')[0] || artContainer; // -_-' //for 4?
         userId = artContainer.querySelector('[href*="/users/"]').getAttribute('href').split('/').pop(); //searchNearestNode if needed
       }
       else if (PAGETYPE===7 || PAGETYPE===10){
-        userId = searchNearestNode(artContainer,'[href*="/users/"]').getAttribute('href').split('/').pop(); //artContainer.parentNode.parentNode.querySelectorAll('[href*="/users/"]')[0]//
+        userId = searchNearestNode(artContainer,'[href*="/users/"]').getAttribute('href').split('/').pop();
         //Array.slice(artcontainers).map((e) => searchNearestNode(e,'[href*="/users/"]').getAttribute('href').split('/').pop() )
       }
       else if(PAGETYPE===8){
@@ -587,7 +587,7 @@
       $(recommendationBlock).on(previewEventType, 'a:not([href*="/users/"]) img', function(e)
       {
         e.preventDefault();
-        //let top = window.innerHeight - previewSize - 5 + window.scrollY + 'px';
+        //let top = window.innerHeight - PREVIEWSIZE - 5 + window.scrollY + 'px';
         let top = window.scrollY + 5 + 'px';
         setHover(this, top);
       });
@@ -1077,7 +1077,7 @@
       mangaOuterContainer.style.visibility = 'hidden';
       hoverImg.src=''; //just in case
 
-      hoverImg.src = parseImgUrl(thisObj, previewSize);
+      hoverImg.src = parseImgUrl(thisObj, PREVIEWSIZE);
       imgContainer.style.top = top || getOffsetRect(thisObj.parentNode.parentNode).top+'px';
 
       //adjusting preview position considering expected image width
@@ -1086,7 +1086,7 @@
           ?getOffsetRect(thisObj.parentNode.parentNode).left
           :getOffsetRect(thisObj).left;
       let dcw = document.body.clientWidth;
-      let previewWidth = previewSize;
+      let previewWidth = PREVIEWSIZE;
 
       if (hoverImg.naturalWidth>0){ //cached (previously viewed)
         adjustSinglePreview(dcw, l, hoverImg.naturalWidth);
@@ -1094,12 +1094,12 @@
       }
       else{
         if (![2,7,10,12,13].includes(PAGETYPE) && !profileCard){
-          previewWidth = previewSize*(((PAGETYPE==6)?thisObj.clientWidth:thisObj.parentNode.parentNode.clientWidth)/siteImgMaxWidth)+5; //if not on NEW layout - width is predictable
+          previewWidth = PREVIEWSIZE*(((PAGETYPE==6)?thisObj.clientWidth:thisObj.parentNode.parentNode.clientWidth)/siteImgMaxWidth)+5; //if not on NEW layout - width is predictable
           adjustSinglePreview(dcw, l, previewWidth);
           //console.log("count");
         }
         else{
-          if (dcw - l - previewSize - 5 > 0){ //if it is obvious that preview will fit on the screen then there is no need in setInterval(trying to use as minimun setInterval`s as possible)
+          if (dcw - l - PREVIEWSIZE - 5 > 0){ //if it is obvious that preview will fit on the screen then there is no need in setInterval(trying to use as minimun setInterval`s as possible)
             imgContainer.style.left = l+'px';
             checkDelay(function(){imgContainer.style.visibility = 'visible';});
             //console.log("excessive");
@@ -1149,7 +1149,7 @@
       if (isBookmarked) $(mangaOuterContainer).css("background", "rgb(255, 64, 96)");
       else $(mangaOuterContainer).css("background", "rgb(34, 34, 34)");
 
-      imgsArrInit(parseImgUrl(thisObj, previewSize), +count);
+      imgsArrInit(parseImgUrl(thisObj, PREVIEWSIZE), +count);
     }
     //-----------------------------------------------------------------------------------
     function imgsArrInit(primaryLink, count)
@@ -1187,7 +1187,7 @@
         }
         else //some blind frame adjusting
         {
-          adjustMargins(count*previewSize);
+          adjustMargins(count*PREVIEWSIZE);
           checkDelay(function(){mangaOuterContainer.style.visibility='visible';});
         }
       }
@@ -1199,10 +1199,10 @@
       }
     }
     //-----------------------------------------------------------------------------------
-    function parseImgUrl(thisObj, previewSize)
+    function parseImgUrl(thisObj, PREVIEWSIZE)
     {
       let url = (thisObj.src)? thisObj.src: thisObj.style.backgroundImage.slice(5,-2);
-      url = url.replace(/\/...x..[0|8]/, '/'+previewSize+'x'+previewSize).
+      url = url.replace(/\/...x..[0|8]/, '/'+PREVIEWSIZE+'x'+PREVIEWSIZE).
                 replace('_80_a2','').
                 replace('_square1200','_master1200').
                 replace('_70','').
@@ -1408,7 +1408,7 @@
     document.onkeyup = function(e) //Enlarge with shift
     {
       //console.log(e.keyCode);
-      if (e.keyCode == 16 && hoverImg.src && previewSize<1200)
+      if (e.keyCode == 16 && hoverImg.src && PREVIEWSIZE<1200)
       {
         let l = getOffsetRect(imgContainer).left;
         let w = hoverImg.naturalWidth*2+5;
