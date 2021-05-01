@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         2.46.1
+// @version         2.47
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
@@ -213,7 +213,7 @@
     //===================================================================================
     //**********************************ColorFollowed************************************
     //===================================================================================
-    if ([1,4,6,7,8,10,12].includes(PAGETYPE)) //not critical to refresh at any time
+    if ([1,4,6,7,8,10,12].includes(PAGETYPE))
     {
       checkFollowedArtists();
     }
@@ -229,7 +229,8 @@
     async function checkFollowedArtists()
     {
       followedCheck.loadState();
-      if (((Date.now()-23*60*60*1000) > followedCheck.date) || (followedCheck.status < 2)){
+
+      if (((Date.now()-23*60*60*1000) > followedCheck.date) || (followedCheck.status < 2) || !localStorage['followedUsersId']){
         console.log('*Followed check started*');
 
         followedCheck.status = 1;
@@ -245,12 +246,12 @@
           response0 = await Promise.all([requestFollowed(BOOKMARK_URL+'&rest=show&offset=0'), requestFollowed(BOOKMARK_URL+'&rest=hide&offset=0')]);
         }
         catch(error){
+          console.error("Error with initial bookmark url!");
           console.error(error);
           followedCheck.status = -1;
           followedCheck.saveState();
           return -1;
         }
-
         for(const i of response0) i.body.users.forEach(user => followedUsersId[user.userId] = true);
 
         let args = [];
@@ -259,11 +260,19 @@
         args =      makeArgs(BOOKMARK_URL+'&rest=show', len[0]);  //public
         args.concat(makeArgs(BOOKMARK_URL+'&rest=hide', len[1])); //private
 
-        //100 parallel requests
-        let responseArray = await Promise.all(args.map(requestFollowed));
+        //100 parallel requests in case of 10K users. TODO: find maximum amount and part requests
+        let responseArray = [];
+        try{
+          responseArray = await Promise.all(args.map(requestFollowed));
+        }
+        catch(error){
+          console.error(error);
+          followedCheck.status = -1;
+          followedCheck.saveState();
+          return -1;
+        }
         for(const r of responseArray) r.body.users.forEach(user => followedUsersId[user.userId] = true);
 
-        //TODO - into one object?
         localStorage.setObj('followedUsersId', followedUsersId);
         followedCheck.status = 2;
         followedCheck.date = Date.now();
@@ -272,14 +281,8 @@
         console.log('Obtained', Object.keys(followedUsersId).length, 'followed users');
       }
       else{
-        //console.log(`followedCheck is up to date of ${new Date(followedCheck.date).toLocaleString()}`);
-
-        if ([6].includes(PAGETYPE))
-          colorFollowed();
-        if ([10].includes(PAGETYPE)){
-          followedUsersId = localStorage.getObj('followedUsersId');
-          console.log('Loaded', Object.keys(followedUsersId).length, 'followed users');
-        }
+        followedUsersId = localStorage.getObj('followedUsersId');
+        console.log(`followedCheck is up to date of ${new Date(followedCheck.date).toLocaleString()}`);
       }
     }
     //-----------------------------------------------------------------------------------
@@ -324,57 +327,46 @@
       }
 
       let artsContainersLength = artsContainers.length;
-      //console.log(artsContainersLength);
 
       //wait until last XHR completed if it is not---------------------------------------
       followedCheck.loadState();
 
-      if (followedCheck.status == 1)
-      {
-        while (!(followedCheck.status == 2))
-        {
+      if (followedCheck.status == 1){
+        while (!(followedCheck.status == 2)){
           console.log("waiting for followed users..."); //this could happen in case of huge followed users amount
           await sleep(2000);
           followedCheck.loadState();
 
           ++d;
-          if (d*2000 > maxRequestTime){
+          if (d*2000 > maxRequestTime || followedCheck.status == -1){
             console.error(`ERROR while EXPECTING for subscriptions list! [${d*2000/1000}s]`);
-            console.log(`Trying to load cached followedUsersId by date of ${new Date(followedCheck.date).toLocaleString()} ...`);
-            followedUsersId = localStorage.getObj('followedUsersId');
-            if (followedUsersId && Object.keys(followedUsersId).length > 0){
-              console.log("Loaded cached", Object.keys(followedUsersId).length, "followed users");
-            }
-            else{
-              console.error('There is no locally stored followed users entries!');
-              followedCheck.status = -1;
-              followedCheck.saveState();
-            }
-
             break;
           }
         }
       }
 
-      if (followedCheck.status == 2 && PAGETYPE != 10){ //some optimization for heavily loaded home page
-        followedUsersId = localStorage.getObj('followedUsersId');
-        console.log(`Loaded ${Object.keys(followedUsersId).length} followed users`);
-      }
-
-      if (followedCheck.status <= 0){
+      //load from localStorage in any errors
+      if (followedCheck.status <= 0 || Object.keys(followedUsersId).length == 0){
         console.error(`There was some error during followed users loading [Error Code: ${followedCheck.status}]`);
+        console.log(`Trying to load cached followedUsersId by date of ${new Date(followedCheck.date).toLocaleString()} ...`);
+
+        followedUsersId = localStorage.getObj('followedUsersId');
+        if (followedUsersId && Object.keys(followedUsersId).length > 0){
+          console.log("Loaded cached", Object.keys(followedUsersId).length, "followed users");
+        }
+        else{
+          console.error('There is no locally stored followed users entries!');
+          return -1;
+        }
       }
       //---------------------------------------------------------------------------------
       console.log('arts loaded:', artsContainersLength, 'Total:', getArtsContainers().length);
 
       let currentHits = 0;
       let userId = 0;
-      //console.dir(artsContainers);
       for(let i = 0; i < artsContainersLength; i++)
       {
         userId = getUserId(artsContainers[i]);
-        //console.log(userId);
-        //if (followedUsersId.indexOf(userId)>=0)
         if (followedUsersId[userId]==true)
         {
           ++currentHits;
@@ -545,7 +537,9 @@
 
       if (localStorage.getObj('followedCheck').status == 2) //at least basic check until queue is developed
       {
-        let followedUsersId = localStorage.getObj('followedUsersId'); //local
+        if (Object.keys(followedUsersId).length == 0)
+          followedUsersId = localStorage.getObj('followedUsersId');
+
         if (toFollow){
           followedUsersId[userId] = true;
           if ([2,12].includes(PAGETYPE)){
@@ -726,6 +720,7 @@
         //------------------------------Daily rankings ad cleaning-----------------------
         if (PAGETYPE===6)
         {
+          colorFollowed();
           $('.ad-printservice').remove();
         }
         //-------------------------------Illust page extra check-------------------------
