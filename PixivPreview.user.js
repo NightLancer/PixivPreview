@@ -5,18 +5,16 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         2.47
+// @version         2.48
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
-// @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
 // @match           https://www.pixiv.net/ranking.php*
-// @match           https://www.pixiv.net/bookmark.php*
-// @match           https://www.pixiv.net/search.php*
-// @match           https://www.pixiv.net/*
-// @match           https://www.pixiv.net/stacc*
 // @match           https://www.pixiv.net/*artworks/*
-// @match           https://www.pixiv.net/*tags/*
 // @match           https://www.pixiv.net/*users/*
+// @match           https://www.pixiv.net/history.php*
+// @match           https://www.pixiv.net/bookmark_detail.php?illust_id=*
+// @match           https://www.pixiv.net/*tags/*
+// @match           https://www.pixiv.net/*
 // @connect         i.pximg.net
 // @connect         techorus-cdn.com
 // @connect         i-cf.pximg.net
@@ -103,7 +101,7 @@
 
     let imgsArr = [], //for manga-style image packs...
         followedUsersId = {}, //storing followed users pixiv ID
-        BOOKMARK_URL = 'https://www.pixiv.net/ajax/user/XXXXXXXX/following?&limit=100&tag=&lang=en',//&offset=0&rest=show'
+        BOOKMARK_URL = 'https://www.pixiv.net/ajax/user/XXXXXXXX/following?limit=100&tag=&lang=en',//&offset=0&rest=show'
         USER_ID,
         artsLoaded = 0,
         lastHits = 0,
@@ -118,12 +116,14 @@
         previewEventType,
         PAGETYPE = checkPageType(),
         followedCheck = {
+          id:0,                                                                          //backuping user id in case of cookie errors
           status:0,                                                                      //-1: error, 0:default, 1:in progress, 2:done
           date:0,                                                                        //date of last successful check
           saveState(){
             localStorage.setObj('followedCheck', this);
           },
           loadState(){
+            this.id     = localStorage.getObj('followedCheck') && localStorage.getObj('followedCheck').id     || 0;
             this.status = localStorage.getObj('followedCheck') && localStorage.getObj('followedCheck').status || 0;
             this.date   = localStorage.getObj('followedCheck') && localStorage.getObj('followedCheck').date   || 0;
             //this.status = localStorage.getObj('followedCheck')?.status || 0;           //wanna use this,
@@ -139,17 +139,6 @@
     Storage.prototype.getObj = function(key){
       return JSON.parse(this.getItem(key))
     }
-    /*
-    Array.prototype.last = function(){
-      return this[this.length - 1];
-    }
-    Object.prototype.last = function(){
-      return Object.keys(this)[Object.keys(this).length - 1];
-    }
-    Object.prototype.length = function(){
-      return Object.keys(this).length;
-    }
-    */
     //===================================================================================
     //************************************PageType***************************************
     //===================================================================================
@@ -159,24 +148,23 @@
       if (document.URL==='https://www.pixiv.net/discovery')                                                 return 1; //Discovery page(works) - Old +
       if (document.URL.match('https://www.pixiv.net/bookmark_detail.php?'))                                 return 4; //Bookmark information - Old +
       if (document.URL.match('https://www.pixiv.net/ranking.php?'))                                         return 6; //Daily rankings - Old +
-      if (document.URL.match('https://www.pixiv.net/bookmark.php?'))                                        return 9; //Your bookmarks page - Old + -> 7
       if (document.URL.match(/https:\/\/www\.pixiv\.net\/(?:en\/)?users\/\d+\/bookmarks\/artworks/))        return 7; //Bookmarks page - New +
       if (document.URL.match(/https:\/\/www\.pixiv\.net\/(?:en\/)?users/))                                  return 2; //Artist works page - New +
       if (document.URL.match(/https:\/\/www\.pixiv\.net\/(?:en\/)?tags/))                                   return 8; //Search page - New +
       if (document.URL.match(/https:\/\/www\.pixiv\.net\/(?:en\/)?artworks/))                               return 12; //Illust page - New* +
       if (document.URL.match('https://www.pixiv.net/discovery/users?'))                                     return 13; //Discovery page(users) New +
-      if (document.URL.match('https://www.pixiv.net/stacc?'))                                               return 11; //Feed ('stacc') Old + - currently broken
-      if (document.URL.match(/https:\/\/www\.pixiv\.net\/(?:en\/)?/))                                       return 10; //Home page New | actually means any other page...
+      if (document.URL.match('https://www.pixiv.net/history.php'))                                          return 14; //History - Old +~
+      if (document.URL.match(/https:\/\/www\.pixiv\.net\/(?:en\/)?/))                                       return 10; //Home page - New + | actually matches any page...
 
       return -1;
     }
     console.log('PAGETYPE:',PAGETYPE);
-    //Old:          0,1,  4,6,    9,  ,11
-    //New:              2,    7,8,  10    12,13
-    //==============--------------------------
-    //Coloring:     = 1,= 4,6,7,8 ~ 10,~~ 12 -- //
-    //Profile card: 0,1,=,4,6,7 8 9,10,-- 12 -- //
-    //On following: = 1,2,- 6 7 8 = ?? -- 12,13 //10:useless on its page, but may be useful for other
+    //Old:          0 1   4 6              14
+    //New:              2     7 8 10 12 13
+    //==============----------------------------
+    //Coloring:     = 1 = 4 6 7 8 10 12 == ~~ //
+    //Profile card: 0 1 = 4 6 7 8 10 12 == == //
+    //On following: = 1 2 4 6 7 8 ?? 12 13 == //
     //===================================================================================
     function setCurrentSettings(){
       for (let i = 0; i < propList.length; i++){
@@ -237,7 +225,13 @@
         followedCheck.saveState();
 
         //get user id via cookie
-        USER_ID = document.cookie.match(/user_id=\d+/)[0].split("=").pop();
+        if (document.cookie.match(/user_id=\d+/)){
+          USER_ID = document.cookie.match(/user_id=\d+/)[0].split("=").pop();
+        }
+        else{
+          console.error('some problems with USER_ID!');
+          USER_ID = followedCheck.id;
+        }
         BOOKMARK_URL = BOOKMARK_URL.replace("XXXXXXXX", USER_ID);
 
         //make first requestFollowed separately for obtaining count of followed users, both public/private
@@ -274,6 +268,7 @@
         for(const r of responseArray) r.body.users.forEach(user => followedUsersId[user.userId] = true);
 
         localStorage.setObj('followedUsersId', followedUsersId);
+        followedCheck.id = USER_ID;
         followedCheck.status = 2;
         followedCheck.date = Date.now();
         followedCheck.saveState();
@@ -347,7 +342,7 @@
 
       //load from localStorage in any errors
       if (followedCheck.status <= 0 || Object.keys(followedUsersId).length == 0){
-        console.error(`There was some error during followed users loading [Error Code: ${followedCheck.status}]`);
+        console.error(`There was some error during followed users check [Error Code: ${followedCheck.status}]`);
         console.log(`Trying to load cached followedUsersId by date of ${new Date(followedCheck.date).toLocaleString()} ...`);
 
         followedUsersId = localStorage.getObj('followedUsersId');
@@ -399,17 +394,16 @@
     {
       let userId = -1;
 
-      if (typeof artContainer.hasAttribute !== 'function'){
-        console.log(artContainer, 'has been filtered out.');
+      if(!artContainer){
+        console.error('UNPROCESSED getUserId() call!');
       }
-      else if(!artContainer){
-        console.error('UNPROCESSED getUserId() call!'); //move this up?
+      else if (typeof artContainer.hasAttribute !== 'function'){
+        console.log(artContainer, 'has been filtered out.');
       }
       else if (PAGETYPE===1 || PAGETYPE===4 || PAGETYPE===6){
         userId = artContainer.getAttribute('data-user_id') || artContainer.querySelector('.ui-profile-popup').getAttribute('data-user_id');
       }
       else if (PAGETYPE===12){
-        //artContainer = artContainer.querySelectorAll('.gtm-illust-recommend-title')[0] || artContainer; // -_-' //for 4?
         userId = artContainer.querySelector('[href*="/users/"]').getAttribute('href').split('/').pop(); //searchNearestNode if needed
       }
       else if (PAGETYPE===7 || PAGETYPE===10){
@@ -587,9 +581,9 @@
       });
     }
     //===================================================================================
-    if      (PAGETYPE===0 || PAGETYPE===1)                  siteImgMaxWidth = 198;
-    else if (PAGETYPE===4 || PAGETYPE===9)                  siteImgMaxWidth = 150;
-    else if (PAGETYPE===6 || PAGETYPE===11)                 siteImgMaxWidth = 240;
+    if      (PAGETYPE===0 || PAGETYPE===1)                   siteImgMaxWidth = 198;
+    else if (PAGETYPE===4 || PAGETYPE===9)                   siteImgMaxWidth = 150;
+    else if (PAGETYPE===6 || PAGETYPE===11 || PAGETYPE===14) siteImgMaxWidth = 240;
     //-----------------------------------------------------------------------------------
     $(document).ready(function ()
     {
@@ -689,16 +683,16 @@
       function reInitFollowagePreview()
       {
         if ([2,7,8,12].includes(PAGETYPE)){
-          followSelector = 'button:contains("Follow")'; //'.gtm-profile-follow-button-follow';
+          followSelector = 'button:contains("Follow")';
         }
-        else if([1,6,13].includes(PAGETYPE)){
+        else if([1,4,6,13].includes(PAGETYPE)){
           followSelector = '.follow-button';
         }
         else return 0;
 
         $('body').off('mouseup', followSelector); //clearing previous events
 
-        if([1,2,6,7,8,12,13].includes(PAGETYPE))
+        if([1,2,4,6,7,8,12,13].includes(PAGETYPE))
         {
           $('body').on('mouseup', followSelector, function(){
             toFollow = (this.textContent == 'Follow'); //~mustn't work on non-English locale| todo: add some locale-specific text condition?
@@ -976,50 +970,14 @@
             }
           });
         }
-        //------------------------------------Feed('stacc')------------------------------ //11 - currently broken
-        /*
-        else if (PAGETYPE === 11)
+        //-------------------------------------History----------------------------------- //14
+        else if (PAGETYPE === 14)
         {
-          $('body').on(previewEventType, 'a[href*="member_illust.php?mode=medium&illust_id="]', function(e)
-          {
+          $('body').on(previewEventType, '._history-item', function(e){
             e.preventDefault();
-
-            if (this.childNodes.length == 1 && this.childNodes[0].nodeName=="DIV")
-            {
-              if ($(this).hasClass('multiple')) //manga
-              {
-                let link = 'https://www.pixiv.net/ajax/illust/' + this.href.split('&')[1].split('=')[1];
-                let that = this;
-
-                let xhr = new XMLHttpRequest();
-                xhr.responseType = 'json';
-                xhr.open("GET", link, true);
-                xhr.onreadystatechange = function ()
-                {
-                  if (xhr.readyState == 4 && xhr.status == 200)
-                  {
-                    let count = this.response.body.pageCount;
-                    console.log(count);
-                    setMangaHover(that.childNodes[1].childNodes[1], count);
-
-                    if (!(that.parentNode.parentNode.parentNode.parentNode.getElementsByClassName('imageCount').length>0)) //todo?..
-                    {
-                      let s = document.createElement('span');
-                      s.className = 'imageCount';
-                      s.style = 'position:relative; display: inline-block; float: right; top:-240px;'
-                      s.textContent = count;
-                      that.parentNode.parentNode.parentNode.parentNode.appendChild(s);
-                    }
-                  }
-                };
-                xhr.send();
-              }
-              else setHover(this.childNodes[1].childNodes[1]); //single art
-            }
+            setHover(this, getOffsetRect(this).top + 'px');
           });
         }
-        */
-        //-------------------------------------------------------------------------------
       }
       //---------------------------------------------------------------------------------
       initPreviewListeners();
@@ -1077,7 +1035,7 @@
 
       //adjusting preview position considering expected image width
       //---------------------------------------------------------------------------------
-      let l = (![2,7,10,12,13].includes(PAGETYPE)) //more accurate on discovery users
+      let l = (![2,7,10,12,13,14].includes(PAGETYPE)) //more accurate on discovery users and history
           ?getOffsetRect(thisObj.parentNode.parentNode).left
           :getOffsetRect(thisObj).left;
       let dcw = document.body.clientWidth;
@@ -1089,7 +1047,7 @@
       }
       else{
         if (![2,7,10,12,13].includes(PAGETYPE) && !profileCard){
-          previewWidth = PREVIEWSIZE*(((PAGETYPE==6)?thisObj.clientWidth:thisObj.parentNode.parentNode.clientWidth)/siteImgMaxWidth)+5; //if not on NEW layout - width is predictable
+          previewWidth = PREVIEWSIZE*(((PAGETYPE==6 || PAGETYPE==14)?thisObj.clientWidth:thisObj.parentNode.parentNode.clientWidth)/siteImgMaxWidth)+5; //if not on NEW layout - width is predictable
           adjustSinglePreview(dcw, l, previewWidth);
           //console.log("count");
         }
@@ -1098,7 +1056,8 @@
             imgContainer.style.left = l+'px';
             checkDelay(function(){imgContainer.style.visibility = 'visible';});
             //console.log("excessive");
-          }else{ //when on NEW layout - need to wait until image width is received
+          }
+          else{ //when on NEW layout - need to wait until image width is received
             let tLimit = 0;
 
             tInt = setInterval(function(){
