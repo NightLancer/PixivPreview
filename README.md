@@ -69,10 +69,10 @@ Supported pages:<br>
 - Discovery<br>
 - Daily rankings<br>
 - Artwork page<br>
-- Pixiv member pages<br>
+- Users pages<br>
+- Bookmarks<br>
+- History<br>
 - Search<br>
-- Bookmarked artworks<br>
-- Bookmark information<br>
 - Main page<br>
 
 Works best with <a href="https://greasyfork.org/uk/scripts/3254-endless-pixiv-pages">"Endless Pixiv Pages"</a> ©Mango.<br>
