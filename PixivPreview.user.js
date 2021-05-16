@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         2.49
+// @version         2.50
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -614,9 +614,9 @@
       });
     }
     //===================================================================================
-    if      (PAGETYPE===0 || PAGETYPE===1)                   siteImgMaxWidth = 198;
-    else if (PAGETYPE===4 || PAGETYPE===9)                   siteImgMaxWidth = 150;
-    else if (PAGETYPE===6 || PAGETYPE===11 || PAGETYPE===14) siteImgMaxWidth = 240;
+    if      (PAGETYPE===0 || PAGETYPE===1)  siteImgMaxWidth = 198;
+    else if (PAGETYPE===4)                  siteImgMaxWidth = 150;
+    else if (PAGETYPE===6 || PAGETYPE===14) siteImgMaxWidth = 240;
     //-----------------------------------------------------------------------------------
     $(document).ready(function ()
     {
@@ -939,7 +939,7 @@
         {
           setPreviewEventListeners();
         }
-        //---------ARTIST WORKS, "TOP" PAGES, Home page, Search, Someone's Bookmarks----- //2,7,8,10,12
+        //---------ARTIST WORKS, "TOP" PAGES, Home page, Search, Bookmarks--------------- //2,7,8,10,12
         else if (PAGETYPE === 2 || PAGETYPE === 7 || PAGETYPE === 12 || PAGETYPE === 8 || PAGETYPE === 10)
         {
           $('body').on(previewEventType, 'a[href*="/artworks/"] > div:nth-child(2) ', function(e)
@@ -951,13 +951,13 @@
             if (this.parentNode.firstChild.childNodes.length===1)
             {
               setHover(this.childNodes[0]);
-              //bookmarkObj = this.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0]; //todo
+              bookmarkObj = searchNearestNode(this, 'button');
             }
             //manga-style arts hover-----------------------------------------------------
             else // if (this.parentNode.firstChild.childNodes.length===2)
             {
               setMangaHover(this.childNodes[0], this.parentNode.firstChild.childNodes[1].textContent);
-              //bookmarkObj = this.parentNode.parentNode.childNodes[1].childNodes[0].childNodes[0];
+              bookmarkObj = searchNearestNode(this, 'button');
             }
           });
         }
@@ -965,27 +965,6 @@
         else if (PAGETYPE === 4 || PAGETYPE === 6)
         {
           $('body').on(previewEventType, 'a[href*="/artworks/"]', function(e) //direct div selector works badly with "::before"
-          {
-            e.preventDefault();
-
-            if (this.childNodes.length == 1 && this.childNodes[0].nodeName=="DIV") //single art
-            {
-              bookmarkObj = $(this.firstChild.firstChild).parent().children("._one-click-bookmark");
-              checkBookmark(this);
-              setHover(this.firstChild.firstChild);
-            }
-            else if (this.children[1] && this.children[1].className == 'page-count') //manga
-            {
-              bookmarkObj = $(this.firstChild.firstChild).parent().children("._one-click-bookmark");
-              checkBookmark(this);
-              setMangaHover(this.firstChild.firstChild, this.children[1].children[1].textContent);
-            }
-          });
-        }
-        //--------------------------------------BOOKMARKS-------------------------------- //9
-        else if (PAGETYPE === 9)
-        {
-          $('body').on(previewEventType, '.work', function(e) //direct div selector works badly with "::before"
           {
             e.preventDefault();
 
