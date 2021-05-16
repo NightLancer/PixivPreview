@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         2.48
+// @version         2.49
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -214,6 +214,37 @@
       return arr;
     }
     //-----------------------------------------------------------------------------------
+    async function getUserId(){
+      if (document.cookie.match(/user_id=\d+/)){
+        return document.cookie.match(/user_id=\d+/)[0].split("=").pop();
+      }
+      else if (followedCheck && followedCheck.id){
+        console.log('some problems with document.cookie, loading user ID from storage...');
+        return followedCheck.id;
+      }
+      else{
+        console.error('document.cookie and localStorage has no user ID! Trying to obtain it via redirection...');
+
+        let userID = await new Promise(function (resolve){
+          var xhr = new XMLHttpRequest();
+          xhr.responseType = 'document';
+          xhr.open('GET', "https://www.pixiv.net/bookmark.php", true);
+          xhr.onload = function(){
+              resolve(this.response.URL.match(/\d{3,}/));
+          };
+          xhr.send();
+        });
+
+        if (userID){
+          return userID[0]
+        }
+        else{
+          console.error('Fatal error in obtaining user ID! Please report this on GitHub "Issues"');
+          return -1;
+        }
+      }
+    }
+    //-----------------------------------------------------------------------------------
     async function checkFollowedArtists()
     {
       followedCheck.loadState();
@@ -224,15 +255,15 @@
         followedCheck.status = 1;
         followedCheck.saveState();
 
-        //get user id via cookie
-        if (document.cookie.match(/user_id=\d+/)){
-          USER_ID = document.cookie.match(/user_id=\d+/)[0].split("=").pop();
+        //get user ID in several ways
+        USER_ID = await getUserId();
+        if (USER_ID>0){
+          BOOKMARK_URL = BOOKMARK_URL.replace("XXXXXXXX", USER_ID);
         }
         else{
-          console.error('some problems with USER_ID!');
-          USER_ID = followedCheck.id;
+          followedCheckError(USER_ID);
+          return -1;
         }
-        BOOKMARK_URL = BOOKMARK_URL.replace("XXXXXXXX", USER_ID);
 
         //make first requestFollowed separately for obtaining count of followed users, both public/private
         let response0 = [];
@@ -241,9 +272,7 @@
         }
         catch(error){
           console.error("Error with initial bookmark url!");
-          console.error(error);
-          followedCheck.status = -1;
-          followedCheck.saveState();
+          followedCheckError(error);
           return -1;
         }
         for(const i of response0) i.body.users.forEach(user => followedUsersId[user.userId] = true);
@@ -260,9 +289,7 @@
           responseArray = await Promise.all(args.map(requestFollowed));
         }
         catch(error){
-          console.error(error);
-          followedCheck.status = -1;
-          followedCheck.saveState();
+          followedCheckError(error);
           return -1;
         }
         for(const r of responseArray) r.body.users.forEach(user => followedUsersId[user.userId] = true);
@@ -302,6 +329,12 @@
 
         xhr.send();
       });
+    }
+    //-----------------------------------------------------------------------------------
+    function followedCheckError(error){
+      console.error(error);
+      followedCheck.status = -1;
+      followedCheck.saveState();
     }
     //-----------------------------------------------------------------------------------
     async function colorFollowed(artsContainers)
@@ -361,7 +394,7 @@
       let userId = 0;
       for(let i = 0; i < artsContainersLength; i++)
       {
-        userId = getUserId(artsContainers[i]);
+        userId = getAuthorIdFromContainer(artsContainers[i]);
         if (followedUsersId[userId]==true)
         {
           ++currentHits;
@@ -390,12 +423,12 @@
       return null;
     }
     //-----------------------------------------------------------------------------------
-    function getUserId(artContainer)
+    function getAuthorIdFromContainer(artContainer)
     {
       let userId = -1;
 
       if(!artContainer){
-        console.error('UNPROCESSED getUserId() call!');
+        console.error('UNPROCESSED getAuthorIdFromContainer() call!');
       }
       else if (typeof artContainer.hasAttribute !== 'function'){
         console.log(artContainer, 'has been filtered out.');
