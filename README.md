@@ -1,25 +1,28 @@
 # PixivPreview
 
-Script is written for www.pixiv.net site usability.
+Script is written for better www.pixiv.net usability.
 
-Features:<br>
-• Showing enlarged preview of artworks and manga on mouse hovering* on most site pages.<br>
-• Highlighting names of users from your "Followed" list.<br>
-• Opening source of artwork in new tab in one click (LMB).<br>
-• MMB-click on preview opens corresponding artwork page.<br>
-• Instantly save the original art by clicking Ctrl+LMB on the art preview.<br>
-• Quick add to bookmarks by clicking ALT+LMB on the art preview(works partially for now).<br>
+### General features:
+• Showing enlarged preview of artworks on mouse hovering* on most site pages.<br>
+• Highlighting authors from your "Followed" list, so you can quickly distinguish them.<br>
 • Makes recommendation block(appearing after follow) scrollable, arts preview also available.<br>
+• Enlarging also works on users profiles preview(3 artworks).<br>
+
+### Mouse features on previews:
+• LMB-Click - Opens source of artwork in new tab.<br>
+• MMB-Click - Opens corresponding artwork page in new tab.<br>
+• CTRL+LMB - Instantly download the original of artwork.<br>
+• ALT+LMB - Add artwork to bookmarks.<br>
 
 ■ Preview of single artworks appears in left top corner of image block.
 <img src=http://i.prntscr.com/4LvnU6EITOmbB8VKMmBcog.png><br>
 <img src=http://i.prntscr.com/9ooSkWZLQq6oDalnXD9DjA.png><br>
-..or along rigth screen side, if it doesn't fit on screen in initial position. 
+..or along right screen side, if it doesn't fit on screen in initial position. 
 <img src=http://i.prntscr.com/nfXf04wdSuaZeedB1DDExw.png><br>
 
 ■ Preview gallery for few manga artworks is positioned mainly in the center of the screen.
 <img src=http://i.prntscr.com/7mI9ZYnXSjytYsQRNl5qzw.png><br>
-For larger amount of artworks, horisontal scrollbar is appeared, but scrolling via mouse wheel is supported too(note: page scroll is disabled while this, move mouse out of preview to reenable it). Preview gallery is located 40px from horizontal page edges(considering small screens and window resizing).
+For larger amount of artworks, horizontal scrollbar is appeared, but scrolling via mouse wheel is supported too(note: page scroll is disabled while this, move mouse out of preview to re-enable it). Preview gallery is located 40px from horizontal page edges(considering small screens and window resizing).
 <img src=http://i.prntscr.com/td_hJncaSZueEf3hx3mXrA.png><br>
 
 ■ The names of the authors(users) you are already subscribed to are highlighted with green.
@@ -28,12 +31,11 @@ For larger amount of artworks, horisontal scrollbar is appeared, but scrolling v
 Settings menu is available by the clicking on "Related services" icon, that is located in right top corner of site page. Settings are saved and immediately applied after menu is closed by the clicking on any other space.
 <img src=http://i.prntscr.com/22_SOQ3kQBSj_IW-uvvVnw.png><br>
 
-Preferences:<br>
-<br>
+## Preferences:
 
 ■ PREVIEW_ON_CLICK =<br>
-false : showing preview on mouseover (default)<br>
-true : showing preview after LMB-click<br>
+false : showing preview on mouseover (\*default)<br>
+true : showing preview after LMB-Click<br>
 <br>
 ■ DELAY_BEFORE_PREVIEW =<br>
 0 : no delay before preview (default)<br>
@@ -48,7 +50,7 @@ auto : automatically calculate preview size (1200 or 600) depending of current s
 false : quicker, but less accurate in some cases (default)<br>
 true : takes 1sec before preview showing for more accurate positioning<br>
 <br>
-■ DISABLE_MANGA_PREVIEW_SCROLLLING_PROPAGATION =<br>
+■ DISABLE_MANGA_PREVIEW_SCROLLING_PROPAGATION =<br>
 false : keeping page scrolling after end of manga preview scrolling (default)<br>
 true : disable page scrolling when viewing manga preview (move mouse out of preview to re-enable scrolling)<br>
 <br>
@@ -63,8 +65,9 @@ true : disable page scrolling when viewing single preview (works only if previou
 ■ HIDE_PEOPLE_WHO_BOOKMARKED_THIS =<br>
 false: don't change `bookmark_detail.php` page (default)<br>
 true: hide "People who bookmarked this" section<br>
-<br>
-Supported pages:<br>
+
+### Supported pages:
+
 - New illustrations<br>
 - Discovery<br>
 - Daily rankings<br>
