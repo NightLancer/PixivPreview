@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         2.50
+// @version         2.51
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -47,7 +47,8 @@
         {paramIndex:0, array:[false,true], name:"DISABLE_MANGA_PREVIEW_SCROLLING_PROPAGATION"},
         {paramIndex:1, array:[false,true], name:"SCROLL_INTO_VIEW_FOR_SINGLE_IMAGE"},
         {paramIndex:0, array:[false,true], name:"DISABLE_SINGLE_PREVIEW_BACKGROUND_SCROLLING"},
-        {paramIndex:0, array:[false,true], name:"HIDE_PEOPLE_WHO_BOOKMARKED_THIS"}
+        {paramIndex:0, array:[false,true], name:"HIDE_PEOPLE_WHO_BOOKMARKED_THIS"},
+        {paramIndex:0, array:[false,true], name:"HIDE_FOLLOWED_USERS_ON_DISCOVERY_PAGE"}
     ];
     //---------------------------------DEFAULT VALUES------------------------------------
     // ■ PREVIEW_ON_CLICK =
@@ -104,7 +105,7 @@
         BOOKMARK_URL = 'https://www.pixiv.net/ajax/user/XXXXXXXX/following?limit=100&tag=&lang=en',//&offset=0&rest=show'
         USER_ID,
         artsLoaded = 0,
-        lastHits = 0,
+        totalHits = 0,
         lastImgId = -1,
         PREVIEWSIZE,
         siteImgMaxWidth = 184, //2,7,12 [NEW]| quite useless on this pages because of square previews...
@@ -390,19 +391,20 @@
       //---------------------------------------------------------------------------------
       console.log('arts loaded:', artsContainersLength, 'Total:', getArtsContainers().length);
 
+      let hitContainers = [];
       let currentHits = 0;
-      let userId = 0;
-      for(let i = 0; i < artsContainersLength; i++)
-      {
-        userId = getAuthorIdFromContainer(artsContainers[i]);
-        if (followedUsersId[userId]==true)
-        {
-          ++currentHits;
-          artsContainers[i].setAttribute("style", "background-color: green; !important");
-        }
-      }
-      lastHits += currentHits;
-      console.log('hits: '+currentHits + ' (Total: '+(lastHits)+')');
+
+      hitContainers = artsContainers.filter(container => followedUsersId[getAuthorIdFromContainer(container)] === true);
+
+      if (currentSettings["HIDE_FOLLOWED_USERS_ON_DISCOVERY_PAGE"] && PAGETYPE===1)
+        hitContainers.forEach(container => container.remove());
+      else
+        hitContainers.forEach(container => container.setAttribute("style", "background-color: green; !important"));
+
+      currentHits = hitContainers.length;
+      totalHits += currentHits;
+
+      console.log('hits: '+currentHits + ' (Total: '+(totalHits)+')');
     }
     //-----------------------------------------------------------------------------------
     function getArtsContainers()
@@ -886,7 +888,7 @@
         {
           console.log('Works -> Users');
           PAGETYPE = 13;
-          artsLoaded = lastHits = 0; //clearing loaded arts count when switching on tabs
+          artsLoaded = totalHits = 0; //clearing loaded arts count when switching on tabs
 
           $('body').off(previewEventType, 'a[href*="/artworks/"]');
           $('body').off(previewEventType, 'a[href*="/artworks/"] > div:only-child');
@@ -905,7 +907,7 @@
         {
           console.log('Users -> Works');
           PAGETYPE = 1;
-          artsLoaded = lastHits = 0; //not necessary
+          artsLoaded = totalHits = 0; //not necessary
           checkFollowedArtists();
           initMutationObject({'childList': true});
 
