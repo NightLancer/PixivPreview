@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         2.51.1
+// @version         2.52
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -458,12 +458,10 @@
       return new Promise(resolve => setTimeout(resolve, ms));
     }
     //-----------------------------------------------------------------------------------
-    /* //no use anymore? -> to delete
     function getElementByXpath(path)
     {
       return document.evaluate(path, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
     }
-    */
     //-----------------------------------------------------------------------------------
     function getArtSectionContainers()
     {
@@ -593,7 +591,7 @@
       {
         console.log('Waiting for FollowagePreview');
         await sleep(1000);
-        recommendationBlock = document.evaluate("//div[contains(., 'Recommended users')]", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+        recommendationBlock = getElementByXpath("//div[contains(., 'Recommended users')]");
 
         ++c;
         if (c>10) {console.error("Error while waiting for recommendationBlock! [Timeout 10s]"); return -1}
@@ -819,7 +817,7 @@
       //=================================================================================
       //***************************************HOVER*************************************
       //=================================================================================
-      //------------------------------------Profile card--------------------------------- //0,1,4,6,8,9,11
+      //------------------------------------Profile card--------------------------------- //0,1,4,6,9 [2,7,8,10,12]
       function initProfileCard()
       {
         if ([0,1,4,6,9].includes(PAGETYPE))
@@ -830,16 +828,6 @@
             e.preventDefault();
 
             setHover(this, getOffsetRect(this).top+200+'px', true);
-          });
-        }
-        else if ([7,8,10,12].includes(PAGETYPE))
-        {
-          $('body').on(previewEventType, 'div[role="none"] a[href*="/artworks/"]', function(e)
-          {
-            console.log('Profile card');
-            e.preventDefault();
-
-            setHover(this.childNodes[1].firstChild, getOffsetRect(this).top+112+5+'px', true);
           });
         }
       }
@@ -944,21 +932,24 @@
         //---------ARTIST WORKS, "TOP" PAGES, Home page, Search, Bookmarks--------------- //2,7,8,10,12
         else if (PAGETYPE === 2 || PAGETYPE === 7 || PAGETYPE === 12 || PAGETYPE === 8 || PAGETYPE === 10)
         {
-          $('body').on(previewEventType, 'a[href*="/artworks/"] > div:nth-child(2) ', function(e)
+          $('body').on(previewEventType, 'a[href*="/artworks/"] img', function(e)
           {
-            if ($(this).parents('[role="none"]').length > 0) return; //filtering preview card
-
             e.preventDefault();
-            //single art hover-----------------------------------------------------------
-            if (this.parentNode.firstChild.childNodes.length===1)
-            {
-              setHover(this.childNodes[0]);
-              bookmarkObj = searchNearestNode(this, 'button');
+
+            //filtering preview card-----------------------------------------------------
+            if (getElementByXpath("//a[text()='View Profile']")){
+              setHover(this, getOffsetRect(this).top+112+5+'px', true);
             }
-            //manga-style arts hover-----------------------------------------------------
-            else // if (this.parentNode.firstChild.childNodes.length===2)
-            {
-              setMangaHover(this.childNodes[0], this.parentNode.firstChild.childNodes[1].textContent);
+            else{
+              //manga-style arts hover---------------------------------------------------
+              if (this.parentNode.parentNode.querySelector('span')){
+                setMangaHover(this, this.parentNode.parentNode.textContent);
+              }
+              //single art hover---------------------------------------------------------
+              else{
+                setHover(this);
+              }
+
               bookmarkObj = searchNearestNode(this, 'button');
             }
           });
