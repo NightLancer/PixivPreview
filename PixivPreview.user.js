@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         2.52
+// @version         2.53
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -132,7 +132,7 @@
           }
         };
 
-    var timerId, tInt;
+    var timerId, tInt, menuTimer;
     //-----------------------------------------------------------------------------------
     Storage.prototype.setObj = function(key, obj){
       return this.setItem(key, JSON.stringify(obj))
@@ -630,7 +630,8 @@
           menu.id = "menu";
           menu.style = `
                         position: absolute;
-                        display: none;
+                        display: block;
+                        visibility: hidden;
                         top: 60px;
                         left: 10px;
                         padding: 5px 5px 5px 20px;
@@ -694,18 +695,20 @@
 
         if (menuButton)
           menuButton.addEventListener("click", function(){
-            menu.style.display = 'block';
-            let menuTimer = setTimeout(()=>{menu.style.display = 'none'}, 60*1000); //closing menu after 60s to prevent "hanging" it in one tab
-          })
+            menu.style.visibility = 'visible';
+            clearTimeout(menuTimer);
+            menuTimer = setTimeout(()=>{menu.style.visibility = 'hidden'}, 60*1000); //closing menu after 60s to prevent "hanging" it in one tab
+          });
         else
           console.error("menuButton is undefined!");
       }
       //---------------------------------------------------------------------------------
       $(document).mouseup(function (e){
-        if (($(menu).has(e.target).length === 0) && (menu.style.display == 'block')){
-          menu.style.display = 'none';
+        if (($(menu).has(e.target).length === 0) && (menu.style.visibility = 'visible')){
+          menu.style.visibility = 'hidden';
           saveSettings();
           setCurrentSettings();
+          clearTimeout(menuTimer);
         }
       });
       //---------------------------------------------------------------------------------
@@ -938,12 +941,16 @@
 
             //filtering preview card-----------------------------------------------------
             if (getElementByXpath("//a[text()='View Profile']")){
-              setHover(this, getOffsetRect(this).top+112+5+'px', true);
+              //multiple
+              if (this.parentNode.parentNode.querySelector('span'))
+                setMangaHover(this, this.parentNode.parentNode.textContent);
+              else
+                setHover(this, getOffsetRect(this).top+112+5+'px', true);
             }
             else{
               //manga-style arts hover---------------------------------------------------
               if (this.parentNode.parentNode.querySelector('span')){
-                setMangaHover(this, this.parentNode.parentNode.textContent);
+                setMangaHover(this, this.parentNode.parentNode.textContent.replace(/R-18(G)?/,""));
               }
               //single art hover---------------------------------------------------------
               else{
