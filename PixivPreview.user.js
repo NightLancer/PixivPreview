@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         2.53
+// @version         2.53.5
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -276,7 +276,7 @@
           followedCheckError(error);
           return -1;
         }
-        for(const i of response0) i.body.users.forEach(user => followedUsersId[user.userId] = true);
+        for(const i of response0) i.body.users.forEach(user => followedUsersId[user.userId] = true); //todo: '1' instead -> less localStorage space
 
         let args = [];
         let len = response0.map(r => r.body.total);
@@ -394,7 +394,7 @@
       let hitContainers = [];
       let currentHits = 0;
 
-      hitContainers = [].filter.call(artsContainers, container => followedUsersId[getAuthorIdFromContainer(container)] === true);
+      hitContainers = [].filter.call(artsContainers, container => followedUsersId[getAuthorIdFromContainer(container)] === true); // -> '1' -> '=='
 
       if (currentSettings["HIDE_FOLLOWED_USERS_ON_DISCOVERY_PAGE"] && PAGETYPE===1)
         hitContainers.forEach(container => container.remove());
@@ -568,7 +568,7 @@
           followedUsersId = localStorage.getObj('followedUsersId');
 
         if (toFollow){
-          followedUsersId[userId] = true;
+          followedUsersId[userId] = true; // '1'
           if ([2,12].includes(PAGETYPE)){
             initFollowagePreview();
           }
@@ -1058,7 +1058,7 @@
         //console.log("cached");
       }
       else{
-        if (![2,7,10,12,13].includes(PAGETYPE) && !profileCard){
+        if ([0,1,4,6,14].includes(PAGETYPE) && !profileCard){
           previewWidth = PREVIEWSIZE*(((PAGETYPE==6 || PAGETYPE==14)?thisObj.clientWidth:thisObj.parentNode.parentNode.clientWidth)/siteImgMaxWidth)+5; //if not on NEW layout - width is predictable
           adjustSinglePreview(dcw, l, previewWidth);
           //console.log("count");
