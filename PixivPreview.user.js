@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         2.53.5
+// @version         2.53.9
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -216,34 +216,13 @@
     }
     //-----------------------------------------------------------------------------------
     async function getUserId(){
-      if (document.cookie.match(/user_id=\d+/)){
-        return document.cookie.match(/user_id=\d+/)[0].split("=").pop();
-      }
-      else if (followedCheck && followedCheck.id){
-        console.log('some problems with document.cookie, loading user ID from storage...');
-        return followedCheck.id;
-      }
-      else{
-        console.error('document.cookie and localStorage has no user ID! Trying to obtain it via redirection...');
+      USER_ID = USER_ID
+      || Object.keys(localStorage).filter(e => e.match('viewed_illust')).map(a => a.match(/\d+/)).flat()[0]
+      || (followedCheck && followedCheck.id) && followedCheck.id
+      || (document.cookie.match(/user_id=\d+/)) && document.cookie.match(/user_id=\d+/)[0].split("=").pop()
+      || (await fetch('https://www.pixiv.net/bookmark.php')).url.match(/\d{3,}/)[0];
 
-        let userID = await new Promise(function (resolve){
-          var xhr = new XMLHttpRequest();
-          xhr.responseType = 'document';
-          xhr.open('GET', "https://www.pixiv.net/bookmark.php", true);
-          xhr.onload = function(){
-              resolve(this.response.URL.match(/\d{3,}/));
-          };
-          xhr.send();
-        });
-
-        if (userID){
-          return userID[0]
-        }
-        else{
-          console.error('Fatal error in obtaining user ID! Please report this on GitHub "Issues"');
-          return -1;
-        }
-      }
+      if (!USER_ID) return Promise.reject('FATAL ERROR in obtaining user ID! Please report this on GitHub "Issues"');
     }
     //-----------------------------------------------------------------------------------
     async function checkFollowedArtists()
@@ -256,15 +235,11 @@
         followedCheck.status = 1;
         followedCheck.saveState();
 
-        //get user ID in several ways
-        USER_ID = await getUserId();
+        await getUserId().catch(e => followedCheckError(e));
         if (USER_ID>0){
           BOOKMARK_URL = BOOKMARK_URL.replace("XXXXXXXX", USER_ID);
         }
-        else{
-          followedCheckError(USER_ID);
-          return -1;
-        }
+        else return -1;
 
         //make first requestFollowed separately for obtaining count of followed users, both public/private
         let response0 = [];
@@ -613,6 +588,44 @@
         setHover(this, top);
       });
     }
+    //---------------------------------------History-------------------------------------
+    // let illust_history = {
+    //   ids: [],
+    //   timestamp: {},
+    //
+    //   init(){
+    //     this.ids = localStorage.getObj('viewed_illust_ids') || USER_ID && localStorage.getObj('viewed_illust_ids_' + USER_ID).data || [];
+    //     this.timestamp = localStorage.getObj('viewed_illust_timestamp') || USER_ID && localStorage.getObj('viewed_illust_timestamp_' + USER_ID).data || {};
+    //     console.log('History initialized');
+    //   },
+    //
+    //   save(){
+    //     localStorage.setObj('viewed_illust_ids', this.ids);             //viewed_illust_ids
+    //     localStorage.setObj('viewed_illust_timestamp', this.timestamp); //viewed_illust_timestamp
+    //   },
+    //
+    //   add_record(illust_id, view_date){
+    //     if (this.ids.indexOf(illust_id.toString()) == -1){
+    //       this.ids.push(illust_id.toString());
+    //     }
+    //     this.timestamp[illust_id] = view_date || Date.now()/1000;
+    //
+    //     this.save();
+    //     console.log(illust_id, "has been added to history record");
+    //   },
+    //
+    //   delete_record(illust_id){
+    //     let index = this.ids.indexOf(illust_id.toString());
+    //     if (index > -1){
+    //       this.ids.splice(index, 1);
+    //     }
+    //     delete this.timestamp[illust_id];
+    //
+    //     this.save();
+    //     console.log(illust_id, "has been deleted from history record");
+    //   }
+    // }
+    // getUserId().then(v => illust_history.init()).catch(e => console.error('History not initialized: no userID'));
     //===================================================================================
     if      (PAGETYPE===0 || PAGETYPE===1)  siteImgMaxWidth = 198;
     else if (PAGETYPE===4)                  siteImgMaxWidth = 150;
@@ -704,7 +717,7 @@
       }
       //---------------------------------------------------------------------------------
       $(document).mouseup(function (e){
-        if (($(menu).has(e.target).length === 0) && (menu.style.visibility = 'visible')){
+        if (!($(menu).has(e.target).length) && (menu.style.visibility == 'visible')){
           menu.style.visibility = 'hidden';
           saveSettings();
           setCurrentSettings();
@@ -757,6 +770,7 @@
         if (PAGETYPE===12)
         {
           initMutationObject({'childList': true});
+          //illust_history.add_record(location.href.match(/\d+/)[0]); //todo: revoke in case of no ID
         }
         //-----------------------------Init illust fetch listener------------------------
         if (PAGETYPE===1 || PAGETYPE===4 || PAGETYPE===6)
@@ -836,7 +850,7 @@
       }
 
       initProfileCard();
-      //--------------------NEW ILLUSTRATIONS, DISCOVERY[ARTWORKS] AND SEARCH------------ //0,1,8
+      //-------------------------NEW ILLUSTRATIONS, DISCOVERY[ARTWORKS] ----------------- //0,1
       function setPreviewEventListeners()
       {
         //single art hover---------------------------------------------------------------
@@ -1005,8 +1019,11 @@
         {
           console.log('PAGETYPE:', PAGETYPE, '->', PAGETYPE = checkPageType());
 
+          clearTimeout(timerId);
+          clearInterval(tInt);
           observer.disconnect();
           $('body').off(previewEventType, 'a[href*="/artworks/"]');
+          $('body').off(previewEventType, 'a[href*="/artworks/"] img');
 
           if ([8,10].includes(PAGETYPE)) colorFollowed(); //extra coloring for missing arts
 
@@ -1258,6 +1275,10 @@
       else if (event.button == 0)
       {
         //----------------------------Single LMB-click-----------------------------------
+        // if (event.shiftKey){
+        //   illust_history.delete_record(illustId); //Shift + LMB-click -> delete record from history //todo
+        // }
+        // else
         if (!event.altKey)
         {
           let toSave = event.ctrlKey;// Ctrl + LMB-click -> saving image
@@ -1388,4 +1409,4 @@
   });
 }) (); //function
 //Global TODO: hiding already viewed arts on Daily Rankings when moving to older dates
-//             arts viewed history extending for 10000 entries(as in premium)
+//             arts viewed history extending for 10000 entries(as in premium) with no time limit
