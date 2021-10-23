@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         2.53.9
+// @version         2.55
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -573,11 +573,15 @@
       }
       console.log('*FollowagePreview loaded*');
 
-      let scroll = recommendationBlock.querySelector('button + div > div:first-child');
-      scroll.onwheel = function(ev)
-      {
-        ev.preventDefault();
-        scroll.scrollLeft += ev.deltaY*DELTASCALE;
+      //let recommendationObserver = Object.assign({}, observer);
+
+      let scrollBackward = recommendationBlock.querySelector('div:nth-child(3) > div:nth-child(2) > button:nth-child(1)');
+      let scrollForward  = recommendationBlock.querySelector('div:nth-child(3) > div:nth-child(2) > button:nth-child(2)');
+
+      recommendationBlock.onwheel = function(e){
+        e.preventDefault(); //no need
+        if (e.deltaY > 0) scrollForward.click()
+        else scrollBackward.click();
       };
 
       $(recommendationBlock).on(previewEventType, 'a:not([href*="/users/"]) img', function(e)
@@ -1042,13 +1046,16 @@
     }); //end of document.ready
     //===================================================================================
     //-----------------------------------------------------------------------------------
-    function checkDelay(callback)
+    function checkDelay(container, thisObj)
     {
       if (currentSettings["DELAY_BEFORE_PREVIEW"]>0){
         clearTimeout(timerId);
-        timerId = setTimeout(callback, currentSettings["DELAY_BEFORE_PREVIEW"]);
+        timerId = setTimeout(()=>{
+          if ([].indexOf.call(document.querySelectorAll(':hover'), thisObj) > -1) container.style.visibility = 'visible'
+        }, currentSettings["DELAY_BEFORE_PREVIEW"]);
+
       }
-      else callback();
+      else container.style.visibility = 'visible';
     }
     //-----------------------------------------------------------------------------------
     function setHover(thisObj, top, profileCard)
@@ -1071,19 +1078,19 @@
       let previewWidth = PREVIEWSIZE;
 
       if (hoverImg.naturalWidth>0){ //cached (previously viewed)
-        adjustSinglePreview(dcw, l, hoverImg.naturalWidth);
+        adjustSinglePreview(dcw, l, hoverImg.naturalWidth, thisObj);
         //console.log("cached");
       }
       else{
         if ([0,1,4,6,14].includes(PAGETYPE) && !profileCard){
           previewWidth = PREVIEWSIZE*(((PAGETYPE==6 || PAGETYPE==14)?thisObj.clientWidth:thisObj.parentNode.parentNode.clientWidth)/siteImgMaxWidth)+5; //if not on NEW layout - width is predictable
-          adjustSinglePreview(dcw, l, previewWidth);
+          adjustSinglePreview(dcw, l, previewWidth, thisObj);
           //console.log("count");
         }
         else{
           if (dcw - l - PREVIEWSIZE - 5 > 0){ //if it is obvious that preview will fit on the screen then there is no need in setInterval(trying to use as minimun setInterval`s as possible)
             imgContainer.style.left = l+'px';
-            checkDelay(function(){imgContainer.style.visibility = 'visible';});
+            checkDelay(imgContainer, thisObj);
             //console.log("excessive");
           }
           else{ //when on NEW layout - need to wait until image width is received
@@ -1092,7 +1099,7 @@
             tInt = setInterval(function(){
               if (hoverImg.naturalWidth>0){
                 clearInterval(tInt);
-                adjustSinglePreview(dcw, l, hoverImg.naturalWidth); //position mismatching due to old `thisObj` => clearing in hoverImg.mouseleave
+                adjustSinglePreview(dcw, l, hoverImg.naturalWidth, thisObj); //position mismatching due to old `thisObj` => clearing in hoverImg.mouseleave
               }
               ++tLimit;
               //console.log(tInt, tLimit);
@@ -1112,12 +1119,12 @@
       else $(imgContainer).css("background", "rgb(34, 34, 34)");
     }
     //-----------------------------------------------------------------------------------
-    function adjustSinglePreview(dcw, l, contentWidth)
+    function adjustSinglePreview(dcw, l, contentWidth, thisObj)
     {
       if (l<0) l = 5; //followage preview
       let d = dcw - l - contentWidth - 5; //5 - padding - todo...
       imgContainer.style.left = (d>=0)?l+'px':l+d+'px';
-      checkDelay(function(){imgContainer.style.visibility = 'visible';});
+      checkDelay(imgContainer, thisObj);
     }
     //-----------------------------------------------------------------------------------
     function setMangaHover(thisObj, count)
@@ -1132,10 +1139,10 @@
       if (isBookmarked) $(mangaOuterContainer).css("background", "rgb(255, 64, 96)");
       else $(mangaOuterContainer).css("background", "rgb(34, 34, 34)");
 
-      imgsArrInit(parseImgUrl(thisObj, PREVIEWSIZE), +count);
+      imgsArrInit(parseImgUrl(thisObj, PREVIEWSIZE), +count, thisObj);
     }
     //-----------------------------------------------------------------------------------
-    function imgsArrInit(primaryLink, count)
+    function imgsArrInit(primaryLink, count, thisObj)
     {
       let currentImgId = getImgId(primaryLink);
       //console.log('lastImgId: ' + lastImgId);
@@ -1165,20 +1172,20 @@
           setTimeout(function()
           {
             adjustMargins(mangaOuterContainer.scrollWidth);
-            checkDelay(function(){mangaOuterContainer.style.visibility='visible';});
+            checkDelay(mangaOuterContainer, thisObj);
           }, Math.max(1000, currentSettings["DELAY_BEFORE_PREVIEW"]));
         }
         else //some blind frame adjusting
         {
           adjustMargins(count*PREVIEWSIZE);
-          checkDelay(function(){mangaOuterContainer.style.visibility='visible';});
+          checkDelay(mangaOuterContainer, thisObj);
         }
       }
       //---------------------------------------------------------------------------------
       else
       {
         adjustMargins(mangaOuterContainer.scrollWidth);
-        checkDelay(function(){mangaOuterContainer.style.visibility='visible';});
+        checkDelay(mangaOuterContainer, thisObj);
       }
     }
     //-----------------------------------------------------------------------------------
