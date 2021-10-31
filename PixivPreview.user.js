@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         2.55.5b
+// @version         2.56.0
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -22,6 +22,7 @@
 // @homepageURL     https://github.com/NightLancer/PixivPreview
 // @supportURL      https://greasyfork.org/uk/users/167506-nightlancerx
 // @downloadURL     https://greasyfork.org/scripts/39387-pixiv-arts-preview-followed-atrists-coloring/code/Pixiv%20Arts%20Preview%20%20Followed%20Atrists%20Coloring.user.js
+// @updateURL       https://greasyfork.org/scripts/39387-pixiv-arts-preview-followed-atrists-coloring/code/Pixiv%20Arts%20Preview%20%20Followed%20Atrists%20Coloring.meta.js
 // @license         MIT
 // @copyright       NightLancerX
 // @grant           GM_xmlhttpRequest
@@ -146,7 +147,7 @@
     function checkPageType()
     {
       if (document.URL.match('https://www.pixiv.net/bookmark_new_illust.php?'))                             return 0; //New illustrations - Old + -> New
-      if (document.URL==='https://www.pixiv.net/discovery')                                                 return 1; //Discovery page(works) - New
+      if (document.URL.match(/^https:\/\/www.pixiv.net\/discovery(?:\?mode=(safe|r18))?$/))                 return 1; //Discovery page(works) - New +
       if (document.URL.match('https://www.pixiv.net/bookmark_detail.php?'))                                 return 4; //Bookmark information - Old +
       if (document.URL.match('https://www.pixiv.net/ranking.php?'))                                         return 6; //Daily rankings - Old +
       if (document.URL.match(/https:\/\/www\.pixiv\.net\/(?:en\/)?users\/\d+\/bookmarks\/artworks/))        return 7; //Bookmarks page - New +
@@ -155,7 +156,7 @@
       if (document.URL.match(/https:\/\/www\.pixiv\.net\/(?:en\/)?artworks/))                               return 12; //Illust page - New* +
       if (document.URL.match('https://www.pixiv.net/discovery/users?'))                                     return 13; //Discovery page(users) New +
       if (document.URL.match('https://www.pixiv.net/history.php'))                                          return 14; //History - Old +~
-      if (document.URL.match(/https:\/\/www\.pixiv\.net\/(?:en\/)?/))                                       return 10; //Home page - New + | actually matches any page...
+      if (document.URL.match(/^https:\/\/www\.pixiv\.net\/(?:en\/)?$/))                                     return 10; //Home page - New +
 
       return -1;
     }
@@ -322,13 +323,9 @@
         console.log('waiting for arts...');
         await sleep(2000);
 
-        artsContainers = getArtsContainers();
+        artsContainers = getAllArtsContainers();
         ++c;
-        if (c>5)
-        {
-          console.error('Error while waiting for arts loading! [Timeout 10s]');
-          break;
-        }
+        if (c>5) {console.error('Error while waiting for arts loading! [Timeout 10s]'); return}
       }
 
       let artsContainersLength = artsContainers.length;
@@ -337,8 +334,8 @@
       followedCheck.loadState();
 
       if (followedCheck.status == 1){
-        while (!(followedCheck.status == 2)){
-          console.log("waiting for followed users..."); //this could happen in case of huge followed users amount
+        while (followedCheck.status !== 2){
+          console.log("waiting for followed users..."); //this could happen in case of huge amount of followed users
           await sleep(2000);
           followedCheck.loadState();
 
@@ -365,7 +362,7 @@
         }
       }
       //---------------------------------------------------------------------------------
-      console.log('arts loaded:', artsContainersLength, 'Total:', getArtsContainers().length);
+      if (PAGETYPE!==1) console.log('arts loaded:', artsContainersLength, 'Total:', getAllArtsContainers().length);
 
       let hitContainers = [];
       let currentHits = 0;
@@ -380,13 +377,13 @@
       currentHits = hitContainers.length;
       totalHits += currentHits;
 
-      console.log('hits: '+currentHits + ' (Total: '+(totalHits)+')');
+      if (PAGETYPE!==1) console.log('hits: '+currentHits + ' (Total: '+(totalHits)+')');
     }
     //-----------------------------------------------------------------------------------
-    function getArtsContainers()
+    function getAllArtsContainers()
     {
       switch (PAGETYPE){
-        case 1:  return (document.querySelector('.ui-profile-popup'))? document.querySelectorAll('.ui-profile-popup'): document.querySelectorAll('a[href*="/artworks/"]:only-child'); //temporary fix
+        case 1:  return document.querySelectorAll('li > div');
         case 4:
         case 6:  return document.querySelectorAll('.ui-profile-popup'); //document.querySelectorAll('.gtm-illust-recommend-user-name');
 
@@ -396,7 +393,7 @@
         case 8:
         case 10: return document.querySelectorAll('a[href*="/artworks/"]:only-child');
 
-        default:  console.error('Unprocessed PAGETYPE in getArtsContainers()!');
+        default:  console.error('Unprocessed PAGETYPE in getAllArtsContainers()!');
       }
       return null;
     }
@@ -411,8 +408,8 @@
       else if (typeof artContainer.hasAttribute !== 'function'){
         console.log(artContainer, 'has been filtered out.');
       }
-      else if (PAGETYPE===1){ //temporary fix
-        authorId = artContainer.getAttribute('data-user_id') || artContainer.querySelector('.ui-profile-popup').getAttribute('data-user_id') || searchNearestNode(artContainer,'[href*="/users/"]').getAttribute('href').split('/').pop();
+      else if (PAGETYPE===1){
+        authorId = searchNearestNode(artContainer,'[href*="/users/"]').getAttribute('href').split('/').pop();
       }
       else if (PAGETYPE===12){
         authorId = artContainer.querySelector('[href*="/users/"]').getAttribute('href').split('/').pop(); //searchNearestNode if needed
@@ -449,6 +446,7 @@
         case 4:  return $('.gtm-illust-recommend-zone')[0]
 
         case 6:  return $('.ranking-items')[0]
+        case 7:  return $('section')[0]
         case 8:  return $("section>div>ul")[0]
         case 10: return $("div[id='root']>div>div:nth-child(2)")[0]
         case 12: return $('.gtm-illust-recommend-zone ul')[0]
@@ -494,6 +492,9 @@
           else if (PAGETYPE == 12 && (!!node.querySelector('iframe'))){
             node.remove(); //filtering promo blocks
           }
+          else if (PAGETYPE == 1){
+            node.querySelectorAll('li > div').forEach((el) => arr.push(el));
+          }
           else{
             arr.push(node);
           }
@@ -506,21 +507,27 @@
     //-----------------------------------------------------------------------------------
     observer.init(observerBody);
     //-----------------------------------------------------------------------------------
-    async function initMutationObject(options)
+    async function waitForArtSectionContainers()
     {
       let mainDiv = getArtSectionContainers();
-      let c = 0;
+      let count = 0;
       while(!mainDiv)
       {
         console.log('Waiting for arts container...');
         await sleep(1000);
         mainDiv = getArtSectionContainers();
 
-        ++c;
-        if (c>10) {console.error('Error while waiting for arts containers! [Timeout 10s]'); return -1}
+        ++count;
+        if (count>10) {console.error('Error while waiting for arts containers! [Timeout 10s]'); return -1}
       }
       console.log(mainDiv);
-      observer.observe(mainDiv, options)
+
+      return mainDiv;
+    }
+    //-----------------------------------------------------------------------------------
+    async function initMutationObject(options)
+    {
+      observer.observe(await waitForArtSectionContainers(), options);
     }
     //-----------------------------------------------------------------------------------
     function searchNearestNode(el, selector)
@@ -598,27 +605,28 @@
     //---------------------------------------History-------------------------------------
     // let illust_history = {
     //   ids: [],
-    //   timestamp: {},
+    //   timestamps: {},
     //
     //   init(){
     //     this.ids = localStorage.getObj('viewed_illust_ids') || USER_ID && localStorage.getObj('viewed_illust_ids_' + USER_ID).data || [];
-    //     this.timestamp = localStorage.getObj('viewed_illust_timestamp') || USER_ID && localStorage.getObj('viewed_illust_timestamp_' + USER_ID).data || {};
+    //     this.timestamps = localStorage.getObj('viewed_illust_timestamps') || USER_ID && localStorage.getObj('viewed_illust_timestamp_' + USER_ID).data || {};
     //     console.log('History initialized');
+    //     if (this.check_space() > 0.95) console.error("Too many history records");
     //   },
     //
     //   save(){
-    //     localStorage.setObj('viewed_illust_ids', this.ids);             //viewed_illust_ids
-    //     localStorage.setObj('viewed_illust_timestamp', this.timestamp); //viewed_illust_timestamp
+    //     localStorage.setObj('viewed_illust_ids', this.ids);               //viewed_illust_ids
+    //     localStorage.setObj('viewed_illust_timestamps', this.timestamps); //viewed_illust_timestamp
     //   },
     //
     //   add_record(illust_id, view_date){
     //     if (this.ids.indexOf(illust_id.toString()) == -1){
     //       this.ids.push(illust_id.toString());
     //     }
-    //     this.timestamp[illust_id] = view_date || Date.now()/1000;
+    //     this.timestamps[illust_id] = view_date || Date.now()/1000;
     //
     //     this.save();
-    //     console.log(illust_id, "has been added to history record");
+    //     console.log(illust_id, "has been added to history");
     //   },
     //
     //   delete_record(illust_id){
@@ -626,13 +634,17 @@
     //     if (index > -1){
     //       this.ids.splice(index, 1);
     //     }
-    //     delete this.timestamp[illust_id];
+    //     delete this.timestamps[illust_id];
     //
     //     this.save();
-    //     console.log(illust_id, "has been deleted from history record");
+    //     console.log(illust_id, "has been deleted from history");
+    //   },
+    //
+    //   check_space(){
+    //     return +((new Blob([Object.values(localStorage), Object.keys(localStorage)]).size)/(5000*1024)).toFixed(3);
     //   }
-    // }
-    // getUserId().then(v => illust_history.init()).catch(e => console.error('History not initialized: no userID'));
+    // };
+    // //getUserId().then(v => illust_history.init()).catch(e => console.error('History not initialized: no userID'));
     //===================================================================================
     if      (PAGETYPE===0)                  siteImgMaxWidth = 198;
     else if (PAGETYPE===4)                  siteImgMaxWidth = 150;
@@ -696,24 +708,18 @@
       async function initMenu(){
         let buttons, menuButton; //put to global scope if (menuButton) is needed elsewhere
 
-        let c = 0;
-        while (!menuButton){
+        let count = 0;
+        while (!menuButton && count<5){
           if ([1,2,7,8,10,12].includes(PAGETYPE))
             buttons = document.querySelectorAll('body > div#root > div > div:nth-child(1) button');
           else
             buttons = document.querySelector('body > div#js-mount-point-header > div:nth-child(1) button') &&
                       document.querySelectorAll('body > div#js-mount-point-header > div:nth-child(1) button')
                       || document.querySelectorAll('body > div#root > div > div:nth-child(1) button'); //temporary fix
-            //$('#js-mount-point-header button'); (Replace with own button later?...)
-
           menuButton = buttons[buttons.length - 1]; // last is the menu button
           console.log(menuButton);
           await sleep(1000);
-          ++c;
-          if (c>5){
-            console.log('*Setting menu currently unavailable on this page*');
-            break;
-          }
+          ++count;
         }
 
         if (menuButton)
@@ -764,6 +770,22 @@
       //=================================================================================
       function reInitMutationObservers()
       {
+        //-------------------------------------------------------------------------------
+        if (PAGETYPE===1){
+          colorFollowed();
+          initMutationObject({'childList': true, 'subtree': true});
+
+          let timeout_1;
+          $('body').on('mouseup', 'a[href*="/discovery"]', function(){
+            clearTimeout(timeout_1);
+            timeout_1 = setTimeout(() => {
+              if (PAGETYPE===1){
+                colorFollowed();
+                initMutationObject({'childList': true, 'subtree': true});
+              }
+            }, 2000);
+          });
+        }
         //----------------------------Bookmark detail page cleaning----------------------
         if (PAGETYPE===4)
         {
@@ -783,7 +805,7 @@
           //illust_history.add_record(location.href.match(/\d+/)[0]); //todo: revoke in case of no ID
         }
         //-----------------------------Init illust fetch listener------------------------
-        if (PAGETYPE===1 || PAGETYPE===4 || PAGETYPE===6 || PAGETYPE===8)
+        if (PAGETYPE===4 || PAGETYPE===6 || PAGETYPE===8)
         {
           initMutationObject({'childList': true});
         }
@@ -801,40 +823,25 @@
           $('body').on('mouseup', 'a[href*="bookmarks/artworks"]', function(){
             console.log('PAGETYPE: '+ PAGETYPE+' -> 7');
             PAGETYPE = 7;
-            bookmarksInit();
+
+            Promise.all([checkFollowedArtists(), waitForArtSectionContainers()])
+            .then(success => colorFollowed(), err => console.error(err));
           });
           $('body').on('mouseup', 'a[href*="/illustrations"]', function(){
             console.log('PAGETYPE: '+ PAGETYPE+' -> 2');
             PAGETYPE = 2;
           });
         }
-        //-------------------------------------------------------------------------------
-        async function bookmarksInit()
-        {
-          await checkFollowedArtists();
-          let c = 0;
-          let mainDiv = document.querySelector('section');
-          while(!mainDiv)
-          {
-            console.log('Waiting for arts section [bookmarksInit]');
-            await sleep(1000);
-            mainDiv = document.querySelector('section');
 
-            ++c;
-            if (c>10) {console.error('Error while waiting for arts section [bookmarksInit]! [Timeout 10s]'); return -1;}
-          }
-          console.log(mainDiv);
-
-          colorFollowed();
-          //Promise.all([checkFollowedArtists(), getArtsSection()]).then(v => colorFollowed(), e => {console.log(e); console.trace();}); //TODO
-        }
         //------------------------------------Bookmarks----------------------------------
         if (PAGETYPE===7)
         {
-          bookmarksInit();
+          Promise.all([checkFollowedArtists(), waitForArtSectionContainers()])
+          .then(success => colorFollowed(), err => console.error(err));
         }
-      } //reInitMutationObservers()
-      //-------------------------------------------------------------------------------
+        //-------------------------------------------------------------------------------
+      }
+      //---------------------------------------------------------------------------------
       reInitMutationObservers();
       //=================================================================================
       //***************************************HOVER*************************************
@@ -925,7 +932,7 @@
         //----------------------------------DISCOVERY[USERS]----------------------------- //13
         else if (PAGETYPE === 13)
         {
-          $('body').on(previewEventType, 'a[href*="/artworks/"]', function(e){
+          $('body').on(previewEventType, 'a[href*="/artworks/"] img', function(e){
             e.preventDefault();
             if      (this.childNodes.length == 0)  setHover(this); //single art
             else if (this.childNodes.length == 1)  setMangaHover(this, this.firstChild.textContent); //manga
@@ -958,13 +965,20 @@
           clearTimeout(timerId);
           clearInterval(tInt);
           observer.disconnect();
+
           $('body').off(previewEventType, 'a[href*="/artworks/"]');
           $('body').off(previewEventType, 'a[href*="/artworks/"] img');
 
+          $('body').off('mouseup', 'a[href*="bookmarks/artworks"]');
+          $('body').off('mouseup', 'a[href*="/illustrations"]');
+          $('body').off('mouseup', 'a[href*="/discovery"]');
+
+          if (PAGETYPE === -1) return;
+
           if ([8,10].includes(PAGETYPE)) colorFollowed(); //extra coloring for missing arts
 
-          reInitMutationObservers();
           initPreviewListeners();
+          reInitMutationObservers();
           initMenu();
 
           reInitFollowagePreview();
@@ -1244,7 +1258,7 @@
           getOriginalUrl(ajaxIllustUrl, pageNum, toSave);
         }
         //-----------------------------Alt + LMB-click-----------------------------------
-        else if (event.altKey) {
+        else if (event.altKey){
           $(bookmarkContainer).click();
           if (!isManga) $(imgContainerObj).parent().css("background", "rgb(255, 64, 96)");
           else $(mangaOuterContainer).css("background", "rgb(255, 64, 96)");
@@ -1355,4 +1369,4 @@
   });
 }) (); //function
 //Global TODO: hiding already viewed arts on Daily Rankings when moving to older dates
-//             arts viewed history extending for 10000 entries(as in premium) with no time limit
+//             arts viewed history extending up to 200000 entries with no time limit
