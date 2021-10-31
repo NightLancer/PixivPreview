@@ -66,9 +66,6 @@ true : disable page scrolling when viewing single preview (works only if previou
 false: don't change `bookmark_detail.php` page (default)<br>
 true: hide "People who bookmarked this" section<br>
 <br>
-■ HIDE_FOLLOWED_USERS_ON_DISCOVERY_PAGE =<br>
-false: followed users are visible and highlighted (default)<br>
-true: completely remove arts from already followed users on discovery page<br>
 
 ### Supported pages:
 
