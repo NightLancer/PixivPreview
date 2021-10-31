@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         2.56.0
+// @version         2.57
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -49,8 +49,7 @@
         {paramIndex:0, array:[false,true], name:"DISABLE_MANGA_PREVIEW_SCROLLING_PROPAGATION"},
         {paramIndex:1, array:[false,true], name:"SCROLL_INTO_VIEW_FOR_SINGLE_IMAGE"},
         {paramIndex:0, array:[false,true], name:"DISABLE_SINGLE_PREVIEW_BACKGROUND_SCROLLING"},
-        {paramIndex:0, array:[false,true], name:"HIDE_PEOPLE_WHO_BOOKMARKED_THIS"},
-        {paramIndex:0, array:[false,true], name:"HIDE_FOLLOWED_USERS_ON_DISCOVERY_PAGE"}
+        {paramIndex:0, array:[false,true], name:"HIDE_PEOPLE_WHO_BOOKMARKED_THIS"}
     ];
     //---------------------------------DEFAULT VALUES------------------------------------
     // ■ PREVIEW_ON_CLICK =
@@ -99,7 +98,7 @@
         mangaContainer.style = 'display:block; z-index:1500; background:#111; overflow-x:auto; maxWidth:1200px; white-space:nowrap;';
 
     let mangaOuterContainer = document.createElement('div');
-        mangaOuterContainer.style = 'position:absolute; display:block; visibility:hidden; z-index:1000; padding:5px; background:#111; maxWidth:1200px; marginY:-5px; marginX: auto; left: 30px;';
+        mangaOuterContainer.style = 'position:absolute; display:block; visibility:hidden; z-index:1000; padding:5px; background:#111; maxWidth:1200px; marginY:-5px; marginX: auto; left: 25px;';
         mangaOuterContainer.appendChild(mangaContainer);
 
     let imgsArr = [], //for manga-style image packs...
@@ -368,11 +367,7 @@
       let currentHits = 0;
 
       hitContainers = [].filter.call(artsContainers, container => followedUsersId[getAuthorIdFromContainer(container)] === true); // -> '1' -> '=='
-
-      if (PAGETYPE===1 && currentSettings["HIDE_FOLLOWED_USERS_ON_DISCOVERY_PAGE"])
-        hitContainers.forEach(container => container.remove());
-      else
-        hitContainers.forEach(container => container.setAttribute("style", "background-color: green; !important"));
+      hitContainers.forEach(container => container.setAttribute("style", "background-color: green; !important"));
 
       currentHits = hitContainers.length;
       totalHits += currentHits;
@@ -490,7 +485,7 @@
             }
           }
           else if (PAGETYPE == 12 && (!!node.querySelector('iframe'))){
-            node.remove(); //filtering promo blocks
+            node.remove(); //filtering ads
           }
           else if (PAGETYPE == 1){
             node.querySelectorAll('li > div').forEach((el) => arr.push(el));
@@ -653,7 +648,7 @@
     $(document).ready(function ()
     {
       console.log('$(document).ready');
-      mangaWidth = document.body.clientWidth - 80;
+      mangaWidth = document.body.clientWidth - 60;
       mangaContainer.style.maxWidth = mangaOuterContainer.style.maxWidth = mangaWidth+'px';
       document.body.appendChild(imgContainer);
       document.body.appendChild(mangaOuterContainer);
@@ -1079,7 +1074,7 @@
       imgContainer.style.visibility = 'hidden'; //just in case
 
       mangaOuterContainer.style.top = getOffsetRect(thisObj.parentNode.parentNode).top+'px';
-      if (!currentSettings["ACCURATE_MANGA_PREVIEW"]) mangaOuterContainer.style.left = '30px';
+      if (!currentSettings["ACCURATE_MANGA_PREVIEW"]) mangaOuterContainer.style.left = '25px';
 
       checkBookmark(thisObj, mangaOuterContainer);
 
@@ -1149,8 +1144,8 @@
     function adjustMargins(width)
     {
       let margins = document.body.clientWidth - width;
-      if (margins > 0) mangaOuterContainer.style.left = margins/2-10+'px';
-      else mangaOuterContainer.style.left = '30px';
+      if (margins > 0) mangaOuterContainer.style.left = margins/2+'px';
+      else mangaOuterContainer.style.left = '25px';
     }
     //-----------------------------------------------------------------------------------
     function checkBookmark(thisContainer, previewContainer)
@@ -1347,7 +1342,7 @@
     //-----------------------------------------------------------------------------------
     window.onresize = function()
     {
-      mangaWidth = document.body.clientWidth - 80;
+      mangaWidth = document.body.clientWidth - 60;
       mangaContainer.style.maxWidth = mangaOuterContainer.style.maxWidth = mangaWidth+'px';
       resetPreviewSize();
     };
