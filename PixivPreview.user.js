@@ -1,11 +1,11 @@
 // ==UserScript==
-// @name            Pixiv Arts Preview & Followed Atrists Coloring
-// @name:ru         Pixiv Arts Preview & Followed Atrists Coloring
+// @name            Pixiv Arts Preview & Followed Atrists Coloring & Extended History
+// @name:ru         Pixiv Arts Preview & Followed Atrists Coloring & Extended History
 // @namespace       Pixiv
-// @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
-// @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
+// @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Extended history for non-premium users. Settings can be changed in proper menu.
+// @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Расширенная история для не премиальных аккаунтов. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         2.57
+// @version         3.00
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -29,6 +29,8 @@
 // @grant           GM.xmlHttpRequest
 // @require         https://code.jquery.com/jquery-3.3.1.min.js
 // @require         https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/1.3.8/FileSaver.min.js
+// @compatible      firefox > 62
+// @compatible      chrome > 69
 // @noframes
 // ==/UserScript==
 //=======================================================================================
@@ -49,7 +51,8 @@
         {paramIndex:0, array:[false,true], name:"DISABLE_MANGA_PREVIEW_SCROLLING_PROPAGATION"},
         {paramIndex:1, array:[false,true], name:"SCROLL_INTO_VIEW_FOR_SINGLE_IMAGE"},
         {paramIndex:0, array:[false,true], name:"DISABLE_SINGLE_PREVIEW_BACKGROUND_SCROLLING"},
-        {paramIndex:0, array:[false,true], name:"HIDE_PEOPLE_WHO_BOOKMARKED_THIS"}
+        {paramIndex:0, array:[false,true], name:"HIDE_PEOPLE_WHO_BOOKMARKED_THIS"},
+        {paramIndex:0, array:[false,true], name:"KEEP_OLD_DATE_OF_ALREADY_VIEWED_ARTWORKS"}
     ];
     //---------------------------------DEFAULT VALUES------------------------------------
     // ■ PREVIEW_ON_CLICK =
@@ -84,6 +87,10 @@
     // ■ HIDE_PEOPLE_WHO_BOOKMARKED_THIS =
     // false: don't change `bookmark_detail.php` page (default)
     // true: hide "People who bookmarked this" section
+    //
+    // ■ KEEP_OLD_DATE_OF_ALREADY_VIEWED_ARTWORKS =
+    // false: update date every time artwork page opens (default)
+    // true: don't renew date and keep first one (NOTE: art will not appear at the top of the history)
 
     let currentSettings = {};
     //-----------------------------------------------------------------------------------
@@ -218,8 +225,8 @@
     //-----------------------------------------------------------------------------------
     async function getUserId(){
       USER_ID = USER_ID
-      || Object.keys(localStorage).filter(e => e.match('viewed_illust')).map(a => a.match(/\d+/)).flat()[0]
       || (followedCheck && followedCheck.id) && followedCheck.id
+      || Object.keys(localStorage).filter(e => e.match('viewed_illust')).map(a => a.match(/\d+/)).flat()[0]
       || (document.cookie.match(/user_id=\d+/)) && document.cookie.match(/user_id=\d+/)[0].split("=").pop()
       || (await fetch('https://www.pixiv.net/bookmark.php')).url.match(/\d{3,}/)[0];
 
@@ -281,7 +288,7 @@
       }
       else{
         followedUsersId = localStorage.getObj('followedUsersId');
-        console.log(`followedCheck is up to date of ${new Date(followedCheck.date).toLocaleString()}`);
+        console.log(`followedCheck is up to date of %c${new Date(followedCheck.date).toLocaleString()}`, 'color:violet;');
       }
     }
     //-----------------------------------------------------------------------------------
@@ -598,48 +605,74 @@
       });
     }
     //---------------------------------------History-------------------------------------
-    // let illust_history = {
-    //   ids: [],
-    //   timestamps: {},
-    //
-    //   init(){
-    //     this.ids = localStorage.getObj('viewed_illust_ids') || USER_ID && localStorage.getObj('viewed_illust_ids_' + USER_ID).data || [];
-    //     this.timestamps = localStorage.getObj('viewed_illust_timestamps') || USER_ID && localStorage.getObj('viewed_illust_timestamp_' + USER_ID).data || {};
-    //     console.log('History initialized');
-    //     if (this.check_space() > 0.95) console.error("Too many history records");
-    //   },
-    //
-    //   save(){
-    //     localStorage.setObj('viewed_illust_ids', this.ids);               //viewed_illust_ids
-    //     localStorage.setObj('viewed_illust_timestamps', this.timestamps); //viewed_illust_timestamp
-    //   },
-    //
-    //   add_record(illust_id, view_date){
-    //     if (this.ids.indexOf(illust_id.toString()) == -1){
-    //       this.ids.push(illust_id.toString());
-    //     }
-    //     this.timestamps[illust_id] = view_date || Date.now()/1000;
-    //
-    //     this.save();
-    //     console.log(illust_id, "has been added to history");
-    //   },
-    //
-    //   delete_record(illust_id){
-    //     let index = this.ids.indexOf(illust_id.toString());
-    //     if (index > -1){
-    //       this.ids.splice(index, 1);
-    //     }
-    //     delete this.timestamps[illust_id];
-    //
-    //     this.save();
-    //     console.log(illust_id, "has been deleted from history");
-    //   },
-    //
-    //   check_space(){
-    //     return +((new Blob([Object.values(localStorage), Object.keys(localStorage)]).size)/(5000*1024)).toFixed(3);
-    //   }
-    // };
-    // //getUserId().then(v => illust_history.init()).catch(e => console.error('History not initialized: no userID'));
+    let illust_history = {
+      ids: [],
+      timestamps: {},
+
+      load(){
+        this.ids = localStorage.getObj('viewed_illust_ids') || USER_ID && localStorage.getObj('viewed_illust_ids_' + USER_ID).data || [];
+        this.timestamps = localStorage.getObj('viewed_illust_timestamps') || USER_ID && localStorage.getObj('viewed_illust_timestamp_' + USER_ID).data || {};
+      },
+
+      save(){
+        localStorage.setObj('viewed_illust_ids', this.ids);               //viewed_illust_ids
+        localStorage.setObj('viewed_illust_timestamps', this.timestamps); //viewed_illust_timestamp
+      },
+
+      add_record(illust_id){
+        this.load();
+
+        if (this.ids.indexOf(illust_id.toString()) == -1){
+          this.ids.push(illust_id.toString());
+          this.timestamps[illust_id] = Date.now()/1000;
+          console.log(+illust_id, "has been added to history");
+        }
+        else if (currentSettings["KEEP_OLD_DATE_OF_ALREADY_VIEWED_ARTWORKS"] == false){
+          this.timestamps[illust_id] = Date.now()/1000;
+          console.log(+illust_id, ": updated view date");
+        }
+        else console.log(+illust_id, "already in history");
+
+        this.save();
+      },
+
+      delete_record(illust_id){
+        this.load();
+
+        let index = this.ids.indexOf(illust_id.toString());
+        if (index > -1){
+          this.ids.splice(index, 1);
+        }
+        delete this.timestamps[illust_id];
+
+        this.save();
+        console.log(+illust_id, "has been deleted from history");
+      },
+
+      override(){
+        this.load();
+        let date = Date.now()+365*24*60*60*1000;
+        localStorage.setObj('viewed_illust_ids_' + USER_ID, {data:this.ids, expires:date});
+        localStorage.setObj('viewed_illust_timestamp_' + USER_ID, {data:this.timestamps, expires:date});
+        console.info(`History overrided [%c${this.ids.length}%crecords]`, 'color:lime;');
+
+        let count = 0, t = setInterval(()=>{
+          document.querySelectorAll('._history-item.trial').forEach(e => e.style.opacity = 1);
+          if (count>10) clearInterval(t); ++count;
+        }, 1000);
+      },
+
+      check_space(){
+        let spaceConsumed = +((new Blob([Object.values(localStorage), Object.keys(localStorage),
+            localStorage.viewed_illust_ids, localStorage.viewed_illust_timestamps]).size)/(5000*1024)).toFixed(3); //duplicating records not the best solution... but simplest [solve this later if needed]
+        if (spaceConsumed > 0.95){
+          this.add_record = this.override = ()=>{};
+          return Promise.reject(`Too many space consumed [${spaceConsumed*100}%] — history is disabled`); //~100.000 entries
+        }
+        else console.log('History initialized');
+      }
+    };
+    getUserId().then(v => illust_history.check_space()).catch(e => console.error('History not initialized —', e));
     //===================================================================================
     if      (PAGETYPE===0)                  siteImgMaxWidth = 198;
     else if (PAGETYPE===4)                  siteImgMaxWidth = 150;
@@ -701,6 +734,8 @@
       });
       //---------------------------------------------------------------------------------
       async function initMenu(){
+        if ([-1,14].includes(PAGETYPE)) return;
+
         let buttons, menuButton; //put to global scope if (menuButton) is needed elsewhere
 
         let count = 0;
@@ -797,7 +832,7 @@
         if (PAGETYPE===12)
         {
           initMutationObject({'childList': true});
-          //illust_history.add_record(location.href.match(/\d+/)[0]); //todo: revoke in case of no ID
+          illust_history.add_record(location.href.match(/\d+/)[0]);
         }
         //-----------------------------Init illust fetch listener------------------------
         if (PAGETYPE===4 || PAGETYPE===6 || PAGETYPE===8)
@@ -827,12 +862,19 @@
             PAGETYPE = 2;
           });
         }
-
         //------------------------------------Bookmarks----------------------------------
         if (PAGETYPE===7)
         {
           Promise.all([checkFollowedArtists(), waitForArtSectionContainers()])
           .then(success => colorFollowed(), err => console.error(err));
+        }
+        //------------------------------------History------------------------------------
+        if (PAGETYPE===14){
+          let trial = document.querySelector('span.trial');
+          if (trial){
+            illust_history.override();
+            trial.textContent = "Extended Version";
+          }
         }
         //-------------------------------------------------------------------------------
       }
@@ -888,7 +930,7 @@
             //---------------------------filtering preview card--------------------------
             if (getElementByXpath("//a[text()='View Profile']")){
               if (this.parentNode.parentNode.querySelector('span'))
-                setMangaHover(this, this.parentNode.parentNode.textContent);
+                setMangaHover(this, this.parentNode.parentNode.textContent, getOffsetRect(this).top+112+'px');
               else
                 setHover(this, getOffsetRect(this).top+112+5+'px', true);
             }
@@ -1067,13 +1109,13 @@
       checkDelay(imgContainer, thisObj);
     }
     //-----------------------------------------------------------------------------------
-    function setMangaHover(thisObj, count)
+    function setMangaHover(thisObj, count, top)
     {
       clearTimeout(timerId);
       clearInterval(tInt);
       imgContainer.style.visibility = 'hidden'; //just in case
 
-      mangaOuterContainer.style.top = getOffsetRect(thisObj.parentNode.parentNode).top+'px';
+      mangaOuterContainer.style.top = top || getOffsetRect(thisObj.parentNode.parentNode).top+'px';
       if (!currentSettings["ACCURATE_MANGA_PREVIEW"]) mangaOuterContainer.style.left = '25px';
 
       checkBookmark(thisObj, mangaOuterContainer);
@@ -1230,13 +1272,13 @@
       else if (event.button == 0)
       {
         //----------------------------Single LMB-click-----------------------------------
-        // if (event.shiftKey){
-        //   illust_history.delete_record(illustId); //Shift + LMB-click -> delete record from history //todo
-        // }
-        // else
-        if (!event.altKey)
+        if (event.shiftKey){
+          illust_history.delete_record(illustId); //Shift + LMB-click -> delete record from history
+          document.querySelector(`[style*="/${illustId}_"]`).style.opacity = ".25";
+        }
+        else if (!event.altKey)
         {
-          let toSave = event.ctrlKey;// Ctrl + LMB-click -> saving image
+          let toSave = event.ctrlKey; //Ctrl + LMB-click -> saving image
           let pageNum = 0;
 
           //Single (general url)
@@ -1363,5 +1405,3 @@
     //===================================================================================
   });
 }) (); //function
-//Global TODO: hiding already viewed arts on Daily Rankings when moving to older dates
-//             arts viewed history extending up to 200000 entries with no time limit
