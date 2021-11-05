@@ -5,6 +5,7 @@ Script is written for better www.pixiv.net usability.
 ### General features:
 • Showing enlarged preview of artworks on mouse hovering* on most site pages.<br>
 • Highlighting authors from your "Followed" list, so you can quickly distinguish them.<br>
+• Non-premium history that can store ~10x more amount of records without time limit.<br>
 • Makes recommendation block(appearing after follow) scrollable, arts preview also available.<br>
 • Enlarging also works on users profiles preview(3 artworks).<br>
 
@@ -12,6 +13,7 @@ Script is written for better www.pixiv.net usability.
 • LMB-Click - Opens source of artwork in new tab.<br>
 • MMB-Click - Opens corresponding artwork page in new tab.<br>
 • CTRL+LMB - Instantly download the original of artwork.<br>
+• Shift+LMB - Delete artwork from history.<br>
 • ALT+LMB - Add artwork to bookmarks.<br>
 
 ■ Preview of single artworks appears in left top corner of image block.
@@ -26,9 +28,12 @@ For larger amount of artworks, horizontal scrollbar is appeared, but scrolling v
 <img src=http://i.prntscr.com/td_hJncaSZueEf3hx3mXrA.png><br>
 
 ■ The names of the authors(users) you are already subscribed to are highlighted with green.
-<img src=http://i.prntscr.com/xa2ErFzkQOGLloz9kAHRZQ.png><br>
+<img src=https://user-images.githubusercontent.com/19971564/140511941-bb87fd1e-a21e-4ce9-9e8e-a4c00b7aa283.png><br>
 
-Settings menu is available by the clicking on "Related services" icon, that is located in right top corner of site page. Settings are saved and immediately applied after menu is closed by the clicking on any other space.
+■ History is not limited to the time, only to localStorage space(which can be increased). Approximate amount of records without other scripts - 100 000. 
+<img src=https://user-images.githubusercontent.com/19971564/140512333-97576bbc-3bb9-4687-a0b3-97e87d578312.png><br>
+
+■ Settings menu is available by the clicking on "Related services" icon, that is located in right top corner of site page. Settings are saved and immediately applied after menu is closed by the clicking on any other space.
 <img src=http://i.prntscr.com/22_SOQ3kQBSj_IW-uvvVnw.png><br>
 
 ## Preferences:
@@ -66,6 +71,9 @@ true : disable page scrolling when viewing single preview (works only if previou
 false: don't change `bookmark_detail.php` page (default)<br>
 true: hide "People who bookmarked this" section<br>
 <br>
+■ KEEP_OLD_DATE_OF_ALREADY_VIEWED_ARTWORKS =<br>
+false: update date every time artwork page opens (default)<br>
+true: don't renew date and keep first one (NOTE: art will not appear at the top of the history)<br>
 
 ### Supported pages:
 
