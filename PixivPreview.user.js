@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Extended history for non-premium users. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Расширенная история для не премиальных аккаунтов. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         3.00
+// @version         3.05
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -29,8 +29,8 @@
 // @grant           GM.xmlHttpRequest
 // @require         https://code.jquery.com/jquery-3.3.1.min.js
 // @require         https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/1.3.8/FileSaver.min.js
-// @compatible      firefox > 62
-// @compatible      chrome > 69
+// @compatible      firefox >= 74
+// @compatible      chrome >= 80
 // @noframes
 // ==/UserScript==
 //=======================================================================================
@@ -112,7 +112,6 @@
         followedUsersId = {}, //storing followed users pixiv ID
         BOOKMARK_URL = 'https://www.pixiv.net/ajax/user/XXXXXXXX/following?limit=100&tag=&lang=en',//&offset=0&rest=show'
         USER_ID,
-        artsLoaded = 0,
         totalHits = 0,
         lastImgId = -1,
         PREVIEWSIZE,
@@ -131,11 +130,9 @@
             localStorage.setObj('followedCheck', this);
           },
           loadState(){
-            this.id     = localStorage.getObj('followedCheck') && localStorage.getObj('followedCheck').id     || 0;
-            this.status = localStorage.getObj('followedCheck') && localStorage.getObj('followedCheck').status || 0;
-            this.date   = localStorage.getObj('followedCheck') && localStorage.getObj('followedCheck').date   || 0;
-            //this.status = localStorage.getObj('followedCheck')?.status || 0;           //wanna use this,
-            //this.date   = localStorage.getObj('followedCheck')?.date   || 0;           //but compatibility... -_-
+            this.id     = localStorage.getObj('followedCheck')?.id     || 0;
+            this.status = localStorage.getObj('followedCheck')?.status || 0;
+            this.date   = localStorage.getObj('followedCheck')?.date   || 0;
           }
         };
 
@@ -225,9 +222,9 @@
     //-----------------------------------------------------------------------------------
     async function getUserId(){
       USER_ID = USER_ID
-      || (followedCheck && followedCheck.id) && followedCheck.id
-      || Object.keys(localStorage).filter(e => e.match('viewed_illust')).map(a => a.match(/\d+/)).flat()[0]
-      || (document.cookie.match(/user_id=\d+/)) && document.cookie.match(/user_id=\d+/)[0].split("=").pop()
+      || followedCheck?.id
+      || document.cookie.match(/user_id=\d+/)?.[0].split("=").pop()
+      || Object.keys(localStorage).filter(e => e.match(/viewed_illust_ids_\d+/)).map(a => a.match(/\d+/))[0]
       || (await fetch('https://www.pixiv.net/bookmark.php')).url.match(/\d{3,}/)[0];
 
       if (!USER_ID) return Promise.reject('FATAL ERROR in obtaining user ID! Please report this on GitHub "Issues"');
@@ -259,7 +256,7 @@
           followedCheckError(error);
           return -1;
         }
-        for(const i of response0) i.body.users.forEach(user => followedUsersId[user.userId] = true); //todo: '1' instead -> less localStorage space
+        for(const i of response0) i.body.users.forEach(user => followedUsersId[user.userId] = 1);
 
         let args = [];
         let len = response0.map(r => r.body.total);
@@ -373,7 +370,7 @@
       let hitContainers = [];
       let currentHits = 0;
 
-      hitContainers = [].filter.call(artsContainers, container => followedUsersId[getAuthorIdFromContainer(container)] === true); // -> '1' -> '=='
+      hitContainers = [].filter.call(artsContainers, container => followedUsersId[getAuthorIdFromContainer(container)] == 1);
       hitContainers.forEach(container => container.setAttribute("style", "background-color: green; !important"));
 
       currentHits = hitContainers.length;
@@ -542,7 +539,7 @@
       return nearestNode;
     }
     //-----------------------------------------------------------------------------------
-    function followage(thisObj, toFollow, isNew) //In case of followed check lasting too long, async queue may be a solution
+    function followage(thisObj, toFollow) //In case of followed check lasting too long, async queue may be a solution
     {
       console.log('toFollow: '+ toFollow);
       let userId = searchNearestNode(thisObj, '[href*="/users/"]').getAttribute('href').split('/').filter(el => el.match(/\d+/))[0];
@@ -555,7 +552,7 @@
           followedUsersId = localStorage.getObj('followedUsersId');
 
         if (toFollow){
-          followedUsersId[userId] = true; // '1'
+          followedUsersId[userId] = 1;
           if ([2,12].includes(PAGETYPE)){
             initFollowagePreview();
           }
@@ -672,7 +669,7 @@
         else console.log('History initialized');
       }
     };
-    getUserId().then(v => illust_history.check_space()).catch(e => console.error('History not initialized —', e));
+    getUserId().then(() => illust_history.check_space()).catch(e => console.error('History not initialized —', e));
     //===================================================================================
     if      (PAGETYPE===0)                  siteImgMaxWidth = 198;
     else if (PAGETYPE===4)                  siteImgMaxWidth = 150;
@@ -855,7 +852,7 @@
             PAGETYPE = 7;
 
             Promise.all([checkFollowedArtists(), waitForArtSectionContainers()])
-            .then(success => colorFollowed(), err => console.error(err));
+            .then(() => colorFollowed(), err => console.error(err));
           });
           $('body').on('mouseup', 'a[href*="/illustrations"]', function(){
             console.log('PAGETYPE: '+ PAGETYPE+' -> 2');
@@ -866,13 +863,13 @@
         if (PAGETYPE===7)
         {
           Promise.all([checkFollowedArtists(), waitForArtSectionContainers()])
-          .then(success => colorFollowed(), err => console.error(err));
+          .then(() => colorFollowed(), err => console.error(err));
         }
         //------------------------------------History------------------------------------
         if (PAGETYPE===14){
           let trial = document.querySelector('span.trial');
           if (trial){
-            illust_history.override();
+            getUserId().then(() => illust_history.override());
             trial.textContent = "Extended Version";
           }
         }
@@ -1049,7 +1046,7 @@
       mangaOuterContainer.style.visibility = 'hidden';
       hoverImg.src=''; //just in case
 
-      hoverImg.src = parseImgUrl(thisObj, PREVIEWSIZE);
+      hoverImg.src = parseImgUrl(thisObj);
       imgContainer.style.top = top || getOffsetRect(thisObj.parentNode.parentNode).top+'px';
 
       //adjusting preview position considering expected image width
@@ -1120,11 +1117,12 @@
 
       checkBookmark(thisObj, mangaOuterContainer);
 
-      imgsArrInit(parseImgUrl(thisObj, PREVIEWSIZE), +count, thisObj);
+      imgsArrInit(thisObj, +count);
     }
     //-----------------------------------------------------------------------------------
-    function imgsArrInit(primaryLink, count, thisObj)
+    function imgsArrInit(thisObj, count)
     {
+      let primaryLink = parseImgUrl(thisObj);
       let currentImgId = getImgId(primaryLink);
       //console.log('lastImgId: ' + lastImgId);
       //console.log('currentImgId: ' + currentImgId);
@@ -1170,7 +1168,7 @@
       }
     }
     //-----------------------------------------------------------------------------------
-    function parseImgUrl(thisObj, PREVIEWSIZE)
+    function parseImgUrl(thisObj)
     {
       let url = (thisObj.src)? thisObj.src: thisObj.style.backgroundImage.slice(5,-2);
       url = url.replace(/\/...x..[0|8]/, '/'+PREVIEWSIZE+'x'+PREVIEWSIZE).
