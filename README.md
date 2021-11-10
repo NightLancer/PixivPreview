@@ -47,7 +47,7 @@ true : showing preview after LMB-Click<br>
 1000 : 1 second delay (2000 for 2 seconds, etc)<br>
 <br>
 ■ PREVIEW_SIZE =<br>
-auto : automatically calculate preview size (1200 or 600) depending of current screen size (default)<br>
+auto : automatically calculate preview size (1200 or 600) depending on current screen size (default)<br>
 600 : up to 600px x 600px<br>
 1200 : up to 1200px x 1200px<br>
 <br>
