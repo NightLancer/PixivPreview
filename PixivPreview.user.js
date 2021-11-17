@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Extended history for non-premium users. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Расширенная история для не премиальных аккаунтов. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         3.05
+// @version         3.10
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -651,7 +651,7 @@
         let date = Date.now()+365*24*60*60*1000;
         localStorage.setObj('viewed_illust_ids_' + USER_ID, {data:this.ids, expires:date});
         localStorage.setObj('viewed_illust_timestamp_' + USER_ID, {data:this.timestamps, expires:date});
-        console.info(`History overrided [%c${this.ids.length}%crecords]`, 'color:lime;');
+        console.info(`History overrided [%c${this.ids.length}%c records]`, 'color:lime;', 'color:;');
 
         let count = 0, t = setInterval(()=>{
           document.querySelectorAll('._history-item.trial').forEach(e => e.style.opacity = 1);
@@ -946,6 +946,15 @@
             }
             //---------------------------------------------------------------------------
           });
+          //-----------------------------------------------------------------------------
+          if (PAGETYPE === 12) $('body').on('click', '[role="presentation"] img', function(event){
+            if (event.ctrlKey){
+              event.preventDefault();
+              event.stopPropagation();
+              let isManga = !!document.querySelector('.gtm-manga-viewer-preview-modal-open');
+              onClickActions(this, event, isManga);
+            }
+          });
         }
         //----------------------DAILY RANKINGS & BOOKMARK INFORMATION PAGES-------------- //4,6
         else if (PAGETYPE === 4 || PAGETYPE === 6)
@@ -1006,6 +1015,7 @@
           $('body').off('mouseup', 'a[href*="bookmarks/artworks"]');
           $('body').off('mouseup', 'a[href*="/illustrations"]');
           $('body').off('mouseup', 'a[href*="/discovery"]');
+          $('body').off('click', '[role="presentation"] img');
 
           if (PAGETYPE === -1) return;
 
@@ -1287,7 +1297,7 @@
           if (isManga)
           {
             let src = imgContainerObj.src;
-            pageNum = src.substring(src.indexOf("_")+2, src.lastIndexOf("_"));
+            pageNum = src.match(/(?<=\/\d+_p)\d+(?=[_|.])/)[0];
           }
 
           getOriginalUrl(ajaxIllustUrl, pageNum, toSave);
