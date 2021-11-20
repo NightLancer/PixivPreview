@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Extended history for non-premium users. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Расширенная история для не премиальных аккаунтов. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         3.10
+// @version         3.50
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -52,7 +52,8 @@
         {paramIndex:1, array:[false,true], name:"SCROLL_INTO_VIEW_FOR_SINGLE_IMAGE"},
         {paramIndex:0, array:[false,true], name:"DISABLE_SINGLE_PREVIEW_BACKGROUND_SCROLLING"},
         {paramIndex:0, array:[false,true], name:"HIDE_PEOPLE_WHO_BOOKMARKED_THIS"},
-        {paramIndex:0, array:[false,true], name:"KEEP_OLD_DATE_OF_ALREADY_VIEWED_ARTWORKS"}
+        {paramIndex:0, array:[false,true], name:"KEEP_OLD_DATE_OF_ALREADY_VIEWED_ARTWORKS"},
+        {paramIndex:1, array:[false,true], name:"ENABLE_AUTO_PAGINATION"}
     ];
     //---------------------------------DEFAULT VALUES------------------------------------
     // ■ PREVIEW_ON_CLICK =
@@ -91,6 +92,10 @@
     // ■ KEEP_OLD_DATE_OF_ALREADY_VIEWED_ARTWORKS =
     // false: update date every time artwork page opens (default)
     // true: don't renew date and keep first one (NOTE: art will not appear at the top of the history)
+    //
+    // ■ ENABLE_AUTO_PAGINATION =
+    // false: disable auto pagination
+    // true: enable auto-pagination on `bookmark_new_illust` page (default)
 
     let currentSettings = {};
     //-----------------------------------------------------------------------------------
@@ -149,7 +154,7 @@
     //===================================================================================
     function checkPageType()
     {
-      if (document.URL.match('https://www.pixiv.net/bookmark_new_illust.php?'))                             return 0; //New illustrations - Old + -> New
+      if (document.URL.match(/https:\/\/www.pixiv.net\/bookmark_new_illust(?:_r18)?.php/))                  return 0; //New illustrations - New +
       if (document.URL.match(/^https:\/\/www.pixiv.net\/discovery(?:\?mode=(safe|r18))?$/))                 return 1; //Discovery page(works) - New +
       if (document.URL.match('https://www.pixiv.net/bookmark_detail.php?'))                                 return 4; //Bookmark information - Old +
       if (document.URL.match('https://www.pixiv.net/ranking.php?'))                                         return 6; //Daily rankings - Old +
@@ -158,18 +163,18 @@
       if (document.URL.match(/https:\/\/www\.pixiv\.net\/(?:en\/)?tags/))                                   return 8; //Search page - New +
       if (document.URL.match(/https:\/\/www\.pixiv\.net\/(?:en\/)?artworks/))                               return 12; //Illust page - New* +
       if (document.URL.match('https://www.pixiv.net/discovery/users?'))                                     return 13; //Discovery page(users) New +
-      if (document.URL.match('https://www.pixiv.net/history.php'))                                          return 14; //History - Old +~
+      if (document.URL.match('https://www.pixiv.net/history.php'))                                          return 14; //History - Old +
       if (document.URL.match(/^https:\/\/www\.pixiv\.net\/(?:en\/)?$/))                                     return 10; //Home page - New +
 
       return -1;
     }
     console.log('PAGETYPE:',PAGETYPE);
     //-----------------------------------------------------------------------------------
-    //Old:          0     4 6              14
-    //New:            1 2     7 8 10 12 13
+    //Old:                4 6              14
+    //New:          0 1 2     7 8 10 12 13
     //==============----------------------------
     //Coloring:     = 1 = 4 6 7 8 10 12 == ~~ //
-    //Profile card: 0 1 = 4 6 7 8 10 12 == == //
+    //Profile card: ± 1 = 4 6 7 8 10 12 == == //
     //On following: = 1 2 4 6 7 8 ?? 12 13 == //
     //===================================================================================
     function setCurrentSettings(){
@@ -246,10 +251,10 @@
         }
         else return -1;
 
-        //make first requestFollowed separately for obtaining count of followed users, both public/private
+        //make first request separately for obtaining count of followed users, both public/private
         let response0 = [];
         try{
-          response0 = await Promise.all([requestFollowed(BOOKMARK_URL+'&rest=show&offset=0'), requestFollowed(BOOKMARK_URL+'&rest=hide&offset=0')]);
+          response0 = await Promise.all([request(BOOKMARK_URL+'&rest=show&offset=0'), request(BOOKMARK_URL+'&rest=hide&offset=0')]);
         }
         catch(error){
           console.error("Error with initial bookmark url!");
@@ -267,7 +272,7 @@
         //100 parallel requests in case of 10K users. TODO: find maximum amount and part requests
         let responseArray = [];
         try{
-          responseArray = await Promise.all(args.map(requestFollowed));
+          responseArray = await Promise.all(args.map(request));
         }
         catch(error){
           followedCheckError(error);
@@ -289,25 +294,19 @@
       }
     }
     //-----------------------------------------------------------------------------------
-    async function requestFollowed(url)
+    async function request(url, responseType)
     {
       return new Promise(function (resolve, reject){
         let xhr = new XMLHttpRequest();
-        xhr.responseType = 'json';
+        xhr.responseType = responseType || 'json';
         xhr.timeout = 10000;
         xhr.open('GET', url, true);
-
-        xhr.onload = function(){
-          if (xhr.status == 200)
-            resolve(this.response);
-          else
-            reject({status: this.status, message: this.response.message, url:this.responseURL});
+        xhr.onload = function (){
+          resolve(this.response);
         };
-
         xhr.onerror = xhr.ontimeout = function(){
-          reject({status: this.status, message: this.response.message, url:this.responseURL});
+          reject(this);
         };
-
         xhr.send();
       });
     }
@@ -441,9 +440,9 @@
     {
       switch(PAGETYPE)
       {
+        case 0:  return $('section ul')[0];
         case 1:
         case 4:  return $('.gtm-illust-recommend-zone')[0]
-
         case 6:  return $('.ranking-items')[0]
         case 7:  return $('section')[0]
         case 8:  return $("section>div>ul")[0]
@@ -737,12 +736,10 @@
 
         let count = 0;
         while (!menuButton && count<5){
-          if ([1,2,7,8,10,12].includes(PAGETYPE))
+          if ([0,1,2,7,8,10,12].includes(PAGETYPE))
             buttons = document.querySelectorAll('body > div#root > div > div:nth-child(1) button');
           else
-            buttons = document.querySelector('body > div#js-mount-point-header > div:nth-child(1) button') &&
-                      document.querySelectorAll('body > div#js-mount-point-header > div:nth-child(1) button')
-                      || document.querySelectorAll('body > div#root > div > div:nth-child(1) button'); //temporary fix
+            buttons = document.querySelectorAll('body > div#js-mount-point-header > div:nth-child(1) button');
           menuButton = buttons[buttons.length - 1]; // last is the menu button
           console.log(menuButton);
           await sleep(1000);
@@ -794,9 +791,100 @@
       }
       //---------------------------------------------------------------------------------
       reInitFollowagePreview();
+      //====================================PAGINATION===================================
+      async function autoPagination(){
+        if (!currentSettings['ENABLE_AUTO_PAGINATION'] || ![0].includes(PAGETYPE)) return;
+
+        let pageCount = location.href.match(/(?<=[?|&]p=)\d+/)?.[0] || 1;
+        let mode = location.href.match(/r18/)?.[0] || "All";
+        //-------------------------------------------------------------------------------
+        let x_csrf_token; //for bookmarks
+        request('/en/', 'document').then(response => x_csrf_token = response.documentElement.innerHTML.match(/(?<=token&quot;:&quot;)[\dA-z]+/));
+        //-------------------------------------------------------------------------------
+        let artsSection = await waitForArtSectionContainers();
+        await sleep(2500);
+        let art = $(artsSection.querySelector('span')).parents('li')[0].cloneNode(true);
+        art.querySelectorAll('img').forEach(el => el.src='');
+        //-------------------------------------------------------------------------------
+        let running = false;
+
+        window.onscroll = async function(){
+          if ((window.innerHeight + window.scrollY) >= document.body.scrollHeight){
+            if (running || pageCount>=35) return; //seems current limit for following is 35 pages
+            running = true;
+
+            pageCount++;
+            console.log('Loading', pageCount, 'page...');
+
+            let url = `https:\/\/www\.pixiv\.net\/ajax\/follow_latest\/illust\?p=${pageCount}\&mode=${mode}\&lang=en`;
+            fetch(url).then(r => r.json()).then(response => {
+              response.body.thumbnails.illust.forEach(obj => {
+                let el = art.cloneNode(true);
+                if (obj.pageCount > 1) el.querySelectorAll('span')[2].textContent = obj.pageCount;
+                else $(el.querySelector('span')).parents('a > div')[0].remove();
+                //-------------------------------------------------------------------------
+                //start of ****ing frameworks layout. Hope this won't break in less than a year-_-
+                let s = el.querySelector('[href]').href.match('/en/')?.[0] || '/';
+                let hrefs = el.querySelectorAll('[href]');
+
+                hrefs[0].setAttribute('data-gtm-value', obj.id);
+                hrefs[0].href = s + "artworks/" + obj.id;
+
+                hrefs[1].href = s + "artworks/" + obj.id;
+                hrefs[1].textContent = obj.title;
+
+                hrefs[2].setAttribute('data-gtm-value', obj.userId);
+                hrefs[2].href = s + "users/" + obj.userId;
+
+                hrefs[3].setAttribute('data-gtm-value', obj.userId);
+                hrefs[3].href = s + "users/" + obj.userId;
+                hrefs[3].textContent = obj.userName;
+                //
+                let imgs = el.querySelectorAll('img');
+                imgs[0].src = obj.urls["360x360"];
+                imgs[1].src = obj.profileImageUrl;
+                //
+                if (obj.bookmarkData) el.querySelectorAll('path:not(:only-child)').forEach(e => {
+                  e.setAttribute("style", "fill: rgb(255, 64, 96); !important")
+                });
+                //-------------------------------------------------------------------------
+                el.style.display = "flex";
+                artsSection.appendChild(el);
+              });
+              console.log('Loaded', response.body.thumbnails.illust.length, 'arts');
+              running = false;
+            });
+          } //endif
+        } //onscroll
+        //-------------------------------------------------------------------------------
+        $(artsSection).on('click', 'button', function(event){
+          event.preventDefault();
+          let illust_id = searchNearestNode(this,'[href*="/artworks/"]').href.match(/\d+/)[0];
+
+          fetch('/ajax/illusts/bookmarks/add', {
+            method: 'POST',
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json; charset=utf-8',
+              'x-csrf-token': x_csrf_token
+            },
+            body: JSON.stringify({"illust_id":illust_id,"restrict":0,"comment":"","tags":[]})
+          })
+          .then(() => this.querySelectorAll('path:not(:only-child)').forEach(e => e.setAttribute("style", "fill: rgb(255, 64, 96);")))
+          .catch(err => console.log(err));
+        });
+      }
       //=================================================================================
       function reInitMutationObservers()
       {
+        if (PAGETYPE===0){
+          autoPagination();
+
+          $('body').on('click', 'a[href*="/bookmark_new_illust"]', function(e){
+            e.preventDefault();
+            location.href = this.href;
+          });
+        }
         //-------------------------------------------------------------------------------
         if (PAGETYPE===1){
           colorFollowed();
@@ -880,10 +968,10 @@
       //=================================================================================
       //***************************************HOVER*************************************
       //=================================================================================
-      //------------------------------------Profile card--------------------------------- //0,1,4,6,9 [2,7,8,10,12]
+      //------------------------------------Profile card--------------------------------- //4,6,9 [~0,1,2,7,8,10,12]
       function initProfileCard()
       {
-        if ([0,4,6,9].includes(PAGETYPE))
+        if ([4,6,9].includes(PAGETYPE))
         {
           $('body').on(previewEventType, 'section._profile-popup a[href*="/artworks/"]', function(e)
           {
@@ -901,24 +989,8 @@
       //=================================================================================
       function initPreviewListeners()
       {
-        //------------------------NEW ILLUSTRATIONS, DISCOVERY[ARTWORKS] ---------------- //0,1
-        if ((document.querySelector('body > div#js-mount-point-header')) && (PAGETYPE === 0 || PAGETYPE === 1))  //temporary fix
-        {
-          console.info('old');
-          //single art hover-------------------------------------------------------------
-          $('body').on(previewEventType, 'a[href*="/artworks/"] > div:only-child', function(e){
-            e.preventDefault();
-            setHover(this);
-          });
-          //manga-style arts hover-------------------------------------------------------
-          $('body').on(previewEventType, 'a[href*="/artworks/"] > div:nth-child(2)', function(e){
-            e.preventDefault();
-            if (this.parentNode.firstChild.childNodes.length)
-              setMangaHover(this, this.parentNode.firstChild.firstChild.textContent);
-          });
-        }
-        //---------ARTIST WORKS, "TOP" PAGES, Home page, Search, Bookmarks--------------- //2,7,8,10,12
-        else if (PAGETYPE === 2 || PAGETYPE === 7 || PAGETYPE === 12 || PAGETYPE === 8 || PAGETYPE === 10 || PAGETYPE === 0 || PAGETYPE === 1)
+        //New illustrations, Discovery[Artworks], Artist pages, Bookmarks, Search, Home page, Artwork page //0,1,2,7,8,10,12
+        if (PAGETYPE === 0 || PAGETYPE === 1 || PAGETYPE === 2 || PAGETYPE === 7 || PAGETYPE === 8 || PAGETYPE === 10 || PAGETYPE === 12)
         {
           console.info('new');
           $('body').on(previewEventType, 'a[href*="/artworks/"] img', function(e)
@@ -1016,6 +1088,8 @@
           $('body').off('mouseup', 'a[href*="/illustrations"]');
           $('body').off('mouseup', 'a[href*="/discovery"]');
           $('body').off('click', '[role="presentation"] img');
+          $('section ul').off('click', 'button');
+          window.onscroll = null;
 
           if (PAGETYPE === -1) return;
 
@@ -1024,6 +1098,7 @@
           initPreviewListeners();
           reInitMutationObservers();
           initMenu();
+          autoPagination();
 
           reInitFollowagePreview();
           initProfileCard();
@@ -1061,7 +1136,7 @@
 
       //adjusting preview position considering expected image width
       //---------------------------------------------------------------------------------
-      let l = (![1,2,7,10,12,13,14].includes(PAGETYPE)) //more accurate on discovery users and history
+      let l = (![0,1,2,7,10,12,13,14].includes(PAGETYPE)) //more accurate on discovery users and history
           ?getOffsetRect(thisObj.parentNode.parentNode).left
           :getOffsetRect(thisObj).left;
       let dcw = document.body.clientWidth;
@@ -1072,7 +1147,7 @@
         //console.log("cached");
       }
       else{
-        if ([0,4,6,14].includes(PAGETYPE) && !profileCard){
+        if ([4,6,14].includes(PAGETYPE) && !profileCard){
           previewWidth = PREVIEWSIZE*(((PAGETYPE==6 || PAGETYPE==14)?thisObj.clientWidth:thisObj.parentNode.parentNode.clientWidth)/siteImgMaxWidth)+5; //if not on NEW layout - width is predictable
           adjustSinglePreview(dcw, l, previewWidth, thisObj);
           //console.log("count");
@@ -1200,9 +1275,9 @@
     //-----------------------------------------------------------------------------------
     function checkBookmark(thisContainer, previewContainer)
     {
-      if ([1,2,7,8,10,12].includes(PAGETYPE))
+      if ([0,1,2,7,8,10,12].includes(PAGETYPE))
         bookmarkContainer = searchNearestNode(thisContainer, 'button');
-      else if ([0,4,6].includes(PAGETYPE))
+      else if ([4,6].includes(PAGETYPE))
         bookmarkContainer = searchNearestNode(thisContainer, "._one-click-bookmark")
       else return; //no favourite button
 
