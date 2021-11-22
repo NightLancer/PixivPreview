@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Extended history for non-premium users. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Расширенная история для не премиальных аккаунтов. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         3.50
+// @version         3.60
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -212,11 +212,6 @@
     //===================================================================================
     //**********************************ColorFollowed************************************
     //===================================================================================
-    if ([1,4,6,7,8,10,12].includes(PAGETYPE))
-    {
-      checkFollowedArtists();
-    }
-    //-----------------------------------------------------------------------------------
     function makeArgs(baseUrl, total){
       let arr = [];
       for(let i = 1; i < Math.ceil(total / 100); i++){                                   //from 1 - because we already have first 100 users
@@ -272,7 +267,7 @@
         //100 parallel requests in case of 10K users. TODO: find maximum amount and part requests
         let responseArray = [];
         try{
-          responseArray = await Promise.all(args.map(request));
+          responseArray = await Promise.all(args.map(e => request(e)));
         }
         catch(error){
           followedCheckError(error);
@@ -293,6 +288,7 @@
         console.log(`followedCheck is up to date of %c${new Date(followedCheck.date).toLocaleString()}`, 'color:violet;');
       }
     }
+    checkFollowedArtists();
     //-----------------------------------------------------------------------------------
     async function request(url, responseType)
     {
@@ -440,11 +436,12 @@
     {
       switch(PAGETYPE)
       {
-        case 0:  return $('section ul')[0];
+        case 0:
+        case 2:
+        case 7:  return $('section ul')[0]
         case 1:
         case 4:  return $('.gtm-illust-recommend-zone')[0]
         case 6:  return $('.ranking-items')[0]
-        case 7:  return $('section')[0]
         case 8:  return $("section>div>ul")[0]
         case 10: return $("div[id='root']>div>div:nth-child(2)")[0]
         case 12: return $('.gtm-illust-recommend-zone ul')[0]
@@ -490,7 +487,7 @@
           else if (PAGETYPE == 12 && (!!node.querySelector('iframe'))){
             node.remove(); //filtering ads
           }
-          else if (PAGETYPE == 1){
+          else if (PAGETYPE == 1 || PAGETYPE == 7){
             node.querySelectorAll('li > div').forEach((el) => arr.push(el));
           }
           else{
@@ -793,37 +790,78 @@
       reInitFollowagePreview();
       //====================================PAGINATION===================================
       async function autoPagination(){
-        if (!currentSettings['ENABLE_AUTO_PAGINATION'] || ![0].includes(PAGETYPE)) return;
+        if (!currentSettings['ENABLE_AUTO_PAGINATION'] || ![0,2,7].includes(PAGETYPE)) return;
+        $('section ul').off('click', 'button');
+        window.onscroll = null;
 
         let pageCount = location.href.match(/(?<=[?|&]p=)\d+/)?.[0] || 1;
         let mode = location.href.match(/r18/)?.[0] || "All";
+        let maxPageCount = 35;
+
+        let authorId = location.href.match(/(?<=users\/)\d+/)?.[0];
+        let artworks = !!location.href.match(/\d+\/artworks/)?.[0];
+        let illusts = !!location.href.match(/illustrations/)?.[0];
+        let manga = !!location.href.match(/manga/)?.[0];
+        let rest = location.href.match(/rest=hide/)?.[0] && "hide" || "show";
         //-------------------------------------------------------------------------------
         let x_csrf_token; //for bookmarks
         request('/en/', 'document').then(response => x_csrf_token = response.documentElement.innerHTML.match(/(?<=token&quot;:&quot;)[\dA-z]+/));
         //-------------------------------------------------------------------------------
         let artsSection = await waitForArtSectionContainers();
         await sleep(2500);
-        let art = $(artsSection.querySelector('span')).parents('li')[0].cloneNode(true);
+        let art = artsSection.firstChild.cloneNode(true);
+        let mangaCount = document.createElement('div');
+            mangaCount.style = "position: absolute; right: 0px; top: 0px; z-index: 1; display: flex; justify-content: center; align-items: center; flex: 0 0 auto; box-sizing: border-box; height: 20px; min-width: 20px; font-weight: bold; padding: 0px 6px; background: rgba(0, 0, 0, 0.32) none repeat scroll 0% 0%; border-radius: 10px; font-size: 10px; line-height: 10px; color: rgb(255, 255, 255);";
+            mangaCount.appendChild(document.createElement('span'));
+            mangaCount.querySelector('span').style = "font-size: 10px; line-height: 10px; color: rgb(255, 255, 255); font-family: inherit; font-weight: bold;";
+        if (!art.querySelector('span')) art.querySelector('[href]').appendChild(mangaCount);
         art.querySelectorAll('img').forEach(el => el.src='');
         //-------------------------------------------------------------------------------
-        let running = false;
+        let running = false, urls;
 
         window.onscroll = async function(){
-          if ((window.innerHeight + window.scrollY) >= document.body.scrollHeight){
-            if (running || pageCount>=35) return; //seems current limit for following is 35 pages
+          if ((window.innerHeight*1.8 + window.scrollY) >= document.body.scrollHeight){
+            if (running || pageCount>=maxPageCount) return; //seems current limit for following is 35 pages
             running = true;
 
             pageCount++;
             console.log('Loading', pageCount, 'page...');
 
-            let url = `https:\/\/www\.pixiv\.net\/ajax\/follow_latest\/illust\?p=${pageCount}\&mode=${mode}\&lang=en`;
+            let url;
+            if (PAGETYPE == 0){
+              url = `https:\/\/www\.pixiv\.net\/ajax\/follow_latest\/illust\?p=${pageCount}\&mode=${mode}\&lang=en`;
+            }
+            if (PAGETYPE == 2){
+              if (!urls){
+                urls = [];
+                await fetch(`https://www.pixiv.net/ajax/user/${authorId}/profile/all?lang=en`).then(r => r.json()).then(response => {
+                  let iArr = (illusts || artworks) && Object.keys(response.body.illusts) || [];
+                  let mArr = (manga || artworks) && Object.keys(response.body.manga) || [];
+                  let arr = iArr.concat(mArr).sort(function(a,b){return a-b}).reverse();
+                  for(let i=(pageCount-1)*48; i<arr.length; i+=48){
+                    urls.push(`https://www.pixiv.net/ajax/user/${authorId}/profile/illusts?ids[]=`
+                      + arr.slice(i, i+48).join('&ids[]=')
+                      + "&work_category=illustManga&is_first_page=0&lang=en"
+                    );
+                  }
+                });
+                if (!urls.length) return; //maybe check nav element before fetching instead
+                maxPageCount = urls.length + 1;
+              }
+              url = urls.shift();
+              if (!urls.length) console.log('*All pages loaded*');
+            }
+            if (PAGETYPE == 7){
+              url = `https:\/\/www\.pixiv\.net\/ajax\/user\/${authorId}\/illusts\/bookmarks\?tag=\&offset=${(pageCount-1)*48}\&limit=48\&rest=${rest}\&lang=en`
+            }
+
             fetch(url).then(r => r.json()).then(response => {
-              response.body.thumbnails.illust.forEach(obj => {
+              let fragment = new DocumentFragment();
+              Array.prototype.forEach.call(response.body?.thumbnails?.illust || Object.values(response.body.works).reverse(), (obj) => {
                 let el = art.cloneNode(true);
-                if (obj.pageCount > 1) el.querySelectorAll('span')[2].textContent = obj.pageCount;
+                if (obj.pageCount > 1) [...(el.querySelectorAll('span'))].pop().textContent = obj.pageCount;
                 else $(el.querySelector('span')).parents('a > div')[0].remove();
-                //-------------------------------------------------------------------------
-                //start of ****ing frameworks layout. Hope this won't break in less than a year-_-
+                //-----------------------------------------------------------------------
                 let s = el.querySelector('[href]').href.match('/en/')?.[0] || '/';
                 let hrefs = el.querySelectorAll('[href]');
 
@@ -833,25 +871,29 @@
                 hrefs[1].href = s + "artworks/" + obj.id;
                 hrefs[1].textContent = obj.title;
 
-                hrefs[2].setAttribute('data-gtm-value', obj.userId);
-                hrefs[2].href = s + "users/" + obj.userId;
+                el.querySelector('img').src = obj.url;
 
-                hrefs[3].setAttribute('data-gtm-value', obj.userId);
-                hrefs[3].href = s + "users/" + obj.userId;
-                hrefs[3].textContent = obj.userName;
-                //
-                let imgs = el.querySelectorAll('img');
-                imgs[0].src = obj.urls["360x360"];
-                imgs[1].src = obj.profileImageUrl;
-                //
+                if (hrefs.length == 4){
+                  hrefs[2].setAttribute('data-gtm-value', obj.userId);
+                  hrefs[2].href = s + "users/" + obj.userId;
+
+                  hrefs[3].setAttribute('data-gtm-value', obj.userId);
+                  hrefs[3].href = s + "users/" + obj.userId;
+                  hrefs[3].textContent = obj.userName;
+
+                  el.querySelectorAll('img')[1].src = obj?.profileImageUrl || ''; //for deleted bookmarks
+                }
+
                 if (obj.bookmarkData) el.querySelectorAll('path:not(:only-child)').forEach(e => {
                   e.setAttribute("style", "fill: rgb(255, 64, 96); !important")
                 });
-                //-------------------------------------------------------------------------
+                //-----------------------------------------------------------------------
                 el.style.display = "flex";
-                artsSection.appendChild(el);
+                fragment.appendChild(el);
               });
-              console.log('Loaded', response.body.thumbnails.illust.length, 'arts');
+              if (PAGETYPE==7) maxPageCount = Math.ceil(response.body.total/48);
+
+              artsSection.appendChild(fragment);
               running = false;
             });
           } //endif
@@ -933,25 +975,29 @@
         if (PAGETYPE===2 || PAGETYPE===7)
         {
           $('body').off('mouseup', 'a[href*="bookmarks/artworks"]');
-          $('body').off('mouseup', 'a[href*="/illustrations"]');
+          $('body').off('mouseup', 'section>div>a[href*="/artworks"], a[href*="/illustrations"], a[href*="/manga"]');
+          autoPagination();
 
           $('body').on('mouseup', 'a[href*="bookmarks/artworks"]', function(){
             console.log('PAGETYPE: '+ PAGETYPE+' -> 7');
             PAGETYPE = 7;
 
-            Promise.all([checkFollowedArtists(), waitForArtSectionContainers()])
-            .then(() => colorFollowed(), err => console.error(err));
+            sleep(5000).then(() => {
+              initMutationObject({'childList': true});
+              colorFollowed();
+              autoPagination();
+            });
           });
-          $('body').on('mouseup', 'a[href*="/illustrations"]', function(){
+
+          $('body').on('mouseup', 'section>div>a[href*="/artworks"], a[href*="/illustrations"], a[href*="/manga"]', function(){
             console.log('PAGETYPE: '+ PAGETYPE+' -> 2');
             PAGETYPE = 2;
+            sleep(2500).then(autoPagination);
           });
-        }
-        //------------------------------------Bookmarks----------------------------------
-        if (PAGETYPE===7)
-        {
-          Promise.all([checkFollowedArtists(), waitForArtSectionContainers()])
-          .then(() => colorFollowed(), err => console.error(err));
+
+          if (PAGETYPE===7){
+            initMutationObject({'childList': true}).then(colorFollowed);
+          }
         }
         //------------------------------------History------------------------------------
         if (PAGETYPE===14){
@@ -1085,7 +1131,7 @@
           $('body').off(previewEventType, 'a[href*="/artworks/"] img');
 
           $('body').off('mouseup', 'a[href*="bookmarks/artworks"]');
-          $('body').off('mouseup', 'a[href*="/illustrations"]');
+          $('body').off('mouseup', 'section>div>a[href*="/artworks"], a[href*="/illustrations"], a[href*="/manga"]');
           $('body').off('mouseup', 'a[href*="/discovery"]');
           $('body').off('click', '[role="presentation"] img');
           $('section ul').off('click', 'button');
