@@ -2,10 +2,10 @@
 // @name            Pixiv Arts Preview & Followed Atrists Coloring & Extended History
 // @name:ru         Pixiv Arts Preview & Followed Atrists Coloring & Extended History
 // @namespace       Pixiv
-// @description     Enlarged preview of arts and manga on mouse hovering on most pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Extended history for non-premium users. Settings can be changed in proper menu.
-// @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки на большинстве страниц. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Расширенная история для не премиальных аккаунтов. Настройки можно изменить в соответствующем меню.
+// @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
+// @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки. Расширенная история для не премиальных аккаунтов. Автозагрузка следующей страницы. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         3.60
+// @version         3.61
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -95,7 +95,7 @@
     //
     // ■ ENABLE_AUTO_PAGINATION =
     // false: disable auto pagination
-    // true: enable auto-pagination on `bookmark_new_illust` page (default)
+    // true: enable auto-pagination on Following and Users pages (default)
 
     let currentSettings = {};
     //-----------------------------------------------------------------------------------
@@ -193,7 +193,7 @@
     //-----------------------------------------------------------------------------------
     function loadSavedSettings(){
       for (let i = 0; i < propList.length; i++){
-        propList[i].paramIndex = localStorage.getObj(propList[i].name) || propList[i].paramIndex; //load saved setting value, or let default if not found
+        propList[i].paramIndex = localStorage.getObj(propList[i].name) ?? propList[i].paramIndex; //load saved setting value, or let default if not found
 
         if ((propList[i].paramIndex < 0) || (propList[i].paramIndex >= propList[i].array.length)){
           propList[i].paramIndex = 0; // "0" is not default for all settings...
@@ -1517,18 +1517,6 @@
       mangaContainer.style.maxWidth = mangaOuterContainer.style.maxWidth = mangaWidth+'px';
       resetPreviewSize();
     };
-    //-----------------------------------------------------------------------------------
-    document.onkeyup = function(e) //Enlarge with shift
-    {
-      //console.log(e.keyCode);
-      if (e.keyCode == 16 && hoverImg.src && PREVIEWSIZE<1200)
-      {
-        let l = getOffsetRect(imgContainer).left;
-        let w = hoverImg.naturalWidth*2+5;
-        hoverImg.src = hoverImg.src.replace(/\/...x..[0|8]/, '/1200x1200');
-        imgContainer.style.left = (document.body.clientWidth-l < w)? document.body.clientWidth-w +'px': l +'px';
-      }
-    }
     //===================================================================================
     //***********************************************************************************
     //===================================================================================
