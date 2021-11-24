@@ -3,11 +3,12 @@
 Script is written for better www.pixiv.net usability.
 
 ### General features:
-• Showing enlarged preview of artworks on mouse hovering* on most site pages.<br>
+• Showing enlarged preview of artworks on mouse hovering*.<br>
 • Highlighting authors from your "Followed" list, so you can quickly distinguish them.<br>
 • Non-premium history that can store ~10x more amount of records without time limit.<br>
+• Auto-Pagination on Following and Users pages.<br>
 • Makes recommendation block(appearing after follow) scrollable, arts preview also available.<br>
-• Enlarging also works on users profiles preview(3 artworks).<br>
+• Enlarging also works on users profiles preview(doesn't work on pages with auto-pagination).<br>
 
 ### Mouse features on previews:
 • LMB-Click - Opens source of artwork in new tab.<br>
@@ -74,7 +75,10 @@ true: hide "People who bookmarked this" section<br>
 ■ KEEP_OLD_DATE_OF_ALREADY_VIEWED_ARTWORKS =<br>
 false: update date every time artwork page opens (default)<br>
 true: don't renew date and keep first one (NOTE: art will not appear at the top of the history)<br>
-
+<br>
+■ ENABLE_AUTO_PAGINATION =<br>
+false: disable auto pagination<br>
+true: enable auto-pagination on Following and Users pages (default)<br>
 ### Supported pages:
 
 - New illustrations<br>
@@ -86,5 +90,3 @@ true: don't renew date and keep first one (NOTE: art will not appear at the top 
 - History<br>
 - Search<br>
 - Main page<br>
-
-Works best with <a href="https://greasyfork.org/uk/scripts/3254-endless-pixiv-pages">"Endless Pixiv Pages"</a> ©Mango.<br>
