@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки. Расширенная история для не премиальных аккаунтов. Автозагрузка следующей страницы. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         3.61
+// @version         3.70
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -45,15 +45,14 @@
     //---------------------------***CUSTOM PREFERENCES***--------------------------------
     let propList = [
         {paramIndex:0, array:[false,true], name:"PREVIEW_ON_CLICK"},
-        {paramIndex:0, array:[0, 100, 200, 300, 500, 1000, 1500], name:"DELAY_BEFORE_PREVIEW"},
+        {paramIndex:0, array:[0, 100, 200, 300, 500, 1000, 1500], name:"DELAY_BEFORE_PREVIEW"}, //todo: fix rankings and make default 100ms
         {paramIndex:0, array:["auto", 600, 1200], name:"PREVIEW_SIZE"},
-        {paramIndex:0, array:[false,true], name:"ACCURATE_MANGA_PREVIEW"},
+        {paramIndex:1, array:[false,true], name:"ENABLE_AUTO_PAGINATION"},
         {paramIndex:0, array:[false,true], name:"DISABLE_MANGA_PREVIEW_SCROLLING_PROPAGATION"},
         {paramIndex:1, array:[false,true], name:"SCROLL_INTO_VIEW_FOR_SINGLE_IMAGE"},
         {paramIndex:0, array:[false,true], name:"DISABLE_SINGLE_PREVIEW_BACKGROUND_SCROLLING"},
         {paramIndex:0, array:[false,true], name:"HIDE_PEOPLE_WHO_BOOKMARKED_THIS"},
-        {paramIndex:0, array:[false,true], name:"KEEP_OLD_DATE_OF_ALREADY_VIEWED_ARTWORKS"},
-        {paramIndex:1, array:[false,true], name:"ENABLE_AUTO_PAGINATION"}
+        {paramIndex:0, array:[false,true], name:"KEEP_OLD_DATE_OF_ALREADY_VIEWED_ARTWORKS"}
     ];
     //---------------------------------DEFAULT VALUES------------------------------------
     // ■ PREVIEW_ON_CLICK =
@@ -68,10 +67,6 @@
     // auto : automatically calculate preview size (1200 or 600) depending of current screen size (default)
     // 600 : up to 600px x 600px
     // 1200 : up to 1200px x 1200px
-    //
-    // ■ ACCURATE_MANGA_PREVIEW =
-    // false : quicker, but less accurate in some cases (default)
-    // true : takes 1sec before preview showing for more accurate positioning
     //
     // ■ DISABLE_MANGA_PREVIEW_SCROLLLING_PROPAGATION =
     // false : keeping page scrolling after end of manga preview scrolling (default)
@@ -107,11 +102,16 @@
 
     let mangaContainer = document.createElement('div');
         mangaContainer.id = 'mangaContainer';
-        mangaContainer.style = 'display:block; z-index:1500; background:#111; overflow-x:auto; maxWidth:1200px; white-space:nowrap;';
+        mangaContainer.style = 'display:block; overflow-x:auto; white-space:nowrap; maxWidth:1200px; z-index:1500; background:#111;';
+
+    let mangaMiddleContainer = document.createElement('div');
+        mangaMiddleContainer.style = 'display:block; visibility:inherit; z-index:1250;';
+        mangaMiddleContainer.appendChild(mangaContainer);
 
     let mangaOuterContainer = document.createElement('div');
-        mangaOuterContainer.style = 'position:absolute; display:block; visibility:hidden; z-index:1000; padding:5px; background:#111; maxWidth:1200px; marginY:-5px; marginX: auto; left: 25px;';
-        mangaOuterContainer.appendChild(mangaContainer);
+        mangaOuterContainer.id = 'mangaOuterContainer';
+        mangaOuterContainer.style = 'position:absolute; display:block; visibility:hidden; left:0px; right:0px; width:max-content; margin: 0px auto; padding:5px; background:#111; z-index:1000;';
+        mangaOuterContainer.appendChild(mangaMiddleContainer);
 
     let imgsArr = [], //for manga-style image packs...
         followedUsersId = {}, //storing followed users pixiv ID
@@ -179,7 +179,7 @@
     //===================================================================================
     function setCurrentSettings(){
       for (let i = 0; i < propList.length; i++){
-        currentSettings[propList[i].name] = propList[i].array[propList[i].paramIndex];
+        currentSettings[propList[i].name] = propList[i].array[propList[i].paramIndex]; //only for options checking, actual settings contains in propList[]
       }
       resetPreviewSize(); //needed because of "auto" feature
     }
@@ -675,7 +675,7 @@
     {
       console.log('$(document).ready');
       mangaWidth = document.body.clientWidth - 60;
-      mangaContainer.style.maxWidth = mangaOuterContainer.style.maxWidth = mangaWidth+'px';
+      mangaContainer.style.maxWidth = mangaWidth+'px';
       document.body.appendChild(imgContainer);
       document.body.appendChild(mangaOuterContainer);
       //---------------------------------Settings menu-----------------------------------
@@ -796,7 +796,7 @@
 
         let pageCount = location.href.match(/(?<=[?|&]p=)\d+/)?.[0] || 1;
         let mode = location.href.match(/r18/)?.[0] || "All";
-        let maxPageCount = 35;
+        let maxPageCount = 35; //limit for Following is 35 pages
 
         let authorId = location.href.match(/(?<=users\/)\d+/)?.[0];
         let artworks = !!location.href.match(/\d+\/artworks/)?.[0];
@@ -821,7 +821,7 @@
 
         window.onscroll = async function(){
           if ((window.innerHeight*1.8 + window.scrollY) >= document.body.scrollHeight){
-            if (running || pageCount>=maxPageCount) return; //seems current limit for following is 35 pages
+            if (running || pageCount>=maxPageCount) return;
             running = true;
 
             pageCount++;
@@ -1001,7 +1001,7 @@
         }
         //------------------------------------History------------------------------------
         if (PAGETYPE===14){
-          let trial = document.querySelector('span.trial');
+          let trial = document.querySelector('span.trial'); //indicator of non-premium account
           if (trial){
             getUserId().then(() => illust_history.override());
             trial.textContent = "Extended Version";
@@ -1244,7 +1244,6 @@
       imgContainer.style.visibility = 'hidden'; //just in case
 
       mangaOuterContainer.style.top = top || getOffsetRect(thisObj.parentNode.parentNode).top+'px';
-      if (!currentSettings["ACCURATE_MANGA_PREVIEW"]) mangaOuterContainer.style.left = '25px';
 
       checkBookmark(thisObj, mangaOuterContainer);
 
@@ -1277,24 +1276,11 @@
           imgsArr[i].src = primaryLink.replace('p0','p'+i);
         }
 
-        if (currentSettings["ACCURATE_MANGA_PREVIEW"] == true || currentSettings["DELAY_BEFORE_PREVIEW"] >= 1000) //more accurate frame adjusting
-        {
-          setTimeout(function()
-          {
-            adjustMargins(mangaOuterContainer.scrollWidth);
-            checkDelay(mangaOuterContainer, thisObj);
-          }, Math.max(1000, currentSettings["DELAY_BEFORE_PREVIEW"]));
-        }
-        else //some blind frame adjusting
-        {
-          adjustMargins(count*PREVIEWSIZE);
-          checkDelay(mangaOuterContainer, thisObj);
-        }
+        checkDelay(mangaOuterContainer, thisObj);
       }
       //---------------------------------------------------------------------------------
       else
       {
-        adjustMargins(mangaOuterContainer.scrollWidth);
         checkDelay(mangaOuterContainer, thisObj);
       }
     }
@@ -1310,13 +1296,6 @@
                 replace('custom-thumb','img-master')
       ;
       return url;
-    }
-    //-----------------------------------------------------------------------------------
-    function adjustMargins(width)
-    {
-      let margins = document.body.clientWidth - width;
-      if (margins > 0) mangaOuterContainer.style.left = margins/2+'px';
-      else mangaOuterContainer.style.left = '25px';
     }
     //-----------------------------------------------------------------------------------
     function checkBookmark(thisContainer, previewContainer)
@@ -1482,11 +1461,11 @@
     {
       if (e.deltaY<0 && (mangaOuterContainer.getBoundingClientRect().top < 0))
       {
-        mangaOuterContainer.scrollIntoView({block: "start", behavior: "smooth"}); //aligning to top screen side on scrollUp if needed
+        setTimeout(()=>mangaOuterContainer.scrollIntoView({block: "start", behavior: "smooth"}), 0); //aligning to top screen side on scrollUp if needed
       }
       else if (e.deltaY>0 && (mangaOuterContainer.getBoundingClientRect().bottom > document.documentElement.clientHeight))
       {
-        mangaOuterContainer.scrollIntoView({block: "end", behavior: "smooth"}); //aligning to bottom screen side on scrollDown if needed
+        setTimeout(()=>mangaOuterContainer.scrollIntoView({block: "end", behavior: "smooth"}), 0); //aligning to bottom screen side on scrollDown if needed
       }
 
       let scrlLft = mangaContainer.scrollLeft;
@@ -1514,9 +1493,14 @@
     window.onresize = function()
     {
       mangaWidth = document.body.clientWidth - 60;
-      mangaContainer.style.maxWidth = mangaOuterContainer.style.maxWidth = mangaWidth+'px';
+      mangaContainer.style.maxWidth = mangaWidth+'px';
       resetPreviewSize();
     };
+    //-------------------------------fix for Chrome panoraming---------------------------
+    if (navigator.userAgent.indexOf("Chrome") != -1){
+      hoverImg.onmousedown = function(e){if (e.button == 2) e.preventDefault()};
+      $('body').on('mousedown', 'div#mangaContainer > img', (e)=>{if (e.button == 2) e.preventDefault()});
+    }
     //===================================================================================
     //***********************************************************************************
     //===================================================================================
