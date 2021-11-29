@@ -52,9 +52,9 @@ auto : automatically calculate preview size (1200 or 600) depending on current s
 600 : up to 600px x 600px<br>
 1200 : up to 1200px x 1200px<br>
 <br>
-■ ACCURATE_MANGA_PREVIEW =<br>
-false : quicker, but less accurate in some cases (default)<br>
-true : takes 1sec before preview showing for more accurate positioning<br>
+■ ENABLE_AUTO_PAGINATION =<br>
+false: disable auto pagination<br>
+true: enable auto-pagination on Following and Users pages (default)<br>
 <br>
 ■ DISABLE_MANGA_PREVIEW_SCROLLING_PROPAGATION =<br>
 false : keeping page scrolling after end of manga preview scrolling (default)<br>
@@ -75,10 +75,6 @@ true: hide "People who bookmarked this" section<br>
 ■ KEEP_OLD_DATE_OF_ALREADY_VIEWED_ARTWORKS =<br>
 false: update date every time artwork page opens (default)<br>
 true: don't renew date and keep first one (NOTE: art will not appear at the top of the history)<br>
-<br>
-■ ENABLE_AUTO_PAGINATION =<br>
-false: disable auto pagination<br>
-true: enable auto-pagination on Following and Users pages (default)<br>
 ### Supported pages:
 
 - New illustrations<br>
