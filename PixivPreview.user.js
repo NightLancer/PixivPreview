@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки. Расширенная история для не премиальных аккаунтов. Автозагрузка следующей страницы. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         3.72
+// @version         3.73
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -313,13 +313,13 @@
       followedCheck.saveState();
     }
     //-----------------------------------------------------------------------------------
-    async function colorFollowed(artsContainers)
+    async function colorFollowed(artsContainers, delay)
     {
       let c = 0, d = 0;
       while (!artsContainers || artsContainers.length === 0) //first call -> daily rankings, illust page
       {
         console.log('waiting for arts...');
-        await sleep(2000);
+        await sleep(delay ?? 2000);
 
         artsContainers = getAllArtsContainers();
         ++c;
@@ -792,7 +792,7 @@
         $('section ul').off('click', 'button');
         window.onscroll = null;
         //-------------------------------------------------------------------------------
-        if (!currentSettings['ENABLE_AUTO_PAGINATION'] || ![0,2,7].includes(PAGETYPE)) return;
+        if (!currentSettings['ENABLE_AUTO_PAGINATION'] || ![0,2,7].includes(PAGETYPE)) return -1;
 
         let pageCount = location.href.match(/(?<=[?|&]p=)\d+/)?.[0] || 1;
         let mode = location.href.match(/r18/)?.[0] || "All";
@@ -808,7 +808,7 @@
         request('/en/', 'document').then(response => x_csrf_token = response.documentElement.innerHTML.match(/(?<=token&quot;:&quot;)[\dA-z]+/));
         //-------------------------------------------------------------------------------
         let artsSection = await waitForArtSectionContainers();
-        await sleep(2500);
+        await sleep(2000);
         let art = artsSection.firstChild.cloneNode(true);
         let mangaCount = document.createElement('div');
             mangaCount.style = "position: absolute; right: 0px; top: 0px; z-index: 1; display: flex; justify-content: center; align-items: center; flex: 0 0 auto; box-sizing: border-box; height: 20px; min-width: 20px; font-weight: bold; padding: 0px 6px; background: rgba(0, 0, 0, 0.32) none repeat scroll 0% 0%; border-radius: 10px; font-size: 10px; line-height: 10px; color: rgb(255, 255, 255);";
@@ -915,6 +915,7 @@
           .then(() => this.querySelectorAll('path:not(:only-child)').forEach(e => e.setAttribute("style", "fill: rgb(255, 64, 96);")))
           .catch(err => console.log(err));
         });
+        return 0;
       }
       //=================================================================================
       function initMutationObservers()
@@ -979,15 +980,15 @@
         //--------------------------------Pixiv User pages-------------------------------
         if (PAGETYPE===2 || PAGETYPE===7)
         {
-          autoPagination();
+          let pagination = autoPagination(); //2,7
 
           $('body').on('mouseup', 'a[href*="bookmarks/artworks"]', function(){
             console.log('PAGETYPE: '+ PAGETYPE+' -> 7');
             PAGETYPE = 7;
 
             sleep(5000).then(() => {
-              initMutationObject({'childList': true}).then(colorFollowed);
-              autoPagination();
+              initMutationObject({'childList': true});
+              autoPagination().then((v)=>{colorFollowed(null, v && 2000)}); // '2000' can be 'null'
             });
           });
 
@@ -998,7 +999,8 @@
           });
 
           if (PAGETYPE===7){
-            initMutationObject({'childList': true}).then(colorFollowed);
+            initMutationObject({'childList': true});
+            pagination.then((v)=>{colorFollowed(null, v && 2000)}); //if pagination is enabled we need to wait before it completes*, but no more
           }
         }
         //------------------------------------History------------------------------------
