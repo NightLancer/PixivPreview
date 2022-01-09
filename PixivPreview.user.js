@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки. Расширенная история для не премиальных аккаунтов. Автозагрузка следующей страницы. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         3.73
+// @version         3.74
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -52,7 +52,8 @@
         {paramIndex:1, array:[false,true], name:"SCROLL_INTO_VIEW_FOR_SINGLE_IMAGE"},
         {paramIndex:0, array:[false,true], name:"DISABLE_SINGLE_PREVIEW_BACKGROUND_SCROLLING"},
         {paramIndex:0, array:[false,true], name:"HIDE_PEOPLE_WHO_BOOKMARKED_THIS"},
-        {paramIndex:0, array:[false,true], name:"KEEP_OLD_DATE_OF_ALREADY_VIEWED_ARTWORKS"}
+        {paramIndex:0, array:[false,true], name:"KEEP_OLD_DATE_OF_ALREADY_VIEWED_ARTWORKS"},
+        {paramIndex:0, array:[false,true], name:"HIDE_FOLLOWED_USERS"}
     ];
     //---------------------------------DEFAULT VALUES------------------------------------
     // ■ PREVIEW_ON_CLICK =
@@ -366,7 +367,10 @@
       let currentHits = 0;
 
       hitContainers = [].filter.call(artsContainers, container => followedUsersId[getAuthorIdFromContainer(container)] == 1);
-      hitContainers.forEach(container => container.setAttribute("style", "background-color: green; !important"));
+      if (currentSettings["HIDE_FOLLOWED_USERS"] && PAGETYPE===8)
+        hitContainers.forEach(container => container.setAttribute("style", "display: none; !important"));
+      else
+        hitContainers.forEach(container => container.setAttribute("style", "background-color: green; !important"));
 
       currentHits = hitContainers.length;
       totalHits += currentHits;
@@ -926,12 +930,14 @@
         $('body').off('mouseup', 'section>div>a[href*="/artworks"], a[href*="/illustrations"], a[href*="/manga"]');
         //-------------------------------------------------------------------------------
         if (PAGETYPE===0){
-          autoPagination();
-
-          $('body').on('click', 'a[href*="/bookmark_new_illust"]', function(e){
-            e.preventDefault();
-            location.href = this.href;
-          });
+          autoPagination().then(v => {
+            if (v === 0){
+              $('body').on('click', 'a[href*="/bookmark_new_illust"]', function(e){
+                e.preventDefault();
+                location.href = this.href;
+              });
+            }
+          })
         }
         //-------------------------------------------------------------------------------
         if (PAGETYPE===1){
