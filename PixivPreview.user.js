@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки. Расширенная история для не премиальных аккаунтов. Автозагрузка следующей страницы. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         3.74
+// @version         3.75
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -807,13 +807,14 @@
         let illusts = !!location.href.match(/illustrations/)?.[0];
         let manga = !!location.href.match(/manga/)?.[0];
         let rest = location.href.match(/rest=hide/)?.[0] && "hide" || "show";
+        let tags = location.href.match(/(?<=illustrations\/|manga\/|artworks\/).+/) || '';
         //-------------------------------------------------------------------------------
         let x_csrf_token; //for bookmarks
         request('/en/', 'document').then(response => x_csrf_token = response.documentElement.innerHTML.match(/(?<=token&quot;:&quot;)[\dA-z]+/));
         //-------------------------------------------------------------------------------
         let artsSection = await waitForArtSectionContainers();
         await sleep(2000);
-        let art = artsSection.firstChild.cloneNode(true);
+        let art = $(artsSection.querySelector('a[href*="artworks"]')).parents('li')[0].cloneNode(true);
         let mangaCount = document.createElement('div');
             mangaCount.style = "position: absolute; right: 0px; top: 0px; z-index: 1; display: flex; justify-content: center; align-items: center; flex: 0 0 auto; box-sizing: border-box; height: 20px; min-width: 20px; font-weight: bold; padding: 0px 6px; background: rgba(0, 0, 0, 0.32) none repeat scroll 0% 0%; border-radius: 10px; font-size: 10px; line-height: 10px; color: rgb(255, 255, 255);";
             mangaCount.appendChild(document.createElement('span'));
@@ -832,11 +833,13 @@
             console.log('Loading', pageCount, 'page...');
 
             let url;
+            tags = location.href.match(/(?<=illustrations\/|manga\/|artworks\/).+/) || '';
+
             if (PAGETYPE == 0){
               url = `https:\/\/www\.pixiv\.net\/ajax\/follow_latest\/illust\?p=${pageCount}\&mode=${mode}\&lang=en`;
             }
             if (PAGETYPE == 2){
-              if (!urls){
+              if (!urls?.length && !tags){
                 urls = [];
                 await fetch(`https://www.pixiv.net/ajax/user/${authorId}/profile/all?lang=en`).then(r => r.json()).then(response => {
                   let iArr = (illusts || artworks) && Object.keys(response.body.illusts) || [];
@@ -852,11 +855,18 @@
                 if (!urls.length) return; //maybe check nav element before fetching instead
                 maxPageCount = urls.length + 1;
               }
-              url = urls.shift();
-              if (!urls.length) console.log('*All pages loaded*');
+
+              if (tags){
+                let illustManga = illusts && 'illusts' || manga && 'manga';
+                url = `https:\/\/www\.pixiv\.net\/ajax\/user\/${authorId}\/${illustManga}\/tag\?tag=${tags}\&offset=${(pageCount-1)*48}\&limit=48\&lang=en`;
+              }
+              else{
+                url = urls.shift();
+                if (!urls.length) console.log('*All pages loaded*');
+              }
             }
             if (PAGETYPE == 7){
-              url = `https:\/\/www\.pixiv\.net\/ajax\/user\/${authorId}\/illusts\/bookmarks\?tag=\&offset=${(pageCount-1)*48}\&limit=48\&rest=${rest}\&lang=en`
+              url = `https:\/\/www\.pixiv\.net\/ajax\/user\/${authorId}\/illusts\/bookmarks\?tag=${tags}\&offset=${(pageCount-1)*48}\&limit=48\&rest=${rest}\&lang=en`
             }
 
             fetch(url).then(r => r.json()).then(response => {
@@ -895,7 +905,7 @@
                 el.style.display = "flex";
                 fragment.appendChild(el);
               });
-              if (PAGETYPE==7) maxPageCount = Math.ceil(response.body.total/48);
+              if (PAGETYPE==7 || tags) maxPageCount = Math.ceil(response.body.total/48);
 
               artsSection.appendChild(fragment);
               running = false;
@@ -998,16 +1008,23 @@
             });
           });
 
-          $('body').on('mouseup', 'section>div>a[href*="/artworks"], a[href*="/illustrations"], a[href*="/manga"]', function(){
+          $('body').on('mouseup', 'section>div>a[href$="/artworks"], a[href$="/illustrations"], a[href$="/manga"]', function(){
             console.log('PAGETYPE: '+ PAGETYPE+' -> 2');
             PAGETYPE = 2;
             sleep(2500).then(autoPagination);
+            observer.disconnect();
           });
 
           if (PAGETYPE===7){
             initMutationObject({'childList': true});
             pagination.then((v)=>{colorFollowed(null, v && 2000)}); //if pagination is enabled we need to wait before it completes*, but no more
           }
+
+          //clearing "cache" of autopaged arts. Todo: maybe add own class later
+          $('body').on('mouseup', 'a[href*="/illustrations/"], a[href*="/artworks/"], a[href*="/manga/"]', function(){
+            let artsSection = getArtSectionContainers();
+            [...artsSection.querySelectorAll('[style="display: flex;"]')].forEach(el => el.remove());
+          });
         }
         //------------------------------------History------------------------------------
         if (PAGETYPE===14){
