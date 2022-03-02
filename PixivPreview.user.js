@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки. Расширенная история для не премиальных аккаунтов. Автозагрузка следующей страницы. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         3.75
+// @version         3.75.1
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -807,7 +807,7 @@
         let illusts = !!location.href.match(/illustrations/)?.[0];
         let manga = !!location.href.match(/manga/)?.[0];
         let rest = location.href.match(/rest=hide/)?.[0] && "hide" || "show";
-        let tags = location.href.match(/(?<=illustrations\/|manga\/|artworks\/).+/) || '';
+        let tags = location.href.match(/(?<=illustrations\/|manga\/|artworks\/).+/) || ''; //maybe terminate by '?' in case of scipts conficts
         //-------------------------------------------------------------------------------
         let x_csrf_token; //for bookmarks
         request('/en/', 'document').then(response => x_csrf_token = response.documentElement.innerHTML.match(/(?<=token&quot;:&quot;)[\dA-z]+/));
@@ -857,7 +857,7 @@
               }
 
               if (tags){
-                let illustManga = illusts && 'illusts' || manga && 'manga';
+                let illustManga = artworks && 'illustmanga' || illusts && 'illusts' || manga && 'manga';
                 url = `https:\/\/www\.pixiv\.net\/ajax\/user\/${authorId}\/${illustManga}\/tag\?tag=${tags}\&offset=${(pageCount-1)*48}\&limit=48\&lang=en`;
               }
               else{
@@ -1021,7 +1021,7 @@
           }
 
           //clearing "cache" of autopaged arts. Todo: maybe add own class later
-          $('body').on('mouseup', 'a[href*="/illustrations/"], a[href*="/artworks/"], a[href*="/manga/"]', function(){
+          $('body').on('mouseup', 'section>div>div>div>a[href*="/illustrations/"], section>div>div>div>a[href*="/artworks/"], section>div>div>div>a[href*="/manga/"]', function(){
             let artsSection = getArtSectionContainers();
             [...artsSection.querySelectorAll('[style="display: flex;"]')].forEach(el => el.remove());
           });
