@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки. Расширенная история для не премиальных аккаунтов. Автозагрузка следующей страницы. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         3.75.1
+// @version         3.76
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -27,6 +27,10 @@
 // @copyright       NightLancerX
 // @grant           GM_xmlhttpRequest
 // @grant           GM.xmlHttpRequest
+// @grant           GM_setValue
+// @grant           GM.setValue
+// @grant           GM_getValue
+// @grant           GM.getValue
 // @require         https://code.jquery.com/jquery-3.3.1.min.js
 // @require         https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/1.3.8/FileSaver.min.js
 // @compatible      firefox >= 74
@@ -150,6 +154,9 @@
     Storage.prototype.getObj = function(key){
       return JSON.parse(this.getItem(key))
     }
+    //-----------------------------------------------------------------------------------
+    const GM_setV = (typeof(GM_setValue)==='function')?GM_setValue:GM.setValue;
+    const GM_getV = (typeof(GM_getValue)==='function')?GM_getValue:GM.getValue;
     //===================================================================================
     //************************************PageType***************************************
     //===================================================================================
@@ -601,8 +608,8 @@
       timestamps: {},
 
       load(){
-        this.ids = localStorage.getObj('viewed_illust_ids') || USER_ID && localStorage.getObj('viewed_illust_ids_' + USER_ID).data || [];
-        this.timestamps = localStorage.getObj('viewed_illust_timestamps') || USER_ID && localStorage.getObj('viewed_illust_timestamp_' + USER_ID).data || {};
+        this.ids        = localStorage.getObj('viewed_illust_ids') || GM_getV("viewed_illust_ids") || localStorage.getObj('viewed_illust_ids_' + USER_ID)?.data || [];
+        this.timestamps = localStorage.getObj('viewed_illust_timestamps') || GM_getV("viewed_illust_timestamps") || localStorage.getObj('viewed_illust_timestamp_' + USER_ID)?.data || {};
       },
 
       save(){
@@ -651,6 +658,13 @@
           document.querySelectorAll('._history-item.trial').forEach(e => e.style.opacity = 1);
           if (count>10) clearInterval(t); ++count;
         }, 1000);
+      },
+
+      export(){
+        this.load();
+        GM_setV("viewed_illust_ids", this.ids);
+        GM_setV("viewed_illust_timestamps", this.timestamps);
+        console.info(`History was exported to script manager storage [%c${this.ids.length}%c records]`, 'color:lime;', 'color:;');
       },
 
       check_space(){
@@ -807,7 +821,7 @@
         let illusts = !!location.href.match(/illustrations/)?.[0];
         let manga = !!location.href.match(/manga/)?.[0];
         let rest = location.href.match(/rest=hide/)?.[0] && "hide" || "show";
-        let tags = location.href.match(/(?<=illustrations\/|manga\/|artworks\/).+/) || ''; //maybe terminate by '?' in case of scipts conficts
+        let tags = location.href.match(/(?<=illustrations\/|manga\/|artworks\/)[^?]+/) || '';
         //-------------------------------------------------------------------------------
         let x_csrf_token; //for bookmarks
         request('/en/', 'document').then(response => x_csrf_token = response.documentElement.innerHTML.match(/(?<=token&quot;:&quot;)[\dA-z]+/));
@@ -1033,6 +1047,13 @@
             getUserId().then(() => illust_history.override());
             trial.textContent = "Extended Version";
           }
+
+          //export with Shift+E
+          document.onkeyup = function(e){
+            if (e.key.toUpperCase() == "E" && e.shiftKey){
+              illust_history.export();
+            }
+          };
         }
         //-------------------------------------------------------------------------------
       }
