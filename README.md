@@ -8,7 +8,7 @@ Script is written for better www.pixiv.net usability.
 • Non-premium history that can store ~10x more amount of records without time limit.<br>
 • Auto-Pagination on Following and Users pages.<br>
 • Makes recommendation block(appearing after follow) scrollable, arts preview also available.<br>
-• Enlarging also works on users profiles preview(doesn't work on pages with auto-pagination).<br>
+• Enlarging also works on users profiles preview(where possible).<br>
 
 ### Mouse features on previews:
 • LMB-Click - Opens source of artwork in new tab.<br>
@@ -17,25 +17,20 @@ Script is written for better www.pixiv.net usability.
 • Shift+LMB - Delete artwork from history.<br>
 • ALT+LMB - Add artwork to bookmarks.<br>
 
-■ Preview of single artworks appears in left top corner of image block.
-<img src=http://i.prntscr.com/4LvnU6EITOmbB8VKMmBcog.png><br>
-<img src=http://i.prntscr.com/9ooSkWZLQq6oDalnXD9DjA.png><br>
-..or along right screen side, if it doesn't fit on screen in initial position. 
-<img src=http://i.prntscr.com/nfXf04wdSuaZeedB1DDExw.png><br>
+■ Preview of single artworks appears aligning to left top corner of image block, or screen border(if it doesn't fit).
+![](https://user-images.githubusercontent.com/19971564/159192783-a6412253-1d1a-4f72-a25f-f98bbf612496.jpg)
 
-■ Preview gallery for few manga artworks is positioned mainly in the center of the screen.
-<img src=http://i.prntscr.com/7mI9ZYnXSjytYsQRNl5qzw.png><br>
-For larger amount of artworks, horizontal scrollbar is appeared, but scrolling via mouse wheel is supported too(note: page scroll is disabled while this, move mouse out of preview to re-enable it). Preview gallery is located 40px from horizontal page edges(considering small screens and window resizing).
-<img src=http://i.prntscr.com/td_hJncaSZueEf3hx3mXrA.png><br>
+■ Preview for multiple artworks viewed as gallery and positioned in the center of the screen (with scrollbar if needed).
+![](https://user-images.githubusercontent.com/19971564/159192968-3e99a064-d0f0-4328-bddc-820a2b2f6dad.png)
 
 ■ The names of the authors(users) you are already subscribed to are highlighted with green.
 <img src=https://user-images.githubusercontent.com/19971564/140511941-bb87fd1e-a21e-4ce9-9e8e-a4c00b7aa283.png><br>
 
-■ History is not limited to the time, only to localStorage space(which can be increased). Approximate amount of records without other scripts - 100 000. 
+■ History is not limited to the time, only to localStorage space(which can be increased). Approximate amount of records without other scripts - 100 000. History can be exported to script manager storage by pressing `Shift+E` on history page for backup/transferring to another browser.
 <img src=https://user-images.githubusercontent.com/19971564/140512333-97576bbc-3bb9-4687-a0b3-97e87d578312.png><br>
 
-■ Settings menu is available by the clicking on "Related services" icon, that is located in right top corner of site page. Settings are saved and immediately applied after menu is closed by the clicking on any other space.
-<img src=http://i.prntscr.com/22_SOQ3kQBSj_IW-uvvVnw.png><br>
+■ Settings menu is available by the clicking on "Related services" icon, that is located in right top corner of site page. Settings are saved and (if possible) immediately applied after menu is closed by the clicking on any other space.
+![](https://user-images.githubusercontent.com/19971564/159194686-4f28a206-4241-42d6-a54e-17d40200524a.jpg)
 
 ## Preferences:
 
@@ -75,6 +70,10 @@ true: hide "People who bookmarked this" section<br>
 ■ KEEP_OLD_DATE_OF_ALREADY_VIEWED_ARTWORKS =<br>
 false: update date every time artwork page opens (default)<br>
 true: don't renew date and keep first one (NOTE: art will not appear at the top of the history)<br>
+<br>
+■ HIDE_FOLLOWED_USERS =<br>
+false: don't change search("tags") page (default)<br>
+true: hide followed users on search page instead on highlighting<br>
 ### Supported pages:
 
 - New illustrations<br>
