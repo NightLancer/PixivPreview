@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки. Расширенная история для не премиальных аккаунтов. Автозагрузка следующей страницы. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         3.76
+// @version         3.80
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -96,6 +96,10 @@
     // ■ ENABLE_AUTO_PAGINATION =
     // false: disable auto pagination
     // true: enable auto-pagination on Following and Users pages (default)
+    //
+    // ■ HIDE_FOLLOWED_USERS =
+    // false: don't change search("tags") page (default)
+    // true: hide followed users on search page instead on highlighting
 
     let currentSettings = {};
     //-----------------------------------------------------------------------------------
@@ -182,7 +186,7 @@
     //New:          0 1 2     7 8 10 12 13
     //==============----------------------------
     //Coloring:     = 1 = 4 6 7 8 10 12 == ~~ //
-    //Profile card: ± 1 = 4 6 ± 8 10 12 == == //
+    //Profile card: 0 1 = 4 6 7 8 10 12 == == //
     //On following: = 1 2 4 6 7 8 ?? 12 13 == //
     //===================================================================================
     function setCurrentSettings(){
@@ -655,8 +659,12 @@
         console.info(`History overrided [%c${this.ids.length}%c records]`, 'color:lime;', 'color:;');
 
         let count = 0, t = setInterval(()=>{
-          document.querySelectorAll('._history-item.trial').forEach(e => e.style.opacity = 1);
-          if (count>10) clearInterval(t); ++count;
+          document.querySelectorAll('._history-item.trial').forEach(e => {
+            e.style.opacity = 1;
+            e.classList.remove("trial");
+          });
+          ++count;
+          if (count>10) clearInterval(t);
         }, 1000);
       },
 
@@ -835,16 +843,16 @@
             mangaCount.querySelector('span').style = "font-size: 10px; line-height: 10px; color: rgb(255, 255, 255); font-family: inherit; font-weight: bold;";
         if (!art.querySelector('span')) art.querySelector('[href]').appendChild(mangaCount);
         art.querySelectorAll('img').forEach(el => el.src='');
+        art.classList.add("paginated");
         //-------------------------------------------------------------------------------
         let running = false, urls;
 
         window.onscroll = async function(){
           if ((window.innerHeight*1.8 + window.scrollY) >= document.body.scrollHeight){
             if (running || pageCount>=maxPageCount) return;
-            running = true;
 
+            running = true;
             pageCount++;
-            console.log('Loading', pageCount, 'page...');
 
             let url;
             tags = location.href.match(/(?<=illustrations\/|manga\/|artworks\/).+/) || '';
@@ -882,6 +890,8 @@
             if (PAGETYPE == 7){
               url = `https:\/\/www\.pixiv\.net\/ajax\/user\/${authorId}\/illusts\/bookmarks\?tag=${tags}\&offset=${(pageCount-1)*48}\&limit=48\&rest=${rest}\&lang=en`
             }
+
+            console.log('Loading', pageCount, 'page...');
 
             fetch(url).then(r => r.json()).then(response => {
               let fragment = new DocumentFragment();
@@ -1019,6 +1029,7 @@
             sleep(5000).then(() => {
               initMutationObject({'childList': true});
               autoPagination().then((v)=>{colorFollowed(null, v && 2000)}); // '2000' can be 'null'
+              initProfileCard();
             });
           });
 
@@ -1032,6 +1043,7 @@
           if (PAGETYPE===7){
             initMutationObject({'childList': true});
             pagination.then((v)=>{colorFollowed(null, v && 2000)}); //if pagination is enabled we need to wait before it completes*, but no more
+            initProfileCard();
           }
 
           //clearing "cache" of autopaged arts. Todo: maybe add own class later
@@ -1065,14 +1077,78 @@
       //------------------------------------Profile card--------------------------------- //4,6,9 [~0,1,~7,8,10,12]
       function initProfileCard()
       {
-        if ([4,6,9].includes(PAGETYPE))
+        $('body').off(previewEventType, 'section._profile-popup a[href*="/artworks/"]');
+        $('body').off("mouseenter", '.paginated a[href*="/users/"]');
+        //-------------------------------------------------------------------------------
+        if ([4,6].includes(PAGETYPE)) //rankings
         {
           $('body').on(previewEventType, 'section._profile-popup a[href*="/artworks/"]', function(e)
           {
             console.log('Profile card');
             e.preventDefault();
-
             setHover(this, getOffsetRect(this).top+200+'px', true);
+          });
+        }
+        //-------------------------------------------------------------------------------
+        if ([0,7].includes(PAGETYPE) && currentSettings['ENABLE_AUTO_PAGINATION']) //patch for profile preview with pagination
+        {
+          //creating profile card(for last 3 arts)
+          let profilePopup = document.createElement('section');
+              profilePopup.className = '_profile-popup';
+              profilePopup.style = `visibility:hidden; position:absolute; height:128px; z-index:10001; padding: 0px 0px 24px;`
+              profilePopup.onmouseleave = function(){
+                profilePopup.style.visibility = "hidden";
+              }
+          let profileImagesDiv = document.createElement('div');
+              profileImagesDiv.style = `overflow:hidden; height:128px; border-radius:5px; border: 1px solid #c7d2dc; padding: 0px; background-color: rgb(255,255,255);`
+              profilePopup.appendChild(profileImagesDiv);
+
+          for (let i=0; i<3; i++){
+            var a = document.createElement('a');
+            a.className = `item_${i}`;
+            a.style = `display: inline-block !important; width: 128px; height: 128px;`
+            a.target = "_blank";
+            profileImagesDiv.appendChild(a);
+          }
+          document.body.appendChild(profilePopup);
+
+          let profileCard_timeout, previous_id;
+          //handler for showing paginated profile card
+          $('body').on("mouseenter", '.paginated a[href*="/users/"]', function(e){
+            e.preventDefault();
+            let user_id = this.href.match(/\d+/)[0];
+            if (user_id == 0) return;
+            if (previous_id == user_id){
+              profilePopup.style.top = getOffsetRect(this.parentNode).top - 128 + "px";
+              profilePopup.style.left = getOffsetRect(this.parentNode).left - 128+24 + "px";
+              profilePopup.style.visibility = "visible";
+              return;
+            }
+            clearTimeout(profileCard_timeout); //cancelling previous event
+            profilePopup.firstChild.childNodes.forEach(el => el.style.backgroundImage = '');
+
+            profileCard_timeout = setTimeout(fillProfileCard.bind(this, user_id), 500);
+          });
+
+          function fillProfileCard(user_id){
+            if (!([].indexOf.call(document.querySelectorAll(':hover'), this) > -1)) return; //need to check whether mouse is still over user profile after 500ms
+
+            profilePopup.style.top = getOffsetRect(this.parentNode).top - 128 + "px";
+            profilePopup.style.left = getOffsetRect(this.parentNode).left - 128+24 + "px"; //-sq.preview +icon
+            profilePopup.style.visibility = "visible";
+
+            fetch(`https://www.pixiv.net/rpc/get_profile.php?user_ids=${user_id}&illust_num=3&novel_num=0`).then(r => r.json()).then(response => {
+              response.body[0].illusts.forEach((el,i) => {
+                profilePopup.querySelector(`a.item_${i}`).style.backgroundImage = `url(${el.url["128x128"]})`;
+                profilePopup.querySelector(`a.item_${i}`).href = `/artworks/${el.illust_id}`;
+              })
+            });
+            previous_id = user_id;
+          }
+          //actual art preview
+          $('body').on(previewEventType, 'section._profile-popup a[href*="/artworks/"]', function(e){
+            e.preventDefault();
+            setHover(this, getOffsetRect(this).top+128+5+'px', true);
           });
         }
       }
@@ -1256,7 +1332,7 @@
               ++tLimit;
               //console.log(tInt, tLimit);
 
-              if (tLimit*40>3000){ //timeout 3s in case of loading errors
+              if (tLimit*40>5000){ //timeout 5s in case of loading errors
                 clearInterval(tInt);
                 hoverImg.src='';
                 console.error('setInterval error');
@@ -1314,14 +1390,9 @@
           }
           imgsArr[i].src = primaryLink.replace('p0','p'+i);
         }
-
-        checkDelay(mangaOuterContainer, thisObj);
       }
       //---------------------------------------------------------------------------------
-      else
-      {
-        checkDelay(mangaOuterContainer, thisObj);
-      }
+      checkDelay(mangaOuterContainer, thisObj);
     }
     //-----------------------------------------------------------------------------------
     function parseImgUrl(thisObj)
