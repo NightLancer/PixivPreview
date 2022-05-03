@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки. Расширенная история для не премиальных аккаунтов. Автозагрузка следующей страницы. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         3.80
+// @version         3.81
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -49,7 +49,7 @@
     //---------------------------***CUSTOM PREFERENCES***--------------------------------
     let propList = [
         {paramIndex:0, array:[false,true], name:"PREVIEW_ON_CLICK"},
-        {paramIndex:0, array:[0, 100, 200, 300, 500, 1000, 1500], name:"DELAY_BEFORE_PREVIEW"}, //todo: fix rankings and make default 100ms
+        {paramIndex:1, array:[0, 100, 200, 300, 500, 1000, 1500], name:"DELAY_BEFORE_PREVIEW"},
         {paramIndex:0, array:["auto", 600, 1200], name:"PREVIEW_SIZE"},
         {paramIndex:1, array:[false,true], name:"ENABLE_AUTO_PAGINATION"},
         {paramIndex:0, array:[false,true], name:"DISABLE_MANGA_PREVIEW_SCROLLING_PROPAGATION"},
@@ -1306,13 +1306,13 @@
       let previewWidth = PREVIEWSIZE;
 
       if (hoverImg.naturalWidth>0){ //cached (previously viewed)
-        adjustSinglePreview(dcw, l, hoverImg.naturalWidth, thisObj);
+        adjustSinglePreview(dcw, l, hoverImg.naturalWidth, (PAGETYPE!=6)?thisObj:thisObj.parentNode.parentNode);
         //console.log("cached");
       }
       else{ //on old pages width can be pre-calculated
         if ([4,6,14].includes(PAGETYPE) && !profileCard){
           previewWidth = PREVIEWSIZE*(((PAGETYPE==6 || PAGETYPE==14)?thisObj.clientWidth:thisObj.parentNode.parentNode.clientWidth)/siteImgMaxWidth)+5;
-          adjustSinglePreview(dcw, l, previewWidth, thisObj);
+          adjustSinglePreview(dcw, l, previewWidth, (PAGETYPE!=6)?thisObj:thisObj.parentNode.parentNode);
           //console.log("count");
         }
         else{ //if it is obvious that preview will fit on the screen then there is no need in setInterval(trying to use as minimun setInterval`s as possible)
@@ -1392,7 +1392,7 @@
         }
       }
       //---------------------------------------------------------------------------------
-      checkDelay(mangaOuterContainer, thisObj);
+      checkDelay(mangaOuterContainer, (PAGETYPE!=6)?thisObj:thisObj.parentNode.parentNode);
     }
     //-----------------------------------------------------------------------------------
     function parseImgUrl(thisObj)
