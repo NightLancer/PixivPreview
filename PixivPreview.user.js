@@ -5,7 +5,7 @@
 // @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки. Расширенная история для не премиальных аккаунтов. Автозагрузка следующей страницы. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         3.81
+// @version         3.82
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -377,6 +377,12 @@
       let hitContainers = [];
       let currentHits = 0;
 
+      if (PAGETYPE == 12){
+        let authorId = +document.querySelector("aside").querySelector("[href*=users]").href.match(/\d+/)[0];
+        [].filter.call(artsContainers, container => getAuthorIdFromContainer(container) == authorId) //color current authors arts among suggested
+          .forEach(container => container.setAttribute("style", "background-color: deepskyblue; !important"));
+      }
+
       hitContainers = [].filter.call(artsContainers, container => followedUsersId[getAuthorIdFromContainer(container)] == 1);
       if (currentSettings["HIDE_FOLLOWED_USERS"] && PAGETYPE===8)
         hitContainers.forEach(container => container.setAttribute("style", "display: none; !important"));
@@ -669,7 +675,7 @@
       },
 
       export(){
-        this.load();
+        this.load(); //TODO:check history records integrity before export
         GM_setV("viewed_illust_ids", this.ids);
         GM_setV("viewed_illust_timestamps", this.timestamps);
         console.info(`History was exported to script manager storage [%c${this.ids.length}%c records]`, 'color:lime;', 'color:;');
@@ -845,7 +851,7 @@
         art.querySelectorAll('img').forEach(el => el.src='');
         art.classList.add("paginated");
         //-------------------------------------------------------------------------------
-        let running = false, urls;
+        let running = false, urls = [];
 
         window.onscroll = async function(){
           if ((window.innerHeight*1.8 + window.scrollY) >= document.body.scrollHeight){
@@ -861,7 +867,7 @@
               url = `https:\/\/www\.pixiv\.net\/ajax\/follow_latest\/illust\?p=${pageCount}\&mode=${mode}\&lang=en`;
             }
             if (PAGETYPE == 2){
-              if (!urls?.length && !tags){
+              if (!urls.length && !tags){
                 urls = [];
                 await fetch(`https://www.pixiv.net/ajax/user/${authorId}/profile/all?lang=en`).then(r => r.json()).then(response => {
                   let iArr = (illusts || artworks) && Object.keys(response.body.illusts) || [];
@@ -884,7 +890,6 @@
               }
               else{
                 url = urls.shift();
-                if (!urls.length) console.log('*All pages loaded*');
               }
             }
             if (PAGETYPE == 7){
@@ -934,6 +939,11 @@
               artsSection.appendChild(fragment);
               running = false;
             });
+
+            if (pageCount>=maxPageCount){
+              console.log('*All pages loaded*');
+              [...document.querySelectorAll("nav")].pop().style.opacity = 0.3;
+            }
           } //endif
         } //onscroll
         //-------------------------------------------------------------------------------
@@ -953,6 +963,7 @@
           .then(() => this.querySelectorAll('path:not(:only-child)').forEach(e => e.setAttribute("style", "fill: rgb(255, 64, 96);")))
           .catch(err => console.log(err));
         });
+        //-------------------------------------------------------------------------------
         return 0;
       }
       //=================================================================================
@@ -1028,7 +1039,7 @@
 
             sleep(5000).then(() => {
               initMutationObject({'childList': true});
-              autoPagination().then((v)=>{colorFollowed(null, v && 2000)}); // '2000' can be 'null'
+              autoPagination().then((v)=>{colorFollowed(null, v && 2000)}); //success(0) -> already waited 2+ secs; disabled(-1) -> need to wait
               initProfileCard();
             });
           });
