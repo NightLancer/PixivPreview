@@ -1,11 +1,9 @@
 // ==UserScript==
 // @name            Pixiv Arts Preview & Followed Atrists Coloring & Extended History
-// @name:ru         Pixiv Arts Preview & Followed Atrists Coloring & Extended History
 // @namespace       Pixiv
 // @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
-// @description:ru  Увеличённый предпросмотр артов и манги по наведению мышки. Расширенная история для не премиальных аккаунтов. Автозагрузка следующей страницы. Клик ЛКМ по превью арта для открытия исходника в новой вкладке, СКМ для открытия страницы с артом, Alt + клик ЛКМ для добавления в закладки, Ctrl + клик ЛКМ для сохранения оригиналов артов. Имена авторов, на которых вы уже подписаны, подсвечиваются зелёным цветом. Настройки можно изменить в соответствующем меню.
 // @author          NightLancerX
-// @version         3.82
+// @version         3.83
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -65,8 +63,8 @@
     // true : showing preview after LMB-click
     //
     // ■ DELAY_BEFORE_PREVIEW =
-    // 0 : no delay before preview (default)
-    // 1000 : 1 second delay (2000 for 2 seconds, etc)
+    // 0 : no delay before preview
+    // 100 : 0.1 second delay (1000 for 1 second, etc) (default)
     //
     // ■ PREVIEW_SIZE =
     // auto : automatically calculate preview size (1200 or 600) depending of current screen size (default)
@@ -133,6 +131,7 @@
         mangaWidth = 1200,
         maxRequestTime = 30000,
         bookmarkContainer,
+        pageNumber,
         DELTASCALE = ('mozInnerScreenX' in window)?70:4,
         previewEventType,
         PAGETYPE = checkPageType(),
@@ -851,6 +850,11 @@
         art.querySelectorAll('img').forEach(el => el.src='');
         art.classList.add("paginated");
         //-------------------------------------------------------------------------------
+        pageNumber = pageNumber ?? mangaCount.cloneNode(true);
+        pageNumber.className = "pageNumber";
+        pageNumber.style = "position: fixed; right: 5px; bottom: 5px; height: 16px; width: 16px; z-index: 1; display: flex; justify-content: center; align-items: center; flex: 0 0 auto; box-sizing: border-box; font-weight: bold; padding: 0px 6px; background: rgba(0, 0, 0, 0.32) none repeat scroll 0% 0%; border-radius: 16px; font-size: 10px; line-height: 10px; color: rgb(255, 255, 255); opacity: 0%; transition: opacity 1s;";
+        document.body.appendChild(pageNumber);
+        //-------------------------------------------------------------------------------
         let running = false, urls = [];
 
         window.onscroll = async function(){
@@ -939,6 +943,10 @@
               artsSection.appendChild(fragment);
               running = false;
             });
+
+            pageNumber.querySelector('span').textContent = pageCount;
+            pageNumber.style.opacity = "100%";
+            setTimeout(()=>pageNumber.style.opacity = "0%", 1500);
 
             if (pageCount>=maxPageCount){
               console.log('*All pages loaded*');
