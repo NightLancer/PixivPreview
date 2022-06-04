@@ -39,8 +39,8 @@ false : showing preview on mouseover (\*default)<br>
 true : showing preview after LMB-Click<br>
 <br>
 ■ DELAY_BEFORE_PREVIEW =<br>
-0 : no delay before preview (default)<br>
-1000 : 1 second delay (2000 for 2 seconds, etc)<br>
+0 : no delay before preview <br>
+100 : 0.1 second delay (1000 for 1 second, etc) (default)<br>
 <br>
 ■ PREVIEW_SIZE =<br>
 auto : automatically calculate preview size (1200 or 600) depending on current screen size (default)<br>
