@@ -3,7 +3,7 @@
 // @namespace       Pixiv
 // @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @author          NightLancerX
-// @version         3.83
+// @version         3.83.1
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -102,6 +102,7 @@
     let currentSettings = {};
     //-----------------------------------------------------------------------------------
     let hoverImg = document.createElement('img');
+        hoverImg.style = 'display: block;'
 
     let imgContainer = document.createElement('div');
         imgContainer.style = 'position:absolute; display:block; visibility:visible; z-index:1000; background:#222; padding:5px; margin:-5px;';
@@ -109,7 +110,7 @@
 
     let mangaContainer = document.createElement('div');
         mangaContainer.id = 'mangaContainer';
-        mangaContainer.style = 'display:block; overflow-x:auto; white-space:nowrap; maxWidth:1200px; z-index:1500; background:#111;';
+        mangaContainer.style = 'display:block; overflow-x:auto; white-space:nowrap; maxWidth:1200px; z-index:1500; background:#111; font-size: 0;';
 
     let mangaMiddleContainer = document.createElement('div');
         mangaMiddleContainer.style = 'display:block; visibility:inherit; z-index:1250;';
