@@ -8,7 +8,7 @@ Script is written for better www.pixiv.net usability.
 • Non-premium history that can store ~10x more amount of records without time limit.<br>
 • Auto-Pagination on Following and Users pages.<br>
 • Makes recommendation block(appearing after follow) scrollable, arts preview also available.<br>
-• Enlarging also works on users profiles preview(where possible).<br>
+• Enlarging also works on users profiles preview.<br>
 
 ### Mouse features on previews:
 • LMB-Click - Opens source of artwork in new tab.<br>
@@ -23,7 +23,7 @@ Script is written for better www.pixiv.net usability.
 ■ Preview for multiple artworks viewed as gallery and positioned in the center of the screen (with scrollbar if needed).
 ![](https://user-images.githubusercontent.com/19971564/159192968-3e99a064-d0f0-4328-bddc-820a2b2f6dad.png)
 
-■ The names of the authors(users) you are already subscribed to are highlighted with green.
+■ The names of the authors you are already subscribed to are highlighted with green.
 <img src=https://user-images.githubusercontent.com/19971564/140511941-bb87fd1e-a21e-4ce9-9e8e-a4c00b7aa283.png><br>
 
 ■ History is not limited to the time, only to localStorage space(which can be increased). Approximate amount of records without other scripts - 100 000. History can be exported to script manager storage by pressing `Shift+E` on history page for backup/transferring to another browser.
