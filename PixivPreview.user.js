@@ -3,7 +3,7 @@
 // @namespace       Pixiv
 // @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @author          NightLancerX
-// @version         3.83.1
+// @version         3.83.2
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -760,7 +760,7 @@
         let count = 0;
         while (!menuButton && count<5){
           if ([0,1,2,7,8,10,12].includes(PAGETYPE))
-            buttons = document.querySelectorAll('body > div#root > div > div:nth-child(1) button');
+            buttons = document.querySelectorAll('body > div#root > div.charcoal-token > div > div:first-child button')
           else
             buttons = document.querySelectorAll('body > div#js-mount-point-header > div:nth-child(1) button');
           menuButton = buttons[buttons.length - 1]; // last is the menu button
@@ -936,7 +936,7 @@
                   e.setAttribute("style", "fill: rgb(255, 64, 96); !important")
                 });
                 //-----------------------------------------------------------------------
-                el.style.display = "flex";
+                el.style.display = "list-item"; //needed - 'none' otherwise
                 fragment.appendChild(el);
               });
               if (PAGETYPE==7 || tags) maxPageCount = Math.ceil(response.body.total/48);
@@ -1066,10 +1066,10 @@
             initProfileCard();
           }
 
-          //clearing "cache" of autopaged arts. Todo: maybe add own class later
+          //clearing "cache" of autopaged arts
           $('body').on('mouseup', 'section>div>div>div>a[href*="/illustrations/"], section>div>div>div>a[href*="/artworks/"], section>div>div>div>a[href*="/manga/"]', function(){
             let artsSection = getArtSectionContainers();
-            [...artsSection.querySelectorAll('[style="display: flex;"]')].forEach(el => el.remove());
+            [...artsSection.querySelectorAll('.paginated')].forEach(el => el.remove());
           });
         }
         //------------------------------------History------------------------------------
