@@ -70,10 +70,7 @@ true: hide "People who bookmarked this" section<br>
 ■ KEEP_OLD_DATE_OF_ALREADY_VIEWED_ARTWORKS =<br>
 false: update date every time artwork page opens (default)<br>
 true: don't renew date and keep first one (NOTE: art will not appear at the top of the history)<br>
-<br>
-■ HIDE_FOLLOWED_USERS =<br>
-false: don't change search("tags") page (default)<br>
-true: hide followed users on search page instead on highlighting<br>
+
 ### Supported pages:
 
 - New illustrations<br>
