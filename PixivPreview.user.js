@@ -330,7 +330,7 @@
 
         artsContainers = getAllArtsContainers();
         ++c;
-        if (c*5>10000) {console.error('Error while waiting for arts loading! [Timeout 10s]'); return}
+        if (c>5) {console.error('Error while waiting for arts loading! [Timeout 10s]'); return}
       }
 
       let artsContainersLength = artsContainers.length;
