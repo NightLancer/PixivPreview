@@ -3,7 +3,7 @@
 // @namespace       Pixiv
 // @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @author          NightLancerX
-// @version         3.83.2
+// @version         3.83.3
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -54,8 +54,7 @@
         {paramIndex:1, array:[false,true], name:"SCROLL_INTO_VIEW_FOR_SINGLE_IMAGE"},
         {paramIndex:0, array:[false,true], name:"DISABLE_SINGLE_PREVIEW_BACKGROUND_SCROLLING"},
         {paramIndex:0, array:[false,true], name:"HIDE_PEOPLE_WHO_BOOKMARKED_THIS"},
-        {paramIndex:0, array:[false,true], name:"KEEP_OLD_DATE_OF_ALREADY_VIEWED_ARTWORKS"},
-        {paramIndex:0, array:[false,true], name:"HIDE_FOLLOWED_USERS"}
+        {paramIndex:0, array:[false,true], name:"KEEP_OLD_DATE_OF_ALREADY_VIEWED_ARTWORKS"}
     ];
     //---------------------------------DEFAULT VALUES------------------------------------
     // ■ PREVIEW_ON_CLICK =
@@ -70,6 +69,10 @@
     // auto : automatically calculate preview size (1200 or 600) depending of current screen size (default)
     // 600 : up to 600px x 600px
     // 1200 : up to 1200px x 1200px
+    //
+    // ■ ENABLE_AUTO_PAGINATION =
+    // false: disable auto pagination
+    // true: enable auto-pagination on Following and Users pages (default)
     //
     // ■ DISABLE_MANGA_PREVIEW_SCROLLLING_PROPAGATION =
     // false : keeping page scrolling after end of manga preview scrolling (default)
@@ -90,14 +93,6 @@
     // ■ KEEP_OLD_DATE_OF_ALREADY_VIEWED_ARTWORKS =
     // false: update date every time artwork page opens (default)
     // true: don't renew date and keep first one (NOTE: art will not appear at the top of the history)
-    //
-    // ■ ENABLE_AUTO_PAGINATION =
-    // false: disable auto pagination
-    // true: enable auto-pagination on Following and Users pages (default)
-    //
-    // ■ HIDE_FOLLOWED_USERS =
-    // false: don't change search("tags") page (default)
-    // true: hide followed users on search page instead on highlighting
 
     let currentSettings = {};
     //-----------------------------------------------------------------------------------
@@ -335,7 +330,7 @@
 
         artsContainers = getAllArtsContainers();
         ++c;
-        if (c>5) {console.error('Error while waiting for arts loading! [Timeout 10s]'); return}
+        if (c*5>10000) {console.error('Error while waiting for arts loading! [Timeout 10s]'); return}
       }
 
       let artsContainersLength = artsContainers.length;
@@ -384,10 +379,7 @@
       }
 
       hitContainers = [].filter.call(artsContainers, container => followedUsersId[getAuthorIdFromContainer(container)] == 1);
-      if (currentSettings["HIDE_FOLLOWED_USERS"] && PAGETYPE===8)
-        hitContainers.forEach(container => container.setAttribute("style", "display: none; !important"));
-      else
-        hitContainers.forEach(container => container.setAttribute("style", "background-color: green; !important"));
+      hitContainers.forEach(container => container.setAttribute("style", "background-color: green; !important"));
 
       currentHits = hitContainers.length;
       totalHits += currentHits;
@@ -457,8 +449,8 @@
         case 1:
         case 4:  return $('.gtm-illust-recommend-zone')[0]
         case 6:  return $('.ranking-items')[0]
-        case 8:  return $("section>div>ul")[0]
-        case 10: return $("div[id='root']>div>div:nth-child(2)")[0]
+        case 8:  return $('body')[0] //$("section>div>ul")[0]
+        case 10: return $("div[id='root']>div.charcoal-token>div>div:nth-child(2)")[0]
         case 12: return $('.gtm-illust-recommend-zone ul')[0]
 
         default: return 0;
@@ -504,6 +496,9 @@
           }
           else if (PAGETYPE == 1 || PAGETYPE == 7){
             node.querySelectorAll('li > div').forEach((el) => arr.push(el));
+          }
+          else if (PAGETYPE == 8){
+            node.querySelectorAll?.('li > div').forEach((el) => arr.push(el));
           }
           else{
             arr.push(node);
@@ -1009,35 +1004,40 @@
             }, 2000);
           });
         }
-        //----------------------------Bookmark detail page cleaning----------------------
+        //---------------------------Bookmark detail page cleaning-----------------------
         if (PAGETYPE===4)
         {
           if (currentSettings["HIDE_PEOPLE_WHO_BOOKMARKED_THIS"])
             $('.bookmark-list-unit')[0].remove();
+
+          initMutationObject({'childList': true});
         }
-        //------------------------------Daily rankings ad cleaning-----------------------
+        //-----------------------------Daily rankings ad cleaning------------------------
         if (PAGETYPE===6)
         {
           colorFollowed();
           $('.ad-printservice').remove();
+
+          initMutationObject({'childList': true});
         }
-        //-------------------------------Illust page extra check-------------------------
+        //----------------------------------Artwork page---------------------------------
         if (PAGETYPE===12)
         {
           initMutationObject({'childList': true});
           illust_history.add_record(location.href.match(/\d+/)[0]);
         }
-        //-----------------------------Init illust fetch listener------------------------
-        if (PAGETYPE===4 || PAGETYPE===6 || PAGETYPE===8)
-        {
-          initMutationObject({'childList': true});
-        }
-        //-------------------------------Home page listener------------------------------
-        if (PAGETYPE===10)
+        //----------------------------------Search page----------------------------------
+        if (PAGETYPE===8)
         {
           initMutationObject({'childList': true, 'subtree': true});
         }
-        //--------------------------------Pixiv User pages-------------------------------
+        //----------------------------------Main page------------------------------------
+        if (PAGETYPE===10)
+        {
+          colorFollowed();
+          initMutationObject({'childList': true, 'subtree': true});
+        }
+        //-------------------------------Pixiv User pages--------------------------------
         if (PAGETYPE===2 || PAGETYPE===7)
         {
           let pagination = autoPagination(); //2,7
@@ -1276,7 +1276,6 @@
           clearInterval(tInt);
 
           if (PAGETYPE === -1) return;
-          if ([8,10].includes(PAGETYPE)) colorFollowed(); //extra coloring for missing arts
 
           initPreviewListeners();
           initMutationObservers();
