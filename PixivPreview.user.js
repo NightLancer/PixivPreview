@@ -3,7 +3,7 @@
 // @namespace       Pixiv
 // @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @author          NightLancerX
-// @version         3.83.3
+// @version         3.84
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -189,6 +189,7 @@
         currentSettings[propList[i].name] = propList[i].array[propList[i].paramIndex]; //only for options checking, actual settings contains in propList[]
       }
       resetPreviewSize(); //needed because of "auto" feature
+      resetPreviewEventType();
     }
     //-----------------------------------------------------------------------------------
     function saveSettings(){
@@ -213,9 +214,8 @@
     loadSavedSettings();
     setCurrentSettings();
     //-----------------------------------------------------------------------------------
-    previewEventType = (currentSettings["PREVIEW_ON_CLICK"])?'click':'mouseenter';       //need to be 'click' for overwriting default site event handlers
-
     function resetPreviewSize(){PREVIEWSIZE = (currentSettings["PREVIEW_SIZE"] > 0)?currentSettings["PREVIEW_SIZE"]:(window.innerHeight>1200 & document.body.clientWidth>1200)?1200:600}
+    function resetPreviewEventType(){previewEventType = (currentSettings["PREVIEW_ON_CLICK"])?'click':'mouseenter'; console.log(previewEventType)}
     //===================================================================================
     //**********************************ColorFollowed************************************
     //===================================================================================
@@ -778,6 +778,7 @@
         if (!($(menu).has(e.target).length) && (menu.style.visibility == 'visible')){
           menu.style.visibility = 'hidden';
           saveSettings();
+          if (currentSettings[propList[0].name] !== propList[0].array[propList[0].paramIndex]) setTimeout(()=>{initPreviewListeners(); initProfileCard()}, 0); //reset event listeners only after settings are applied
           setCurrentSettings();
           clearTimeout(menuTimer);
         }
@@ -1097,7 +1098,7 @@
       //------------------------------------Profile card--------------------------------- //4,6,9 [~0,1,~7,8,10,12]
       function initProfileCard()
       {
-        $('body').off(previewEventType, 'section._profile-popup a[href*="/artworks/"]');
+        $('body').off('mouseenter click', 'section._profile-popup a[href*="/artworks/"]');
         $('body').off("mouseenter", '.paginated a[href*="/users/"]');
         //-------------------------------------------------------------------------------
         if ([4,6].includes(PAGETYPE)) //rankings
@@ -1180,9 +1181,16 @@
       function initPreviewListeners()
       {
         //clearing-----------------------------------------------------------------------
-        $('body').off(previewEventType, 'a[href*="/artworks/"]');
-        $('body').off(previewEventType, 'a[href*="/artworks/"] img');
+        $('body').off('click mouseenter', 'a[href*="/artworks/"]');
+        $('body').off('click mouseenter', 'a[href*="/artworks/"] img');
         $('body').off('click', '[role="presentation"] img');
+        //document.removeEventListener('click'); //not worth bothering
+        //-------------------------------------------------------------------------------
+        if (previewEventType == 'click'){
+          document.addEventListener('click', (e)=>{
+            if (e.target.nodeName==="IMG") e.preventDefault();
+          }, {capture: true}) //site uses event capturing now which jQuery can't cover
+        }
         //-------------------------------------------------------------------------------
         //New illustrations, Discovery[Artworks], Artist pages, Bookmarks, Search, Home page, Artwork page //0,1,2,7,8,10,12
         if (PAGETYPE === 0 || PAGETYPE === 1 || PAGETYPE === 2 || PAGETYPE === 7 || PAGETYPE === 8 || PAGETYPE === 10 || PAGETYPE === 12)
