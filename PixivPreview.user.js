@@ -3,7 +3,7 @@
 // @namespace       Pixiv
 // @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @author          NightLancerX
-// @version         3.84
+// @version         3.85
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -47,7 +47,7 @@
     //---------------------------***CUSTOM PREFERENCES***--------------------------------
     let propList = [
         {paramIndex:0, array:[false,true], name:"PREVIEW_ON_CLICK"},
-        {paramIndex:1, array:[0, 100, 200, 300, 500, 1000, 1500], name:"DELAY_BEFORE_PREVIEW"},
+        {paramIndex:2, array:[0, 100, 200, 300, 500, 1000, 1500], name:"DELAY_BEFORE_PREVIEW"},
         {paramIndex:0, array:["auto", 600, 1200], name:"PREVIEW_SIZE"},
         {paramIndex:1, array:[false,true], name:"ENABLE_AUTO_PAGINATION"},
         {paramIndex:0, array:[false,true], name:"DISABLE_MANGA_PREVIEW_SCROLLING_PROPAGATION"},
@@ -280,7 +280,7 @@
           followedCheckError(error);
           return -1;
         }
-        for(const r of responseArray) r.body.users.forEach(user => followedUsersId[user.userId] = true);
+        for(const r of responseArray) r.body.users.forEach(user => followedUsersId[user.userId] = 1);
 
         localStorage.setObj('followedUsersId', followedUsersId);
         followedCheck.id = USER_ID;
@@ -604,7 +604,7 @@
         e.preventDefault();
         //let top = window.innerHeight - PREVIEWSIZE - 5 + window.scrollY + 'px';
         let top = window.scrollY + 5 + 'px';
-        setHover(this, top);
+        checkDelay(setHover, this, top);
       });
     }
     //---------------------------------------History-------------------------------------
@@ -831,7 +831,7 @@
         let illusts = !!location.href.match(/illustrations/)?.[0];
         let manga = !!location.href.match(/manga/)?.[0];
         let rest = location.href.match(/rest=hide/)?.[0] && "hide" || "show";
-        let tags = location.href.match(/(?<=illustrations\/|manga\/|artworks\/)[^?]+/) || '';
+        //let tags = location.href.match(/(?<=illustrations\/|manga\/|artworks\/)[^?]+/) || '';
         //-------------------------------------------------------------------------------
         let x_csrf_token; //for bookmarks
         request('/en/', 'document').then(response => x_csrf_token = response.documentElement.innerHTML.match(/(?<=token&quot;:&quot;)[\dA-z]+/));
@@ -862,7 +862,7 @@
             pageCount++;
 
             let url;
-            tags = location.href.match(/(?<=illustrations\/|manga\/|artworks\/).+/) || '';
+            let tags = location.href.match(/(?<=illustrations\/|manga\/|artworks\/)[^?]+/) || '';
 
             if (PAGETYPE == 0){
               url = `https:\/\/www\.pixiv\.net\/ajax\/follow_latest\/illust\?p=${pageCount}\&mode=${mode}\&lang=en`;
@@ -1107,7 +1107,7 @@
           {
             console.log('Profile card');
             e.preventDefault();
-            setHover(this, getOffsetRect(this).top+200+'px', true);
+            checkDelay(setHover, this, getOffsetRect(this).top+200+'px', true);
           });
         }
         //-------------------------------------------------------------------------------
@@ -1169,7 +1169,7 @@
           //actual art preview
           $('body').on(previewEventType, 'section._profile-popup a[href*="/artworks/"]', function(e){
             e.preventDefault();
-            setHover(this, getOffsetRect(this).top+128+5+'px', true);
+            checkDelay(setHover, this, getOffsetRect(this).top+128+5+'px', true);
           });
         }
       }
@@ -1202,22 +1202,22 @@
             //---------------------------filtering preview card--------------------------
             if (getElementByXpath("//a[text()='View Profile']")){
               if (this.parentNode.parentNode.querySelector('span'))
-                setMangaHover(this, this.parentNode.parentNode.textContent, getOffsetRect(this).top+112+'px');
+                checkDelay(setMangaHover, this, this.parentNode.parentNode.textContent, getOffsetRect(this).top+112+'px');
               else
-                setHover(this, getOffsetRect(this).top+112+5+'px', true);
+                checkDelay(setHover, this, getOffsetRect(this).top+112+5+'px', true);
             }
             //-------------------------filtering recommended users-----------------------
             else if (getElementByXpath("//div[text()='Recommended users']")){
               let top = window.scrollY + 5 + 'px';
-              setHover(this, top);
+              checkDelay(setHover, this, top);
             }
             //--------------------------------Normal case--------------------------------
             else{
               //multiple
               if (this.parentNode.parentNode.querySelector('span'))
-                setMangaHover(this, this.parentNode.parentNode.textContent.replace(/R-18(G)?/,""));
+                checkDelay(setMangaHover, this, this.parentNode.parentNode.textContent.replace(/R-18(G)?/,""));
               //single
-              else setHover(this);
+              else checkDelay(setHover, this);
             }
             //---------------------------------------------------------------------------
           });
@@ -1239,11 +1239,11 @@
             e.preventDefault();
             //single
             if (this.childNodes.length == 1 && this.childNodes[0].nodeName=="DIV"){
-              setHover(this.firstChild.firstChild);
+              checkDelay(setHover, this.firstChild.firstChild);
             }
             //multiple
             else if (this.children[1] && this.children[1].className == 'page-count'){
-              setMangaHover(this.firstChild.firstChild, this.children[1].children[1].textContent);
+              checkDelay(setMangaHover, this.firstChild.firstChild, this.children[1].children[1].textContent);
             }
           });
         }
@@ -1252,8 +1252,8 @@
         {
           $('body').on(previewEventType, 'a[href*="/artworks/"] img', function(e){
             e.preventDefault();
-            if      (this.childNodes.length == 0)  setHover(this); //single art
-            else if (this.childNodes.length == 1)  setMangaHover(this, this.firstChild.textContent); //manga
+            if      (this.childNodes.length == 0)  checkDelay(setHover, this); //single art
+            else if (this.childNodes.length == 1)  checkDelay(setMangaHover, this, this.firstChild.textContent); //manga
           });
         }
         //-------------------------------------History----------------------------------- //14
@@ -1261,7 +1261,7 @@
         {
           $('body').on(previewEventType, '._history-item', function(e){
             e.preventDefault();
-            setHover(this, getOffsetRect(this).top + 'px');
+            checkDelay(setHover, this, getOffsetRect(this).top + 'px');
           });
         }
       }
@@ -1301,21 +1301,19 @@
     }); //end of document.ready
     //===================================================================================
     //-----------------------------------------------------------------------------------
-    function checkDelay(container, thisObj)
+    function checkDelay(func, ...args)
     {
       if (currentSettings["DELAY_BEFORE_PREVIEW"]>0){
         clearTimeout(timerId);
         timerId = setTimeout(()=>{
-          if ([].indexOf.call(document.querySelectorAll(':hover'), thisObj) > -1) container.style.visibility = 'visible'
+          if ([].indexOf.call(document.querySelectorAll(':hover'), (PAGETYPE!=6)? args[0] : args[0].parentNode.parentNode) > -1) func(...args)
         }, currentSettings["DELAY_BEFORE_PREVIEW"]);
-
       }
-      else container.style.visibility = 'visible';
+      else func(...args)
     }
     //-----------------------------------------------------------------------------------
     function setHover(thisObj, top, profileCard)
     {
-      clearTimeout(timerId);
       clearInterval(tInt);
       imgContainer.style.visibility = 'hidden';
       mangaOuterContainer.style.visibility = 'hidden';
@@ -1345,7 +1343,7 @@
         else{ //if it is obvious that preview will fit on the screen then there is no need in setInterval(trying to use as minimun setInterval`s as possible)
           if (dcw - l - PREVIEWSIZE - 5 > 0){
             imgContainer.style.left = l+'px';
-            checkDelay(imgContainer, thisObj);
+            imgContainer.style.visibility = 'visible';
             //console.log("excessive");
           }
           else{ //when on NEW layout - need to wait until image width is received
@@ -1373,17 +1371,16 @@
       checkBookmark(thisObj, imgContainer);
     }
     //-----------------------------------------------------------------------------------
-    function adjustSinglePreview(dcw, l, contentWidth, thisObj)
+    function adjustSinglePreview(dcw, l, contentWidth)
     {
       if (l<0) l = 5; //followage preview
       let d = dcw - l - contentWidth - 5; //5 - padding - todo...
       imgContainer.style.left = (d>=0)?l+'px':l+d+'px';
-      checkDelay(imgContainer, thisObj);
+      imgContainer.style.visibility = 'visible';
     }
     //-----------------------------------------------------------------------------------
     function setMangaHover(thisObj, count, top)
     {
-      clearTimeout(timerId);
       clearInterval(tInt);
       imgContainer.style.visibility = 'hidden'; //just in case
 
@@ -1419,7 +1416,7 @@
         }
       }
       //---------------------------------------------------------------------------------
-      checkDelay(mangaOuterContainer, (PAGETYPE!=6)?thisObj:thisObj.parentNode.parentNode);
+      mangaOuterContainer.style.visibility = 'visible';
     }
     //-----------------------------------------------------------------------------------
     function parseImgUrl(thisObj)
@@ -1521,7 +1518,7 @@
           illust_history.delete_record(illustId); //Shift + LMB-click -> delete record from history
           document.querySelector(`[style*="/${illustId}_"]`).style.opacity = ".25";
         }
-        else if (!event.altKey)
+        else if (event.ctrlKey)
         {
           let toSave = event.ctrlKey; //Ctrl + LMB-click -> saving image
           let pageNum = 0;
