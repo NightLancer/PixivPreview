@@ -3,7 +3,7 @@
 // @namespace       Pixiv
 // @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @author          NightLancerX
-// @version         3.85
+// @version         3.85.1
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -1518,7 +1518,7 @@
           illust_history.delete_record(illustId); //Shift + LMB-click -> delete record from history
           document.querySelector(`[style*="/${illustId}_"]`).style.opacity = ".25";
         }
-        else if (event.ctrlKey)
+        else if (!event.altKey) //need to be this way. Don't change.
         {
           let toSave = event.ctrlKey; //Ctrl + LMB-click -> saving image
           let pageNum = 0;
