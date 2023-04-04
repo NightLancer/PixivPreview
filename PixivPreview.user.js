@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name            Pixiv Arts Preview & Followed Atrists Coloring & Extended History
 // @namespace       Pixiv
-// @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
+// @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @author          NightLancerX
-// @version         3.86
+// @version         3.87
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -100,6 +100,7 @@
         hoverImg.style = 'display: block;'
 
     let imgContainer = document.createElement('div');
+        imgContainer.id = 'imgPreview';
         imgContainer.style = 'position:absolute; display:block; visibility:visible; z-index:1000; background:#222; padding:5px; margin:-5px;';
         imgContainer.appendChild(hoverImg);
 
@@ -229,7 +230,7 @@
     //-----------------------------------------------------------------------------------
     async function getUserId(){
       USER_ID = USER_ID
-      || followedCheck?.id
+      || followedCheck && followedCheck?.id
       || document.cookie.match(/user_id=\d+/)?.[0].split("=").pop()
       || Object.keys(localStorage).filter(e => e.match(/viewed_illust_ids_\d+/)).map(a => a.match(/\d+/))[0]
       || (await fetch('https://www.pixiv.net/bookmark.php')).url.match(/\d{3,}/)[0];
@@ -640,7 +641,7 @@
           this.timestamps[illust_id] = Date.now()/1000;
           console.log(+illust_id, ": updated view date");
         }
-        else console.log(+illust_id, "already in history");
+        else console.log(`%c${illust_id}%c already in history (%c${new Date(this.timestamps[illust_id]*1000).toLocaleString()}%c)`, 'color:lime;', 'color:;', 'color:violet;', 'color:;');
 
         this.save();
       },
@@ -663,7 +664,7 @@
         let date = Date.now()+365*24*60*60*1000;
         localStorage.setObj('viewed_illust_ids_' + USER_ID, {data:this.ids, expires:date});
         localStorage.setObj('viewed_illust_timestamp_' + USER_ID, {data:this.timestamps, expires:date});
-        console.info(`History overrided [%c${this.ids.length}%c records]`, 'color:lime;', 'color:;');
+        console.info(`History overridden [%c${this.ids.length}%c records]`, 'color:lime;', 'color:;');
 
         let count = 0, t = setInterval(()=>{
           document.querySelectorAll('._history-item.trial').forEach(e => {
@@ -687,7 +688,7 @@
             localStorage.viewed_illust_ids, localStorage.viewed_illust_timestamps]).size)/(5000*1024)).toFixed(3); //duplicating records not the best solution... but simplest [solve this later if needed]
         if (spaceConsumed > 0.95){
           this.add_record = this.override = ()=>{};
-          return Promise.reject(`Too many space consumed [${spaceConsumed*100}%] — history is disabled`); //~100.000 entries
+          return Promise.reject(`Too much space consumed [${spaceConsumed*100}%] — history is disabled`); //~100.000 entries
         }
         else console.log('History initialized');
       }
@@ -1106,6 +1107,7 @@
       {
         $('body').off('mouseenter click', 'section._profile-popup a[href*="/artworks/"]');
         $('body').off("mouseenter", '.paginated a[href*="/users/"]');
+        $('body').off("mouseleave", '.paginated a[href*="/users/"]');
         //-------------------------------------------------------------------------------
         if ([4,6].includes(PAGETYPE)) //rankings
         {
@@ -1122,18 +1124,19 @@
           //creating profile card(for last 3 arts)
           let profilePopup = document.createElement('section');
               profilePopup.className = '_profile-popup';
-              profilePopup.style = `visibility:hidden; position:absolute; height:128px; z-index:10001; padding: 0px 0px 24px;`
-              profilePopup.onmouseleave = function(){
+              profilePopup.style = `visibility:hidden; position:absolute; height:128px; z-index:10001; padding: 0px;`;
+              profilePopup.onmouseleave = function(e){
                 profilePopup.style.visibility = "hidden";
+                if (e.relatedTarget.id != 'imgPreview') imgContainer.style.visibility = "hidden";
               }
           let profileImagesDiv = document.createElement('div');
-              profileImagesDiv.style = `overflow:hidden; height:128px; border-radius:5px; border: 1px solid #c7d2dc; padding: 0px; background-color: rgb(255,255,255);`
+              profileImagesDiv.style = `overflow:hidden; height:128px; border-radius:5px; border: 1px solid #c7d2dc; padding: 0px; background-color: rgb(255,255,255);`;
               profilePopup.appendChild(profileImagesDiv);
 
           for (let i=0; i<3; i++){
             var a = document.createElement('a');
             a.className = `item_${i}`;
-            a.style = `display: inline-block !important; width: 128px; height: 128px;`
+            a.style = `display: inline-block !important; width: 128px; height: 128px;`;
             a.target = "_blank";
             profileImagesDiv.appendChild(a);
           }
@@ -1176,6 +1179,10 @@
           $('body').on(previewEventType, 'section._profile-popup a[href*="/artworks/"]', function(e){
             e.preventDefault();
             checkDelay(setHover, this, getOffsetRect(this).top+128+5+'px', true);
+          });
+
+          $('body').on("mouseleave", `.paginated div[aria-haspopup]`, function(e){
+            if (!e.relatedTarget?.closest('._profile-popup')) profilePopup.style.visibility = "hidden";
           });
         }
       }
