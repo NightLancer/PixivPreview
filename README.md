@@ -1,6 +1,6 @@
 # PixivPreview
 
-Script is written for better www.pixiv.net usability.
+Script is written for better www.pixiv.net usability. (![Install](https://github.com/NightLancer/PixivPreview/raw/master/PixivPreview.user.js))
 
 ### General features:
 • Showing enlarged preview of artworks on mouse hovering*.<br>
