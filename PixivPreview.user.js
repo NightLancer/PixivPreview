@@ -3,7 +3,7 @@
 // @namespace       Pixiv
 // @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @author          NightLancerX
-// @version         3.87
+// @version         3.88
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -18,7 +18,7 @@
 // @connect         i-cf.pximg.net
 // @connect         techorus-cdn.com
 // @homepageURL     https://github.com/NightLancer/PixivPreview
-// @supportURL      https://greasyfork.org/uk/users/167506-nightlancerx
+// @supportURL      https://greasyfork.org/users/167506-nightlancerx
 // @downloadURL     https://greasyfork.org/scripts/39387-pixiv-arts-preview-followed-atrists-coloring/code/Pixiv%20Arts%20Preview%20%20Followed%20Atrists%20Coloring.user.js
 // @updateURL       https://greasyfork.org/scripts/39387-pixiv-arts-preview-followed-atrists-coloring/code/Pixiv%20Arts%20Preview%20%20Followed%20Atrists%20Coloring.meta.js
 // @license         MIT
@@ -762,7 +762,7 @@
         let count = 0;
         while (!menuButton && count<5){
           if ([0,1,2,7,8,10,12].includes(PAGETYPE))
-            buttons = document.querySelectorAll('body > div#root > div.charcoal-token > div > div:first-child button')
+            buttons = document.querySelectorAll('body > div#root > div.charcoal-token > div > div:nth-child(2) button')
           else
             buttons = document.querySelectorAll('body > div#js-mount-point-header > div:nth-child(1) button');
           menuButton = buttons[buttons.length - 1]; // last is the menu button
@@ -1127,7 +1127,7 @@
               profilePopup.style = `visibility:hidden; position:absolute; height:128px; z-index:10001; padding: 0px;`;
               profilePopup.onmouseleave = function(e){
                 profilePopup.style.visibility = "hidden";
-                if (e.relatedTarget.id != 'imgPreview') imgContainer.style.visibility = "hidden";
+                if (e.relatedTarget?.id != 'imgPreview') imgContainer.style.visibility = "hidden";
               }
           let profileImagesDiv = document.createElement('div');
               profileImagesDiv.style = `overflow:hidden; height:128px; border-radius:5px; border: 1px solid #c7d2dc; padding: 0px; background-color: rgb(255,255,255);`;
@@ -1337,8 +1337,8 @@
 
       //adjusting preview position considering expected image width
       //---------------------------------------------------------------------------------
-      let l = (![0,1,2,7,10,12,13,14].includes(PAGETYPE)) //more accurate on discovery users and history
-          ?getOffsetRect(thisObj.parentNode.parentNode).left
+      let l = ([4,6,14].includes(PAGETYPE))
+          ?getOffsetRect(thisObj.parentNode.parentNode).left //more accurate on discovery users and history
           :getOffsetRect(thisObj).left;
       let dcw = document.body.clientWidth;
       let previewWidth = PREVIEWSIZE;
