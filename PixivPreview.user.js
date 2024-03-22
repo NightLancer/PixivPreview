@@ -3,7 +3,7 @@
 // @namespace       Pixiv
 // @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @author          NightLancerX
-// @version         3.88
+// @version         3.89
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -129,7 +129,7 @@
         maxRequestTime = 30000,
         bookmarkContainer,
         pageNumber,
-        DELTASCALE = ('mozInnerScreenX' in window)?70:4,
+        DELTASCALE = +navigator.userAgent.match(/(?<=Firefox\/)\d+/)?.[0]<83?70:4,       //older than 83.0 FF uses different scrolling scale //[temporary...]
         previewEventType,
         PAGETYPE = checkPageType(),
         followedCheck = {
@@ -394,7 +394,7 @@
         case 1:
         case 7:
         case 8:
-        case 10: return document.querySelectorAll('li > div');
+        case 10: return [...document.querySelectorAll('li > div')].filter(e => (e.querySelector('a[href*="/artworks/"]')));
 
         case 4:
         case 6:  return document.querySelectorAll('.ui-profile-popup');
@@ -409,6 +409,7 @@
     function getAuthorIdFromContainer(artContainer)
     {
       let authorId = -1;
+      //console.log(artContainer);
 
       if (!artContainer){
         console.error('UNPROCESSED getAuthorIdFromContainer() call!');
@@ -451,7 +452,7 @@
         case 4:  return $('.gtm-illust-recommend-zone')[0]
         case 6:  return $('.ranking-items')[0]
         case 8:  return $('body')[0] //$("section>div>ul")[0]
-        case 10: return $("div[id='root']>div.charcoal-token>div>div:nth-child(2)")[0]
+        case 10: return $("div[id='root']>div.charcoal-token>div>div:nth-child(3)")[0]   //fckng sick of this-_-
         case 12: return $('.gtm-illust-recommend-zone ul')[0]
 
         default: return 0;
