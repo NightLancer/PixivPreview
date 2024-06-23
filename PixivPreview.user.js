@@ -3,7 +3,7 @@
 // @namespace       Pixiv
 // @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @author          NightLancerX
-// @version         3.89
+// @version         3.90
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -447,12 +447,12 @@
       {
         case 0:
         case 2:
-        case 7:  return $('section ul')[0]
+        case 7:  return document.querySelector('div[type="illust"]')?.closest('ul')
         case 1:
         case 4:  return $('.gtm-illust-recommend-zone')[0]
         case 6:  return $('.ranking-items')[0]
         case 8:  return $('body')[0] //$("section>div>ul")[0]
-        case 10: return $("div[id='root']>div.charcoal-token>div>div:nth-child(3)")[0]   //fckng sick of this-_-
+        case 10: return document.querySelector('div[style*=--columns]')   //fckng sick of this-_-
         case 12: return $('.gtm-illust-recommend-zone ul')[0]
 
         default: return 0;
@@ -763,7 +763,7 @@
         let count = 0;
         while (!menuButton && count<5){
           if ([0,1,2,7,8,10,12].includes(PAGETYPE))
-            buttons = document.querySelectorAll('body > div#root > div.charcoal-token > div > div:nth-child(2) button')
+            buttons = document.querySelectorAll('body > div#root > div.charcoal-token button[title]')
           else
             buttons = document.querySelectorAll('body > div#js-mount-point-header > div:nth-child(1) button');
           menuButton = buttons[buttons.length - 1]; // last is the menu button
