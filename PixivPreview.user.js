@@ -3,7 +3,7 @@
 // @namespace       Pixiv
 // @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @author          NightLancerX
-// @version         3.90
+// @version         3.91
 // @match           https://www.pixiv.net/bookmark_new_illust.php*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -1215,8 +1215,8 @@
             e.preventDefault();
             //---------------------------filtering preview card--------------------------
             if (getElementByXpath("//a[text()='View Profile']")){
-              if (this.parentNode.parentNode.querySelector('span'))
-                checkDelay(setMangaHover, this, this.parentNode.parentNode.textContent, getOffsetRect(this).top+112+'px');
+              if (this.closest('a').querySelector('span'))
+                checkDelay(setMangaHover, this, this.closest('a').textContent, getOffsetRect(this).top+112+'px');
               else
                 checkDelay(setHover, this, getOffsetRect(this).top+112+5+'px', true);
             }
@@ -1227,9 +1227,10 @@
             }
             //--------------------------------Normal case--------------------------------
             else{
+              //console.log(this);
               //multiple
-              if (this.parentNode.parentNode.querySelector('span'))
-                checkDelay(setMangaHover, this, this.parentNode.parentNode.textContent.replace(/R-18(G)?/,""));
+              if (this.closest('a').querySelector('span'))
+                checkDelay(setMangaHover, this, this.closest('a').textContent.replace(/R-18(G)?/,""));
               //single
               else checkDelay(setHover, this);
             }
@@ -1251,13 +1252,14 @@
           $('body').on(previewEventType, 'a[href*="/artworks/"]', function(e) //direct div selector works badly with "::before"
           {
             e.preventDefault();
+            //console.log(this);
             //single
             if (this.childNodes.length == 1 && this.childNodes[0].nodeName=="DIV"){
-              checkDelay(setHover, this.firstChild.firstChild);
+              checkDelay(setHover, this.querySelector('img'));
             }
             //multiple
             else if (this.children[1] && this.children[1].className == 'page-count'){
-              checkDelay(setMangaHover, this.firstChild.firstChild, this.children[1].children[1].textContent);
+              checkDelay(setMangaHover, this.querySelector('img'), this.querySelector('.page-count').textContent);
             }
           });
         }
