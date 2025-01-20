@@ -3,8 +3,8 @@
 // @namespace       Pixiv
 // @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @author          NightLancerX
-// @version         3.93
-// @match           https://www.pixiv.net/bookmark_new_illust.php*
+// @version         3.93.1
+// @match           https://www.pixiv.net/bookmark_new_illust*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
 // @match           https://www.pixiv.net/*artworks/*
@@ -857,7 +857,7 @@
         //-------------------------------------------------------------------------------
         pageNumber = pageNumber ?? mangaCount.cloneNode(true);
         pageNumber.className = "pageNumber";
-        pageNumber.style = "position: fixed; right: 5px; bottom: 5px; height: 16px; width: 16px; z-index: 1; display: flex; justify-content: center; align-items: center; flex: 0 0 auto; box-sizing: border-box; font-weight: bold; padding: 0px 6px; background: rgba(0, 0, 0, 0.32) none repeat scroll 0% 0%; border-radius: 16px; font-size: 10px; line-height: 10px; color: rgb(255, 255, 255); opacity: 0%; transition: opacity 1s;";
+        pageNumber.style = "position: fixed; right: 5px; bottom: 5px; height: 16px; min-width: 16px; width: max-content; padding: 0px 4px; z-index: 1; display: flex; justify-content: center; align-items: center; flex: 0 0 auto; box-sizing: border-box; font-weight: bold; background: rgba(0, 0, 0, 0.32) none repeat scroll 0% 0%; border-radius: 16px; font-size: 10px; line-height: 10px; color: rgb(255, 255, 255); opacity: 0%; transition: opacity 1s;";
         document.body.appendChild(pageNumber);
         //-------------------------------------------------------------------------------
         let running = false, urls = [];
@@ -949,13 +949,18 @@
               running = false;
             });
 
-            pageNumber.querySelector('span').textContent = pageCount;
-            pageNumber.style.opacity = "100%";
-            setTimeout(()=>pageNumber.style.opacity = "0%", 1500);
-
             if (pageCount>=maxPageCount){
               console.log('*All pages loaded*');
               [...document.querySelectorAll("nav")].pop().style.opacity = 0.3;
+
+              pageNumber.querySelector('span').textContent = `All pages loaded [${pageCount}]`;
+              pageNumber.style.opacity = "100%";
+              setTimeout(()=>pageNumber.style.opacity = "0%", 3000);
+            }
+            else{
+              pageNumber.querySelector('span').textContent = pageCount;
+              pageNumber.style.opacity = "100%";
+              setTimeout(()=>pageNumber.style.opacity = "0%", 1500);
             }
           } //endif
         } //onscroll
@@ -990,7 +995,7 @@
         if (PAGETYPE===0){
           autoPagination().then(v => {
             if (v === 0){
-              $('body').on('click', 'a[href*="/bookmark_new_illust"]', function(e){
+              $('body').on('mouseup', 'a[href*="/bookmark_new_illust"]', function(e){
                 e.preventDefault();
                 location.href = this.href;
               });
