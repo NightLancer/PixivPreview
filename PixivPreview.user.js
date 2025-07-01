@@ -3,7 +3,7 @@
 // @namespace       Pixiv
 // @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @author          NightLancerX
-// @version         3.93.2
+// @version         3.94
 // @match           https://www.pixiv.net/bookmark_new_illust*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -29,6 +29,8 @@
 // @grant           GM.setValue
 // @grant           GM_getValue
 // @grant           GM.getValue
+// @grant           GM_addStyle
+// @grant           GM.addStyle
 // @require         https://code.jquery.com/jquery-3.3.1.min.js
 // @require         https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/1.3.8/FileSaver.min.js
 // @compatible      firefox >= 74
@@ -124,12 +126,12 @@
         totalHits = 0,
         lastImgId = -1,
         PREVIEWSIZE,
-        siteImgMaxWidth = 184, //2,7,12 [NEW]| quite useless on this pages because of square previews...
+        siteImgMaxWidth = 184, //useless on "new" pages because of square previews [2,7,12,...]
         mangaWidth = 1200,
         maxRequestTime = 30000,
         bookmarkContainer,
         pageNumber,
-        DELTASCALE = +navigator.userAgent.match(/(?<=Firefox\/)\d+/)?.[0]<83?70:4,       //older than 83.0 FF uses different scrolling scale //[temporary...]
+        DELTASCALE = 4,
         previewEventType,
         PAGETYPE = checkPageType(),
         followedCheck = {
@@ -157,6 +159,7 @@
     //-----------------------------------------------------------------------------------
     const GM_setV = (typeof(GM_setValue)==='function')?GM_setValue:GM.setValue;
     const GM_getV = (typeof(GM_getValue)==='function')?GM_getValue:GM.getValue;
+    const GM_addS = (typeof(GM_addStyle)==='function')?GM_addStyle:GM.addStyle;
     //===================================================================================
     //************************************PageType***************************************
     //===================================================================================
@@ -710,26 +713,49 @@
       //---------------------------------Settings menu-----------------------------------
       let menu = document.createElement("div");
           menu.id = "menu";
-          menu.style = `
-                        position: absolute;
-                        display: block;
-                        visibility: hidden;
-                        top: 60px;
-                        left: 10px;
-                        padding: 5px 5px 5px 20px;
-                        border: 2px solid deepskyblue;
-                        border-radius: 15px;
-                        background: white;
-                        font-size: 14px;
-                        line-height: 17px;
-                        color: rgb(0, 0, 0);
-                        border-radius: 15px;
-                        word-wrap: normal;
-          `;
+      GM_addS(`
+      #menu {
+        position: absolute;
+        display: block;
+        visibility: hidden;
+        top: 60px;
+        left: 10px;
+        padding: 10px 15px;
+        border: 2px solid deepskyblue;
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(8px);
+        font-size: 14px;
+        line-height: 20px;
+        color: #000;
+        border-radius: 15px;
+        box-shadow: 0 0 10px rgba(0, 191, 255, 0.4);
+        z-index: 999;
+      }
+      #menu li {
+        list-style: none;
+        font: inherit;
+        margin-bottom: 4px;
+      }
+      #menu li:last-child {
+        margin-bottom: 0;
+      }
+      #menu button {
+        width: 50px;
+        padding: 4px 6px;
+        margin-right: 10px;
+        color: black;
+        background-color: rgba(255, 255, 255, 0.85);
+        border: 1px solid #aaa;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: background-color 0.2s ease;
+      }
+      `);
 
       //filling menu fields with values and property names
       for (let i = 0; i < propList.length; i++){
-        menu.innerHTML += `<li style = 'font:inherit;'><button style = 'width: 40px; padding: 0px; margin-right: 5px;'>${propList[i].array[propList[i].paramIndex]}</button>${propList[i].name}</li>`
+        menu.innerHTML += `<li><button>${propList[i].array[propList[i].paramIndex]}</button>${propList[i].name}</li>`
       }
 
       document.body.appendChild(menu);
@@ -758,15 +784,10 @@
       async function initMenu(){
         if ([-1,14].includes(PAGETYPE)) return;
 
-        let buttons, menuButton; //put to global scope if (menuButton) is needed elsewhere
-
+        let menuButton; //put to global scope if (menuButton) is needed elsewhere
         let count = 0;
         while (!menuButton && count<5){
-          if ([0,1,2,7,8,10,12].includes(PAGETYPE))
-            buttons = document.querySelectorAll('body > div#root > div.charcoal-token button[title]')
-          else
-            buttons = document.querySelectorAll('body > div#js-mount-point-header > div:nth-child(1) button');
-          menuButton = buttons[buttons.length - 1]; // last is the menu button
+          menuButton = document.querySelector('button:has(pixiv-icon[name="24/Services"])');
           console.log(menuButton);
           await sleep(1000);
           ++count;

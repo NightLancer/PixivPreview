@@ -1,13 +1,16 @@
 // ==UserScript==
-// @name            Image Saving with Ctrl+Click/Shift [GLOBAL]
+// @name            Image Download with Ctrl+Click/Shift/MMB [GLOBAL]
 // @namespace       imageSaving
-// @description     Ctrl+Click/Shift image saving for most single-image pages
+// @description     Image downloading for most single-image pages, with Ctrl+Click, Shift or MMB-Click combinations
 // @author          NightLancerX
 // @match           *://*/*.jpg*
 // @match           *://*/*.png*
-// @version         2.1
+// @match           *://*/*.jpeg*
+// @match           *://*/*.gif*
+// @match           *://*/*.webp*
+// @match           https://pbs.twimg.com/media/*
+// @version         2.5
 // @homepageURL     https://github.com/NightLancer/PixivPreview
-// @downloadURL     https://github.com/NightLancer/PixivPreview/raw/master/SaveImageWithCtrlClick.user.js
 // @license         MIT License
 // @grant           none
 // @run-at          document-end
@@ -15,33 +18,43 @@
 
 (function() {
     'use strict';
-    
+
     let img = document.querySelectorAll('img')[0];
     let imgSrc = img.src;
-    
-    function main()
+
+    let main = function()
     {
-        let anchor = document.createElement('a');
+        let anchor = document.createElement('a'), name, ext;
+        name = (imgSrc.indexOf('?')>-1)? imgSrc.substring(imgSrc.lastIndexOf("/")+1, imgSrc.indexOf('?')): imgSrc.substring(imgSrc.lastIndexOf("/")+1);
+        try {name = decodeURI(name);} catch(e){}
+        ext = imgSrc.match(/(?<=format=)[a-z]+/)?.[0];
+        if (ext) name += '.' + ext;
         anchor.href = img.src;
         anchor.target = '_self';
-        anchor.download = (imgSrc.indexOf('?')>-1)? imgSrc.substring(imgSrc.lastIndexOf("/")+1, imgSrc.indexOf('?')): imgSrc.substring(imgSrc.lastIndexOf("/")+1);
+        anchor.download = name;
         document.body.appendChild(anchor);
         anchor.click();
+        main = ()=>{};
     };
-    
-    img.onclick = function(e)
-    {
-        if (e.ctrlKey) //save with Ctrl+Click
-        {
+
+    //save with Ctrl+Click
+    img.onclick = function(e){
+        if (e.ctrlKey){
             e.preventDefault();
-	    main();
-        };           
+            main();
+        }
     };
-    
-    document.onkeyup = function(e)
-    {
-        if (e.keyCode == 16) //save with shift
-        {
+
+    //save with Shift
+    document.onkeyup = function(e){
+        if (e.keyCode == 16){
+            main();
+        }
+    };
+
+    //save with MMB-click
+    img.onmouseup = function(e){
+        if (e.button == 1){
             main();
         }
     };
