@@ -3,7 +3,7 @@
 // @namespace       Pixiv
 // @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @author          NightLancerX
-// @version         3.94
+// @version         4.00
 // @match           https://www.pixiv.net/bookmark_new_illust*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -626,6 +626,9 @@
       load(){
         this.ids        = localStorage.getObj('viewed_illust_ids') || GM_getV("viewed_illust_ids") || localStorage.getObj('viewed_illust_ids_' + USER_ID)?.data || [];
         this.timestamps = localStorage.getObj('viewed_illust_timestamps') || GM_getV("viewed_illust_timestamps") || localStorage.getObj('viewed_illust_timestamp_' + USER_ID)?.data || {};
+        if (!this.ids || !this.timestamps){
+          console.error("Missing viewed_illust_ids or viewed_illust_timestamps in localStorage");
+        }
       },
 
       save(){
@@ -663,33 +666,152 @@
         console.log(+illust_id, "has been deleted from history");
       },
 
-      override(){
+      async override() {
         this.load();
-        let date = Date.now()+365*24*60*60*1000;
-        localStorage.setObj('viewed_illust_ids_' + USER_ID, {data:this.ids, expires:date});
-        localStorage.setObj('viewed_illust_timestamp_' + USER_ID, {data:this.timestamps, expires:date});
-        console.info(`History overridden [%c${this.ids.length}%c records]`, 'color:lime;', 'color:;');
+        localStorage.removeItem('viewed_illust_ids_' + USER_ID);
+        localStorage.removeItem('viewed_illust_timestamp_' + USER_ID);
+        this.save(); //force-reset history to use non-site variables only, saving 50% of space and not dealing with any arbitrary cases
+        console.log(`History started loading [%c${this.ids.length}%c records]`, 'color:lime;', 'color:;');
 
-        let count = 0, t = setInterval(()=>{
-          document.querySelectorAll('._history-item.trial').forEach(e => {
-            e.querySelector('img').style.opacity = 1;
-            e.classList.remove("trial");
-          });
-          ++count;
-          if (count>10) clearInterval(t);
-        }, 1000);
+        GM_addS(`
+          .history-grid { display: flex; flex-wrap: wrap; gap: 0.5em; margin-top: 1em; }
+          .history-grid ._history-item { display: block; width: 240px; height: auto; margin-bottom: 0; box-sizing: border-box; text-align: center; }
+          .history-grid img { width: 100%; height: auto; max-height: 320px; object-fit: cover; display: block; margin: 0 auto; }
+          ._history-items h1.date { width: 100%; margin: 1em 0 0.25em 0; padding: 0.25em 0; flex-basis: 100%; }
+        `);
+
+        let container = document.querySelector("._history-items");
+        if (!container) {
+          console.error("Container ._history-items not found"); //if happens add small wait
+          return;
+        }
+        container.innerHTML = "";
+
+        let ids = this.ids.map(String);
+        let timestamps = this.timestamps;
+
+        // Sort ids by timestamp DESCENDING
+        ids.sort((a, b) => {
+          let ta = parseFloat(timestamps[a] ?? 0);
+          let tb = parseFloat(timestamps[b] ?? 0);
+          return tb - ta;
+        });
+
+        const chunkSize = 100;
+        const chunkQueue = [];
+
+        for (let i = 0; i < ids.length; i += chunkSize) {
+          chunkQueue.push(ids.slice(i, i + chunkSize));
+        }
+
+        let dateMap = {};
+        let deleted = [];
+        let totalImages = 0;
+
+        const processChunk = async (chunk) => {
+          const url = `https://www.pixiv.net/ajax/illust/detail?illust_ids=${encodeURIComponent(chunk.join(','))}`;
+          try {
+            const res = await fetch(url, { credentials: "include" });
+            const json = await res.json();
+            if (!json.body) return;
+
+            container.parentNode?.removeAttribute('hidden');
+            container.parentNode.classList?.remove('_hidden');
+
+            for (let id of chunk) {
+              const data = json.body[id];
+              const rawTime = timestamps[id];
+              const dateTimestamp = rawTime !== undefined ? Math.floor(parseFloat(rawTime)) : null;
+              const thumb = data?.url?.["240mw"] || null;
+              const date = dateTimestamp
+              ? new Date(dateTimestamp * 1000).toISOString().split("T")[0]
+              : "0000-00-00";
+
+              if (!thumb) {
+                deleted.push(id);
+                continue;
+              }
+
+              if (!dateMap[date]) dateMap[date] = [];
+              dateMap[date].push({ id, thumb });
+            }
+
+          } catch (e) {
+            console.error("Fetch error:", e);
+          }
+        };
+
+        const renderEntries = () => {
+          let sortedDates = Object.keys(dateMap).sort((a, b) => b.localeCompare(a)); // newest first
+          for (let date of sortedDates) {
+            const entries = dateMap[date];
+            if (!entries || !entries.length) continue;
+
+            const h1 = document.createElement("h1");
+            h1.className = "date";
+            h1.innerHTML = `${date}<span class="count">${entries.length}</span>`;
+            container.appendChild(h1);
+
+            const wrapper = document.createElement("div");
+            wrapper.className = "history-grid";
+
+            for (let { id, thumb } of entries) {
+              const link = document.createElement("a");
+              link.className = "_history-item";
+              link.href = `/artworks/${id}`;
+              link.target = "_blank";
+              link.rel = "noreferrer";
+
+              const box = document.createElement("div");
+              const img = document.createElement("img");
+              img.src = thumb;
+              box.appendChild(img);
+              link.appendChild(box);
+              wrapper.appendChild(link);
+              totalImages++;
+            }
+
+            container.appendChild(h1);
+            container.appendChild(wrapper);
+
+            delete dateMap[date]; // prevent duplicate rendering
+          }
+          console.log(`History records loaded: %c${totalImages} %c| (missing: ${deleted.length})`, 'color:lime;', 'color:;');
+        };
+
+        let loading = false;
+        const loadNextChunk = async () => {
+          if (loading || chunkQueue.length === 0) return;
+          loading = true;
+          const nextChunk = chunkQueue.shift();
+          await processChunk(nextChunk);
+          renderEntries();
+          loading = false;
+
+          if (chunkQueue.length === 0) {
+            window.removeEventListener("scroll", onScroll);
+            console.log("✅ All history loaded.");
+          }
+        };
+
+        const onScroll = () => {
+          const nearBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 300;
+          if (nearBottom) loadNextChunk();
+        };
+
+        await loadNextChunk(); // load first chunk
+        window.addEventListener("scroll", onScroll);
       },
 
       export(){
         this.load(); //TODO:check history records integrity before export
         GM_setV("viewed_illust_ids", this.ids);
         GM_setV("viewed_illust_timestamps", this.timestamps);
-        console.info(`History was exported to script manager storage [%c${this.ids.length}%c records]`, 'color:lime;', 'color:;');
+        console.log(`History was exported to script manager storage [%c${this.ids.length}%c records]`, 'color:lime;', 'color:;');
       },
 
       check_space(){
-        let spaceConsumed = +((new Blob([Object.values(localStorage), Object.keys(localStorage),
-            localStorage.viewed_illust_ids, localStorage.viewed_illust_timestamps]).size)/(5000*1024)).toFixed(3); //duplicating records not the best solution... but simplest [solve this later if needed]
+        let spaceConsumed = +((new Blob([Object.values(localStorage), Object.keys(localStorage)]).size)/(5000*1024)).toFixed(3);
         if (spaceConsumed > 0.95){
           this.add_record = this.override = ()=>{};
           return Promise.reject(`Too much space consumed [${spaceConsumed*100}%] — history is disabled`); //~100.000 entries
@@ -1113,6 +1235,7 @@
           if (trial){
             getUserId().then(() => illust_history.override());
             trial.textContent = "Extended Version";
+            document.querySelector('.no-item')?.remove();
           }
 
           //export with Shift+E
