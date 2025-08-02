@@ -3,7 +3,7 @@
 // @namespace       Pixiv
 // @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @author          NightLancerX
-// @version         4.00
+// @version         4.05
 // @match           https://www.pixiv.net/bookmark_new_illust*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -678,6 +678,8 @@
           .history-grid ._history-item { display: block; width: 240px; height: auto; margin-bottom: 0; box-sizing: border-box; text-align: center; }
           .history-grid img { width: 100%; height: auto; max-height: 320px; object-fit: cover; display: block; margin: 0 auto; }
           ._history-items h1.date { width: 100%; margin: 1em 0 0.25em 0; padding: 0.25em 0; flex-basis: 100%; }
+          .page-count { position: absolute; right: 0px; top: 0px; z-index: 1; display: flex; justify-content: center; align-items: center; height: 20px; min-width: 20px; font-weight: bold; background: rgba(0, 0, 0, 0.32); border-radius: 10px; font-size: 10px; line-height: 20px; color: #fff; }
+          .page-count span { font-size: 10px; line-height: 20px; color: #fff; font-family: inherit; font-weight: bold; }
         `);
 
         let container = document.querySelector("._history-items");
@@ -720,12 +722,11 @@
 
             for (let id of chunk) {
               const data = json.body[id];
-              const rawTime = timestamps[id];
-              const dateTimestamp = rawTime !== undefined ? Math.floor(parseFloat(rawTime)) : null;
               const thumb = data?.url?.["240mw"] || null;
-              const date = dateTimestamp
-              ? new Date(dateTimestamp * 1000).toISOString().split("T")[0]
-              : "0000-00-00";
+              const pageCount = +data?.illust_page_count || 1;
+              const date = timestamps[id] //site used inprecise dates for 'trial', so they should be equated to same format
+                ? new Date(Math.floor(parseFloat(timestamps[id])) * 1000).toISOString().split("T")[0]
+                : "0000-00-00";
 
               if (!thumb) {
                 deleted.push(id);
@@ -733,7 +734,7 @@
               }
 
               if (!dateMap[date]) dateMap[date] = [];
-              dateMap[date].push({ id, thumb });
+              dateMap[date].push({id, thumb, pageCount});
             }
 
           } catch (e) {
@@ -755,7 +756,7 @@
             const wrapper = document.createElement("div");
             wrapper.className = "history-grid";
 
-            for (let { id, thumb } of entries) {
+            for (let { id, thumb, pageCount } of entries) {
               const link = document.createElement("a");
               link.className = "_history-item";
               link.href = `/artworks/${id}`;
@@ -766,6 +767,12 @@
               const img = document.createElement("img");
               img.src = thumb;
               box.appendChild(img);
+              if (pageCount > 1) {
+                const counter = document.createElement("div");
+                counter.className = "page-count";
+                counter.innerHTML = `<span>${pageCount}</span>`;
+                box.appendChild(counter);
+              }
               link.appendChild(box);
               wrapper.appendChild(link);
               totalImages++;
@@ -1426,7 +1433,10 @@
         {
           $('body').on(previewEventType, '._history-item', function(e){
             e.preventDefault();
-            checkDelay(setHover, this.querySelector('img'), getOffsetRect(this).top + 'px');
+            if (this.querySelector('.page-count'))
+              checkDelay(setMangaHover, this.querySelector('img'), this.querySelector('.page-count').textContent, getOffsetRect(this).top + 'px')
+            else
+              checkDelay(setHover, this.querySelector('img'), getOffsetRect(this).top + 'px');
           });
         }
       }
@@ -1681,7 +1691,7 @@
         //----------------------------Single LMB-click-----------------------------------
         if (event.shiftKey){
           illust_history.delete_record(illustId); //Shift + LMB-click -> delete record from history
-          document.querySelector(`[style*="/${illustId}_"]`).style.opacity = ".25";
+          document.querySelector(`[href*="/${illustId}"]`)?.style.setProperty('opacity', '0.25');
         }
         else if (!event.altKey) //need to be this way. Don't change.
         {
