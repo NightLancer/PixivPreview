@@ -3,7 +3,7 @@
 // @namespace       Pixiv
 // @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @author          NightLancerX
-// @version         4.05
+// @version         4.06
 // @match           https://www.pixiv.net/bookmark_new_illust*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -231,6 +231,26 @@
       return arr;
     }
     //-----------------------------------------------------------------------------------
+    async function limitedParallel(urls, limit = 10){
+      const results = [];
+      let i = 0;
+
+      async function next() {
+        if (i >= urls.length) return;
+        const idx = i++;
+        try {
+          results[idx] = await request(urls[idx]);
+        } catch (e) {
+          console.error("Fetch failed:", urls[idx], e);
+          results[idx] = null;
+        }
+        return next();
+      }
+
+      await Promise.all(Array(limit).fill().map(next));
+      return results;
+    }
+    //-----------------------------------------------------------------------------------
     async function getUserId(){
       USER_ID = USER_ID
       || followedCheck && followedCheck?.id
@@ -272,13 +292,13 @@
         let args = [];
         let len = response0.map(r => r.body.total);
 
-        args =      makeArgs(BOOKMARK_URL+'&rest=show', len[0]);  //public
-        args.concat(makeArgs(BOOKMARK_URL+'&rest=hide', len[1])); //private
+        args =    makeArgs(BOOKMARK_URL+'&rest=show', len[0])   //public
+          .concat(makeArgs(BOOKMARK_URL+'&rest=hide', len[1])); //private
 
         //100 parallel requests in case of 10K users. TODO: find maximum amount and part requests
         let responseArray = [];
         try{
-          responseArray = await Promise.all(args.map(e => request(e)));
+          responseArray = await limitedParallel(args, 10); //limiting concurrent followed requests to 10 (effective 1000 follows at time)
         }
         catch(error){
           followedCheckError(error);
