@@ -3,7 +3,7 @@
 // @namespace       Pixiv
 // @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @author          NightLancerX
-// @version         4.06
+// @version         4.10
 // @match           https://www.pixiv.net/bookmark_new_illust*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -148,7 +148,7 @@
           }
         };
 
-    var timerId, tInt, menuTimer;
+    var timerId, tInt, menuTimer, timerIds = [];
     //-----------------------------------------------------------------------------------
     Storage.prototype.setObj = function(key, obj){
       return this.setItem(key, JSON.stringify(obj))
@@ -295,7 +295,6 @@
         args =    makeArgs(BOOKMARK_URL+'&rest=show', len[0])   //public
           .concat(makeArgs(BOOKMARK_URL+'&rest=hide', len[1])); //private
 
-        //100 parallel requests in case of 10K users. TODO: find maximum amount and part requests
         let responseArray = [];
         try{
           responseArray = await limitedParallel(args, 10); //limiting concurrent followed requests to 10 (effective 1000 follows at time)
@@ -698,8 +697,8 @@
           .history-grid ._history-item { display: block; width: 240px; height: auto; margin-bottom: 0; box-sizing: border-box; text-align: center; }
           .history-grid img { width: 100%; height: auto; max-height: 320px; object-fit: cover; display: block; margin: 0 auto; }
           ._history-items h1.date { width: 100%; margin: 1em 0 0.25em 0; padding: 0.25em 0; flex-basis: 100%; }
-          .page-count { position: absolute; right: 0px; top: 0px; z-index: 1; display: flex; justify-content: center; align-items: center; height: 20px; min-width: 20px; font-weight: bold; background: rgba(0, 0, 0, 0.32); border-radius: 10px; font-size: 10px; line-height: 20px; color: #fff; }
-          .page-count span { font-size: 10px; line-height: 20px; color: #fff; font-family: inherit; font-weight: bold; }
+          .page-count { position: absolute; right: 1px; top: 1px; z-index: 1; display: flex; justify-content: center; align-items: center; min-width: 20px; font-weight: bold; background: rgba(0, 0, 0, 0.32); border-radius: 10px; font-size: 10px; line-height: 20px; color: #fff; }
+          .page-count span { font-size: 10px; line-height: 20px; color: #fff; font-family: inherit; font-weight: bold; margin-top: -1px;}
         `);
 
         let container = document.querySelector("._history-items");
@@ -831,7 +830,10 @@
       },
 
       export(){
-        this.load(); //TODO:check history records integrity before export
+        this.load();
+        if (this.ids.length !== Object.keys(this.timestamps).length){
+          console.log(`!!! Length mismatch: ids = ${this.ids.length}, timestamps = ${Object.keys(this.timestamps).length}`);
+        } //missing dates being discarded now, so not really important
         GM_setV("viewed_illust_ids", this.ids);
         GM_setV("viewed_illust_timestamps", this.timestamps);
         console.log(`History was exported to script manager storage [%c${this.ids.length}%c records]`, 'color:lime;', 'color:;');
@@ -1442,10 +1444,13 @@
         //----------------------------------DISCOVERY[USERS]----------------------------- //13
         else if (PAGETYPE === 13)
         {
-          $('body').on(previewEventType, 'a[href*="/artworks/"] img', function(e){
+          $('body').on(previewEventType, 'a[href*="/artworks/"]:has(img)', function(e){
             e.preventDefault();
-            if      (this.childNodes.length == 0)  checkDelay(setHover, this); //single art
-            else if (this.childNodes.length == 1)  checkDelay(setMangaHover, this, this.firstChild.textContent); //manga
+            let count = +[...this.querySelectorAll('span')].filter(el => el.textContent>1)[0]?.textContent;
+            if (count > 1)
+              checkDelay(setMangaHover, this.querySelector('img'), count); //manga
+            else
+              checkDelay(setHover, this.querySelector('img')); //single art
           });
         }
         //-------------------------------------History----------------------------------- //14
@@ -1510,6 +1515,8 @@
     function setHover(thisObj, top, profileCard)
     {
       clearInterval(tInt);
+      timerIds.forEach(id => clearTimeout(id));
+      timerIds.length = 0;
       imgContainer.style.visibility = 'hidden';
       mangaOuterContainer.style.visibility = 'hidden';
       hoverImg.src=''; //just in case
@@ -1586,15 +1593,20 @@
       imgsArrInit(thisObj, +count);
     }
     //-----------------------------------------------------------------------------------
-    function imgsArrInit(thisObj, count)
+    function imgsArrInit(thisObj, count, batch = 3)
     {
       let primaryLink = parseImgUrl(thisObj);
       let currentImgId = getImgId(primaryLink);
       //---------------------------------------------------------------------------------
+      function loadImg(i) {
+        imgsArr[i].src = primaryLink.replace('p0', 'p'+i);
+      }
+      //---------------------------------------------------------------------------------
       if (currentImgId != lastImgId)
       {
-        for(let j=0; j<imgsArr.length; j++)
-        {
+        timerIds.forEach(id => clearTimeout(id));
+        timerIds.length = 0;
+        for(let j=0; j<imgsArr.length; j++){
           imgsArr[j].src = '';
         }
 
@@ -1607,7 +1619,12 @@
             imgsArr[i] = document.createElement('img');
             mangaContainer.appendChild(imgsArr[i]);
           }
-          imgsArr[i].src = primaryLink.replace('p0','p'+i);
+          if (i <= batch) //priority-load {batch} arts
+            loadImg(i)
+          else{
+            const timer = setTimeout(loadImg, batch*1500 + i*300, i);
+            timerIds.push(timer); //if preview was hovered accidentally there's time to cancel following requests [without await/promise/fetch]
+          }
         }
       }
       //---------------------------------------------------------------------------------
