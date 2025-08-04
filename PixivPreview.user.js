@@ -3,7 +3,7 @@
 // @namespace       Pixiv
 // @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @author          NightLancerX
-// @version         4.10
+// @version         4.11
 // @match           https://www.pixiv.net/bookmark_new_illust*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -1013,8 +1013,8 @@
         let rest = location.href.match(/rest=hide/)?.[0] && "hide" || "show";
         //let tags = location.href.match(/(?<=illustrations\/|manga\/|artworks\/)[^?]+/) || '';
         //-------------------------------------------------------------------------------
-        let x_csrf_token; //for bookmarks
-        request('/en/', 'document').then(response => x_csrf_token = response.documentElement.innerHTML.match(/(?<=token&quot;:&quot;)[\dA-z]+/));
+        let x_csrf_token = document.documentElement.innerHTML.match(/(?<=token\W+)\w+/)[0]; //for bookmarks
+        if (!x_csrf_token) request('/en/', 'document').then(response => x_csrf_token = response.documentElement.innerHTML.match(/(?<=token\W+)\w+/));
         //-------------------------------------------------------------------------------
         let artsSection = await waitForArtSectionContainers();
         await sleep(2000);
@@ -1137,20 +1137,38 @@
           } //endif
         } //onscroll
         //-------------------------------------------------------------------------------
-        $(artsSection).on('click', 'button', function(event){
+        $(artsSection).on('click', 'button', async function(event){
           event.preventDefault();
-          let illust_id = searchNearestNode(this,'[href*="/artworks/"]').href.match(/\d+/)[0];
+          event.stopPropagation();
 
-          fetch('/ajax/illusts/bookmarks/add', {
-            method: 'POST',
-            headers: {
-              'Accept': 'application/json',
+          let illust_id = searchNearestNode(this,'[href*="/artworks/"]').href.match(/\d+/)[0];
+          let r = await request('https://www.pixiv.net/ajax/illust/'+illust_id);
+          let bookmark_id = +r.body.bookmarkData?.id; //already bookmarked -> click means unbookmark
+          let b_mode, headers, body, style;
+
+          if (bookmark_id > 0){
+            b_mode = 'delete';
+            headers = {
+              'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8',
+              'x-csrf-token': x_csrf_token};
+            body = `bookmark_id=${encodeURIComponent(bookmark_id)}`;
+            style = `fill: rgb(34, 34, 34);`;
+          }
+          else{
+            b_mode = 'add';
+            headers = {
               'Content-Type': 'application/json; charset=utf-8',
-              'x-csrf-token': x_csrf_token
-            },
-            body: JSON.stringify({"illust_id":illust_id,"restrict":0,"comment":"","tags":[]})
+              'x-csrf-token': x_csrf_token};
+            body = JSON.stringify({"illust_id":illust_id, "restrict":0, "comment":"", "tags":[]});
+            style = `fill: rgb(255, 64, 96);`;
+          }
+
+          fetch('/ajax/illusts/bookmarks/'+b_mode, {
+            method: 'POST',
+            headers: headers,
+            body: body
           })
-          .then(() => this.querySelectorAll('path:not(:only-child)').forEach(e => e.setAttribute("style", "fill: rgb(255, 64, 96);")))
+          .then(() => this.querySelectorAll('path:not(:only-child)').forEach(e => e.setAttribute("style", style)))
           .catch(err => console.log(err));
         });
         //-------------------------------------------------------------------------------
