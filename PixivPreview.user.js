@@ -3,7 +3,7 @@
 // @namespace       Pixiv
 // @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @author          NightLancerX
-// @version         4.11
+// @version         4.12
 // @match           https://www.pixiv.net/bookmark_new_illust*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -1412,9 +1412,9 @@
             //---------------------------filtering preview card--------------------------
             if (getElementByXpath("//a[text()='View Profile']")){
               if (this.closest('a').querySelector('span'))
-                checkDelay(setMangaHover, this, this.closest('a').textContent, getOffsetRect(this).top+112+'px');
+                checkDelay(setMangaHover, this, this.closest('a').textContent, "auto");
               else
-                checkDelay(setHover, this, getOffsetRect(this).top+112+5+'px', true);
+                checkDelay(setHover, this, "auto", true);
             }
             //-------------------------filtering recommended users-----------------------
             else if (getElementByXpath("//div[text()='Recommended users']")){
@@ -1540,7 +1540,7 @@
       hoverImg.src=''; //just in case
 
       hoverImg.src = parseImgUrl(thisObj);
-      imgContainer.style.top = top || getOffsetRect(thisObj.parentNode.parentNode).top+'px';
+      imgContainer.style.top = calcPreviewTop(thisObj, top);
 
       //adjusting preview position considering expected image width
       //---------------------------------------------------------------------------------
@@ -1599,12 +1599,18 @@
       imgContainer.style.visibility = 'visible';
     }
     //-----------------------------------------------------------------------------------
+    function calcPreviewTop(thisObj, top, extraHeight = 0){
+      if (top === "auto" && PREVIEWSIZE>=1200) return document.documentElement.scrollTop + (window.innerHeight - (PREVIEWSIZE + extraHeight)) / 2 + "px";
+      if (top) return top;
+      return getOffsetRect(thisObj.parentNode.parentNode).top + "px";
+    }
+    //-----------------------------------------------------------------------------------
     function setMangaHover(thisObj, count, top)
     {
       clearInterval(tInt);
       imgContainer.style.visibility = 'hidden'; //just in case
 
-      mangaOuterContainer.style.top = top || getOffsetRect(thisObj.parentNode.parentNode).top+'px';
+      mangaOuterContainer.style.top = calcPreviewTop(thisObj, top, 27); //scrollbar (+borders?..)
 
       checkBookmark(thisObj, mangaOuterContainer);
 
