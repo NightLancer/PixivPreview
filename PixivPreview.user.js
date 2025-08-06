@@ -3,7 +3,7 @@
 // @namespace       Pixiv
 // @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @author          NightLancerX
-// @version         4.12
+// @version         4.15
 // @match           https://www.pixiv.net/bookmark_new_illust*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -33,8 +33,8 @@
 // @grant           GM.addStyle
 // @require         https://code.jquery.com/jquery-3.3.1.min.js
 // @require         https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/1.3.8/FileSaver.min.js
-// @compatible      firefox >= 74
-// @compatible      chrome >= 80
+// @compatible      firefox >= 121
+// @compatible      chrome >= 105
 // @noframes
 // ==/UserScript==
 //=======================================================================================
@@ -861,6 +861,11 @@
       mangaContainer.style.maxWidth = mangaWidth+'px';
       document.body.appendChild(imgContainer);
       document.body.appendChild(mangaOuterContainer);
+      //--------------------------------------CSS----------------------------------------
+      GM_addS(`
+        .page-count { position: absolute; right: 1px; top: 1px; z-index: 1; display: flex; justify-content: center; align-items: center; min-width: 20px; font-weight: bold; background: rgba(0, 0, 0, 0.32); border-radius: 10px; font-size: 10px; line-height: 20px; color: #fff; }
+        .page-count span { font-size: 10px; line-height: 20px; color: #fff; font-family: inherit; font-weight: bold; margin-top: -1px;}
+      `);
       //---------------------------------Settings menu-----------------------------------
       let menu = document.createElement("div");
           menu.id = "menu";
@@ -1020,9 +1025,8 @@
         await sleep(2000);
         let art = $(artsSection.querySelector('a[href*="artworks"]')).parents('li')[0].cloneNode(true);
         let mangaCount = document.createElement('div');
-            mangaCount.style = "position: absolute; right: 0px; top: 0px; z-index: 1; display: flex; justify-content: center; align-items: center; flex: 0 0 auto; box-sizing: border-box; height: 20px; min-width: 20px; font-weight: bold; padding: 0px 6px; background: rgba(0, 0, 0, 0.32) none repeat scroll 0% 0%; border-radius: 10px; font-size: 10px; line-height: 10px; color: rgb(255, 255, 255);";
-            mangaCount.appendChild(document.createElement('span'));
-            mangaCount.querySelector('span').style = "font-size: 10px; line-height: 10px; color: rgb(255, 255, 255); font-family: inherit; font-weight: bold;";
+            mangaCount.className = "page-count";
+            mangaCount.innerHTML = `<span></span>`;
         if (!art.querySelector('span')) art.querySelector('[href]').appendChild(mangaCount);
         art.querySelectorAll('img').forEach(el => el.src='');
         art.classList.add("paginated");
@@ -1319,22 +1323,30 @@
         if ([0,7].includes(PAGETYPE) && currentSettings['ENABLE_AUTO_PAGINATION']) //patch for profile preview with pagination
         {
           //creating profile card(for last 3 arts)
+          GM_addS(`
+            ._profile-popup {visibility: hidden; position: absolute; height: 128px; z-index: 999; padding: 0;}
+            ._profile-images-container {overflow: hidden; height: 128px; border-radius: 5px; border: 1px solid #c7d2dc; padding: 0; background: #fff;}
+            ._profile-images-container > a {display: inline-block !important; width: 128px; height: 128px; position: relative;}
+            .page-count:has(span:empty) {visibility: hidden;}
+          `);
           let profilePopup = document.createElement('section');
               profilePopup.className = '_profile-popup';
-              profilePopup.style = `visibility:hidden; position:absolute; height:128px; z-index:10001; padding: 0px;`;
               profilePopup.onmouseleave = function(e){
                 profilePopup.style.visibility = "hidden";
                 if (e.relatedTarget?.id != 'imgPreview') imgContainer.style.visibility = "hidden";
               }
           let profileImagesDiv = document.createElement('div');
-              profileImagesDiv.style = `overflow:hidden; height:128px; border-radius:5px; border: 1px solid #c7d2dc; padding: 0px; background-color: rgb(255,255,255);`;
+              profileImagesDiv.className = '_profile-images-container';
               profilePopup.appendChild(profileImagesDiv);
 
           for (let i=0; i<3; i++){
-            var a = document.createElement('a');
-            a.className = `item_${i}`;
-            a.style = `display: inline-block !important; width: 128px; height: 128px;`;
-            a.target = "_blank";
+            let a = document.createElement('a');
+                a.className = `item_${i}`;
+                a.target = "_blank";
+            let mangaCount = document.createElement('div');
+                mangaCount.className = "page-count";
+                mangaCount.innerHTML = `<span></span>`;
+            a.appendChild(mangaCount);
             profileImagesDiv.appendChild(a);
           }
           document.body.appendChild(profilePopup);
@@ -1351,6 +1363,9 @@
               profilePopup.style.visibility = "visible";
               return;
             }
+            else{
+              profilePopup.querySelectorAll('span').forEach(s => s.textContent = '');
+            }
             clearTimeout(profileCard_timeout); //cancelling previous event
             profilePopup.firstChild.childNodes.forEach(el => el.style.backgroundImage = '');
 
@@ -1366,8 +1381,10 @@
 
             fetch(`https://www.pixiv.net/rpc/get_profile.php?user_ids=${user_id}&illust_num=3&novel_num=0`).then(r => r.json()).then(response => {
               response.body[0].illusts.forEach((el,i) => {
-                profilePopup.querySelector(`a.item_${i}`).style.backgroundImage = `url(${el.url["128x128"]})`;
-                profilePopup.querySelector(`a.item_${i}`).href = `/artworks/${el.illust_id}`;
+                const item = profilePopup.querySelector(`a.item_${i}`);
+                item.style.backgroundImage = `url(${el.url["128x128"]})`;
+                item.href = `/artworks/${el.illust_id}`;
+                item.querySelector('.page-count span').textContent = el.illust_page_count > 1 ? el.illust_page_count : '';
               })
             });
             previous_id = user_id;
@@ -1375,7 +1392,10 @@
           //actual art preview
           $('body').on(previewEventType, 'section._profile-popup a[href*="/artworks/"]', function(e){
             e.preventDefault();
-            checkDelay(setHover, this, getOffsetRect(this).top+128+5+'px', true);
+            if (this.querySelector('span'))
+              checkDelay(setMangaHover, this, this.textContent, "auto");
+            else
+              checkDelay(setHover, this, getOffsetRect(this).top+128+5+'px', true);
           });
 
           $('body').on("mouseleave", `.paginated div[aria-haspopup]`, function(e){
