@@ -3,7 +3,7 @@
 // @namespace       Pixiv
 // @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @author          NightLancerX
-// @version         4.15
+// @version         4.15.1
 // @match           https://www.pixiv.net/bookmark_new_illust*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -697,8 +697,6 @@
           .history-grid ._history-item { display: block; width: 240px; height: auto; margin-bottom: 0; box-sizing: border-box; text-align: center; }
           .history-grid img { width: 100%; height: auto; max-height: 320px; object-fit: cover; display: block; margin: 0 auto; }
           ._history-items h1.date { width: 100%; margin: 1em 0 0.25em 0; padding: 0.25em 0; flex-basis: 100%; }
-          .page-count { position: absolute; right: 1px; top: 1px; z-index: 1; display: flex; justify-content: center; align-items: center; min-width: 20px; font-weight: bold; background: rgba(0, 0, 0, 0.32); border-radius: 10px; font-size: 10px; line-height: 20px; color: #fff; }
-          .page-count span { font-size: 10px; line-height: 20px; color: #fff; font-family: inherit; font-weight: bold; margin-top: -1px;}
         `);
 
         let container = document.querySelector("._history-items");
@@ -1392,7 +1390,7 @@
           //actual art preview
           $('body').on(previewEventType, 'section._profile-popup a[href*="/artworks/"]', function(e){
             e.preventDefault();
-            if (this.querySelector('span'))
+            if (this.querySelector('span').textContent > "")
               checkDelay(setMangaHover, this, this.textContent, "auto");
             else
               checkDelay(setHover, this, getOffsetRect(this).top+128+5+'px', true);
