@@ -3,7 +3,7 @@
 // @namespace       Pixiv
 // @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @author          NightLancerX
-// @version         4.15.1
+// @version         4.16
 // @match           https://www.pixiv.net/bookmark_new_illust*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -181,8 +181,8 @@
     }
     console.log('PAGETYPE:',PAGETYPE);
     //-----------------------------------------------------------------------------------
-    //Old:                4 6              14
-    //New:          0 1 2     7 8 10 12 13
+    //Old:                4                14
+    //New:          0 1 2   6 7 8 10 12 13
     //==============----------------------------
     //Coloring:     = 1 = 4 6 7 8 10 12 == ~~ //
     //Profile card: 0 1 = 4 6 7 8 10 12 == == //
@@ -414,12 +414,12 @@
     {
       switch (PAGETYPE){
         case 1:
+        case 6:
         case 7:
         case 8:
         case 10: return [...document.querySelectorAll('li > div')].filter(e => (e.querySelector('a[href*="/artworks/"]')));
 
-        case 4:
-        case 6:  return document.querySelectorAll('.ui-profile-popup');
+        case 4:  return document.querySelectorAll('.ui-profile-popup');
 
         case 12: return document.querySelectorAll('.gtm-illust-recommend-title');
 
@@ -439,10 +439,10 @@
       else if (typeof artContainer.hasAttribute !== 'function'){
         console.log(artContainer, 'has been filtered out.');
       }
-      else if ([1,7,10,12].includes(PAGETYPE)){
+      else if ([1,6,7,10,12].includes(PAGETYPE)){
         authorId = searchNearestNode(artContainer,'[href*="/users/"]').getAttribute('href').split('/').pop();
       }
-      else if (PAGETYPE===4 || PAGETYPE===6){
+      else if (PAGETYPE===4){
         authorId = artContainer.getAttribute('data-user_id') || artContainer.querySelector('.ui-profile-popup').getAttribute('data-user_id');
       }
       else if (PAGETYPE===8){
@@ -472,7 +472,7 @@
         case 7:  return document.querySelector('a[data-gtm-user-id][href*="/artworks/"]')?.closest('ul')
         case 1:
         case 4:  return $('.gtm-illust-recommend-zone')[0]
-        case 6:  return $('.ranking-items')[0]
+        case 6:  return document.querySelector('ol')
         case 8:  return $('body')[0] //$("section>div>ul")[0]
         case 10: return document.querySelector('div[style*=--columns]')   //fckng sick of this-_-
         case 12: return $('.gtm-illust-recommend-zone ul')[0]
@@ -848,9 +848,10 @@
     };
     getUserId().then(() => illust_history.check_space()).catch(e => console.error('History not initialized —', e));
     //===================================================================================
-    if      (PAGETYPE===0)                  siteImgMaxWidth = 198;
-    else if (PAGETYPE===4)                  siteImgMaxWidth = 150;
-    else if (PAGETYPE===6 || PAGETYPE===14) siteImgMaxWidth = 240;
+    if      (PAGETYPE===4)  siteImgMaxWidth = 150;
+    else if (PAGETYPE===14) siteImgMaxWidth = 240;
+    //else if (PAGETYPE===0)  siteImgMaxWidth = 198;
+    //else if (PAGETYPE===6)  siteImgMaxWidth = 280;
     //-----------------------------------------------------------------------------------
     $(document).ready(function ()
     {
@@ -961,7 +962,7 @@
         if (!($(menu).has(e.target).length) && (menu.style.visibility == 'visible')){
           menu.style.visibility = 'hidden';
           saveSettings();
-          if (currentSettings[propList[0].name] !== propList[0].array[propList[0].paramIndex]) setTimeout(()=>{initPreviewListeners(); initProfileCard()}, 0); //reset event listeners only after settings are applied
+          if (currentSettings[propList[0].name] !== propList[0].array[propList[0].paramIndex]) setTimeout(()=>{initPreviewListeners(); initProfileCard()}, 0); //reset event listeners only after settings are applied | TODO - check for existing DOM elements!
           setCurrentSettings();
           clearTimeout(menuTimer);
         }
@@ -973,10 +974,10 @@
       //---------------------------------------------------------------------------------
       function initFollowagePreview()
       {
-        if ([1,2,7,8,12].includes(PAGETYPE)){
+        if ([1,2,6,7,8,12].includes(PAGETYPE)){
           followSelector = 'button:contains("Follow")';
         }
-        else if ([4,6,13].includes(PAGETYPE)){
+        else if ([4,13].includes(PAGETYPE)){
           followSelector = '.follow-button';
         }
         else return 0;
@@ -1421,7 +1422,7 @@
         }
         //-------------------------------------------------------------------------------
         //New illustrations, Discovery[Artworks], Artist pages, Bookmarks, Search, Home page, Artwork page //0,1,2,7,8,10,12
-        if (PAGETYPE === 0 || PAGETYPE === 1 || PAGETYPE === 2 || PAGETYPE === 7 || PAGETYPE === 8 || PAGETYPE === 10 || PAGETYPE === 12)
+        if (PAGETYPE === 0 || PAGETYPE === 1 || PAGETYPE === 2 || PAGETYPE === 6 || PAGETYPE === 7 || PAGETYPE === 8 || PAGETYPE === 10 || PAGETYPE === 12)
         {
           console.info('new');
           $('body').on(previewEventType, 'a[href*="/artworks/"] img', function(e)
@@ -1442,9 +1443,10 @@
             //--------------------------------Normal case--------------------------------
             else{
               //console.log(this);
+              let count = (PAGETYPE === 6)? this.closest('a').nextElementSibling.textContent: this.closest('a').textContent.replace(/R-18(G)?/,"");
               //multiple
-              if (this.closest('a').querySelector('span'))
-                checkDelay(setMangaHover, this, this.closest('a').textContent.replace(/R-18(G)?/,""));
+              if (count>1)
+                checkDelay(setMangaHover, this, count);
               //single
               else checkDelay(setHover, this);
             }
@@ -1460,8 +1462,8 @@
             }
           });
         }
-        //----------------------DAILY RANKINGS & BOOKMARK INFORMATION PAGES-------------- //4,6
-        else if (PAGETYPE === 4 || PAGETYPE === 6)
+        //----------------------------BOOKMARK INFORMATION PAGES------------------------- //4
+        else if (PAGETYPE === 4)
         {
           $('body').on(previewEventType, 'a[href*="/artworks/"]', function(e) //direct div selector works badly with "::before"
           {
@@ -1562,48 +1564,42 @@
 
       //adjusting preview position considering expected image width
       //---------------------------------------------------------------------------------
-      let l = ([4,6,14].includes(PAGETYPE))
+      let l = ([4,14].includes(PAGETYPE))
           ?getOffsetRect(thisObj.parentNode.parentNode).left //more accurate on discovery users and history
           :getOffsetRect(thisObj).left;
       let dcw = document.body.clientWidth;
       let previewWidth = PREVIEWSIZE;
 
-      if (hoverImg.naturalWidth>0){ //cached (previously viewed)
-        adjustSinglePreview(dcw, l, hoverImg.naturalWidth, (PAGETYPE!=6)?thisObj:thisObj.parentNode.parentNode);
-        //console.log("cached");
+      if (hoverImg.naturalWidth>0) //cached (previously viewed)
+        adjustSinglePreview(dcw, l, hoverImg.naturalWidth, thisObj);
+      else if ([4,14].includes(PAGETYPE) && !profileCard){ //on old pages width can be pre-calculated
+        previewWidth = PREVIEWSIZE*(((PAGETYPE==14)? thisObj.clientWidth: thisObj.parentNode.parentNode.clientWidth)/siteImgMaxWidth)+5;
+        adjustSinglePreview(dcw, l, previewWidth, thisObj.parentNode.parentNode);
+        //console.log("count");
       }
-      else{ //on old pages width can be pre-calculated
-        if ([4,6,14].includes(PAGETYPE) && !profileCard){
-          previewWidth = PREVIEWSIZE*(((PAGETYPE==6 || PAGETYPE==14)?thisObj.clientWidth:thisObj.parentNode.parentNode.clientWidth)/siteImgMaxWidth)+5;
-          adjustSinglePreview(dcw, l, previewWidth, (PAGETYPE!=6)?thisObj:thisObj.parentNode.parentNode);
-          //console.log("count");
-        }
-        else{ //if it is obvious that preview will fit on the screen then there is no need in setInterval(trying to use as minimun setInterval`s as possible)
-          if (dcw - l - PREVIEWSIZE - 5 > 0){
-            imgContainer.style.left = l+'px';
-            imgContainer.style.visibility = 'visible';
-            //console.log("excessive");
-          }
-          else{ //when on NEW layout - need to wait until image width is received
-            let tLimit = 0;
+      else if (dcw - l - PREVIEWSIZE - 5 > 0){ //if it is obvious that preview will fit on the screen then there is no need in setInterval
+        imgContainer.style.left = l+'px';
+        imgContainer.style.visibility = 'visible';
+        //console.log("excessive");
+      }
+      else{ //when on NEW layout - need to wait until image width is received
+        let tLimit = 0;
 
-            tInt = setInterval(function(){
-              if (hoverImg.naturalWidth>0){
-                clearInterval(tInt);
-                adjustSinglePreview(dcw, l, hoverImg.naturalWidth, thisObj); //position mismatching due to old `thisObj` => clearing in hoverImg.mouseleave
-              }
-              ++tLimit;
-              //console.log(tInt, tLimit);
-
-              if (tLimit*40>5000){ //timeout 5s in case of loading errors
-                clearInterval(tInt);
-                hoverImg.src='';
-                console.error('setInterval error');
-                return;
-              }
-            }, 40);
+        tInt = setInterval(function(){
+          if (hoverImg.naturalWidth>0){
+            clearInterval(tInt);
+            adjustSinglePreview(dcw, l, hoverImg.naturalWidth, thisObj); //position mismatching due to old `thisObj` => clearing in hoverImg.mouseleave
           }
-        }
+          ++tLimit;
+          //console.log(tInt, tLimit);
+
+          if (tLimit*40>5000){ //timeout 5s in case of loading errors
+            clearInterval(tInt);
+            hoverImg.src='';
+            console.error('setInterval error');
+            return;
+          }
+        }, 40);
       }
       //---------------------------------------------------------------------------------
       checkBookmark(thisObj, imgContainer);
@@ -1688,9 +1684,9 @@
     //-----------------------------------------------------------------------------------
     function checkBookmark(thisContainer, previewContainer)
     {
-      if ([0,1,2,7,8,10,12].includes(PAGETYPE))
+      if ([0,1,2,6,7,8,10,12].includes(PAGETYPE))
         bookmarkContainer = searchNearestNode(thisContainer, 'button');
-      else if ([4,6].includes(PAGETYPE))
+      else if ([4].includes(PAGETYPE))
         bookmarkContainer = searchNearestNode(thisContainer, "._one-click-bookmark")
       else return; //no favourite button
 
