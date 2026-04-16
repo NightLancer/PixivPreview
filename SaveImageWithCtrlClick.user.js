@@ -9,7 +9,7 @@
 // @match           *://*/*.gif*
 // @match           *://*/*.webp*
 // @match           https://pbs.twimg.com/media/*
-// @version         2.5
+// @version         2.6
 // @homepageURL     https://github.com/NightLancer/PixivPreview
 // @license         MIT License
 // @grant           none
@@ -25,7 +25,7 @@
     let main = function()
     {
         let anchor = document.createElement('a'), name, ext;
-        name = (imgSrc.indexOf('?')>-1)? imgSrc.substring(imgSrc.lastIndexOf("/")+1, imgSrc.indexOf('?')): imgSrc.substring(imgSrc.lastIndexOf("/")+1);
+        name = imgSrc.substring(imgSrc.lastIndexOf("/")+1).replace(/-[^_]+_/, '_').replace(/\?.*$/, '');
         try {name = decodeURI(name);} catch(e){}
         ext = imgSrc.match(/(?<=format=)[a-z]+/)?.[0];
         if (ext) name += '.' + ext;

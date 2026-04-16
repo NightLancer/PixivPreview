@@ -3,7 +3,7 @@
 // @namespace       Pixiv
 // @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @author          NightLancerX
-// @version         4.17
+// @version         4.17.2
 // @match           https://www.pixiv.net/bookmark_new_illust*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -1701,9 +1701,8 @@
         $(previewContainer).css("background", "rgb(34, 34, 34)"); //grey
     }
     //-----------------------------------------------------------------------------------
-    function getImgId(str)
-    {
-      return str.substring(str.lastIndexOf("/")+1, str.indexOf("_"));
+    function getImgId(str) {
+      return str.match(/\/(\d+)(?=[-_.]|$)/)?.[1];
     }
     //-----------------------------------------------------------------------------------
     function getOffsetRect(elem)
@@ -1786,7 +1785,7 @@
           if (isManga)
           {
             let src = imgContainerObj.src;
-            pageNum = src.match(/(?<=\/\d+_p)\d+(?=[_|.])/)[0];
+            pageNum = src.match(/(?<=_p)\d+(?=[_|.])/)[0];
           }
 
           getOriginalUrl(ajaxIllustUrl, pageNum, toSave);
@@ -1820,7 +1819,7 @@
     //-----------------------------------------------------------------------------------
     async function saveImgByUrl(sourceUrl)
     {
-      const filename = sourceUrl.split('/').pop();
+      const filename = sourceUrl.split('/').pop().replace(/-[^_]+_/, '_'); //removing hashed part only on saving, giving initial image can potentially differ a lot...
       const illustId = filename.split('_')[0];
       const ext = filename.split('.').pop().toLowerCase();
       const GMR = (typeof(GM_xmlhttpRequest)==='function')?GM_xmlhttpRequest:GM.xmlHttpRequest;
