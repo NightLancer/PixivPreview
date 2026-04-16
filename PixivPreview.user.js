@@ -3,7 +3,7 @@
 // @namespace       Pixiv
 // @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @author          NightLancerX
-// @version         4.16
+// @version         4.17
 // @match           https://www.pixiv.net/bookmark_new_illust*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -168,7 +168,7 @@
       if (document.URL.match(/https:\/\/www.pixiv.net\/bookmark_new_illust(?:_r18)?.php/))                  return 0; //New illustrations - New +
       if (document.URL.match(/^https:\/\/www.pixiv.net\/discovery(?:\?mode=(safe|r18))?$/))                 return 1; //Discovery page(works) - New +
       if (document.URL.match('https://www.pixiv.net/bookmark_detail.php?'))                                 return 4; //Bookmark information - Old +
-      if (document.URL.match('https://www.pixiv.net/ranking.php?'))                                         return 6; //Daily rankings - Old +
+      if (document.URL.match('https://www.pixiv.net/ranking.php?'))                                         return 6; //Daily rankings - New +
       if (document.URL.match(/https:\/\/www\.pixiv\.net\/(?:en\/)?users\/\d+\/bookmarks\/artworks/))        return 7; //Bookmarks page - New +
       if (document.URL.match(/https:\/\/www\.pixiv\.net\/(?:en\/)?users/))                                  return 2; //Artist works page - New +
       if (document.URL.match(/https:\/\/www\.pixiv\.net\/(?:en\/)?tags/))                                   return 8; //Search page - New +
@@ -1064,8 +1064,8 @@
                     );
                   }
                 });
-                if (!urls.length) return; //maybe check nav element before fetching instead
-                maxPageCount = urls.length + 1;
+                if (!urls.length) return;
+                maxPageCount = pageCount-1 + urls.length;
               }
 
               if (tags){
@@ -1136,6 +1136,10 @@
               pageNumber.querySelector('span').textContent = `${pageCount}/${maxPageCount}`;
               pageNumber.style.opacity = "100%";
               setTimeout(()=>pageNumber.style.opacity = "0%", 1500);
+
+              let location_url = new URL(location.href);
+              location_url.searchParams.set('p', pageCount);
+              history.replaceState({}, '', location_url.pathname + location_url.search);
             }
           } //endif
         } //onscroll
@@ -1260,7 +1264,7 @@
             });
           });
 
-          $('body').on('mouseup', 'section>div>a[href$="/artworks"], a[href$="/illustrations"], a[href$="/manga"]', function(){
+          $('body').on('mouseup', 'nav>a[href*="/illustrations"], nav>a[href*="/artworks"], nav>a[href*="/manga"]', function(){
             console.log('PAGETYPE: '+ PAGETYPE+' -> 2');
             PAGETYPE = 2;
             sleep(2500).then(autoPagination);
@@ -1274,7 +1278,8 @@
           }
 
           //clearing "cache" of autopaged arts
-          $('body').on('mouseup', 'section>div>div>div>a[href*="/illustrations/"], section>div>div>div>a[href*="/artworks/"], section>div>div>div>a[href*="/manga/"]', function(){
+          $('body').on('mouseup', 'nav>a[href*="/illustrations"], nav>a[href*="/artworks"], nav>a[href*="/manga"]', function(){
+            console.log('CLEAR');
             let artsSection = getArtSectionContainers();
             [...artsSection.querySelectorAll('.paginated')].forEach(el => el.remove());
           });
@@ -1421,7 +1426,7 @@
           }, {capture: true}) //site uses event capturing now which jQuery can't cover
         }
         //-------------------------------------------------------------------------------
-        //New illustrations, Discovery[Artworks], Artist pages, Bookmarks, Search, Home page, Artwork page //0,1,2,7,8,10,12
+        //New illustrations, Discovery[Artworks], Artist pages, Rankings, Bookmarks, Search, Home page, Artwork page //0,1,2,6,7,8,10,12
         if (PAGETYPE === 0 || PAGETYPE === 1 || PAGETYPE === 2 || PAGETYPE === 6 || PAGETYPE === 7 || PAGETYPE === 8 || PAGETYPE === 10 || PAGETYPE === 12)
         {
           console.info('new');
@@ -1544,7 +1549,7 @@
       if (currentSettings["DELAY_BEFORE_PREVIEW"]>0){
         clearTimeout(timerId);
         timerId = setTimeout(()=>{
-          if ([].indexOf.call(document.querySelectorAll(':hover'), (PAGETYPE!=6)? args[0] : args[0].parentNode.parentNode) > -1) func(...args)
+          if ([].indexOf.call(document.querySelectorAll(':hover'), args[0]) > -1) func(...args)
         }, currentSettings["DELAY_BEFORE_PREVIEW"]);
       }
       else func(...args)
