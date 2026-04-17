@@ -3,7 +3,7 @@
 // @namespace       Pixiv
 // @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @author          NightLancerX
-// @version         4.17.2
+// @version         4.17.3
 // @match           https://www.pixiv.net/bookmark_new_illust*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -1187,7 +1187,7 @@
         observer.disconnect();
         $('body').off('mouseup', 'a[href*="/discovery"]');
         $('body').off('mouseup', 'a[href*="bookmarks/artworks"]');
-        $('body').off('mouseup', 'section>div>a[href*="/artworks"], a[href*="/illustrations"], a[href*="/manga"]');
+        $('body').off('mouseup', 'nav>a[href*="/illustrations"], nav>a[href*="/manga"]');
         //-------------------------------------------------------------------------------
         if (PAGETYPE===0){
           autoPagination().then(v => {
@@ -1264,7 +1264,7 @@
             });
           });
 
-          $('body').on('mouseup', 'nav>a[href*="/illustrations"], nav>a[href*="/artworks"], nav>a[href*="/manga"]', function(){
+          $('body').on('mouseup', 'nav>a[href*="/illustrations"], nav>a[href*="/manga"]', function(){
             console.log('PAGETYPE: '+ PAGETYPE+' -> 2');
             PAGETYPE = 2;
             sleep(2500).then(autoPagination);
@@ -1278,7 +1278,7 @@
           }
 
           //clearing "cache" of autopaged arts
-          $('body').on('mouseup', 'nav>a[href*="/illustrations"], nav>a[href*="/artworks"], nav>a[href*="/manga"]', function(){
+          $('body').on('mouseup', 'nav>a[href*="/illustrations"], nav>a[href*="/manga"]', function(){
             console.log('CLEAR');
             let artsSection = getArtSectionContainers();
             [...artsSection.querySelectorAll('.paginated')].forEach(el => el.remove());
