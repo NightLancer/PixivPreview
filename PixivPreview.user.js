@@ -3,7 +3,7 @@
 // @namespace       Pixiv
 // @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @author          NightLancerX
-// @version         4.17.3
+// @version         4.17.4
 // @match           https://www.pixiv.net/bookmark_new_illust*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -171,7 +171,7 @@
       if (document.URL.match('https://www.pixiv.net/ranking.php?'))                                         return 6; //Daily rankings - New +
       if (document.URL.match(/https:\/\/www\.pixiv\.net\/(?:en\/)?users\/\d+\/bookmarks\/artworks/))        return 7; //Bookmarks page - New +
       if (document.URL.match(/https:\/\/www\.pixiv\.net\/(?:en\/)?users/))                                  return 2; //Artist works page - New +
-      if (document.URL.match(/https:\/\/www\.pixiv\.net\/(?:en\/)?tags/))                                   return 8; //Search page - New +
+      if (document.URL.match(/^https:\/\/www\.pixiv\.net\/(?:en\/)?(?:tags|search)/))                       return 8; //Search page - New +
       if (document.URL.match(/https:\/\/www\.pixiv\.net\/(?:en\/)?artworks/))                               return 12; //Illust page - New* +
       if (document.URL.match('https://www.pixiv.net/discovery/users?'))                                     return 13; //Discovery page(users) New +
       if (document.URL.match('https://www.pixiv.net/history.php'))                                          return 14; //History - Old +
@@ -414,10 +414,11 @@
     {
       switch (PAGETYPE){
         case 1:
-        case 6:
         case 7:
         case 8:
         case 10: return [...document.querySelectorAll('li > div')].filter(e => (e.querySelector('a[href*="/artworks/"]')));
+
+        case 6:  return [...document.querySelectorAll('li')].filter(e => (e.querySelector('a[href*="/artworks/"]')));
 
         case 4:  return document.querySelectorAll('.ui-profile-popup');
 
