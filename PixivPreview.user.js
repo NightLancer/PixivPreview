@@ -3,7 +3,7 @@
 // @namespace       Pixiv
 // @description     Enlarged preview of arts and manga on mouse hovering. Extended history for non-premium users. Auto-Pagination on Following and Users pages. Click on image preview to open original art in new tab, or MMB-click to open art illustration page, Alt+LMB-click to add art to bookmarks, Ctrl+LMB-click for saving originals of artworks. The names of the authors you are already subscribed to are highlighted with green. Settings can be changed in proper menu.
 // @author          NightLancerX
-// @version         4.17.4
+// @version         4.18
 // @match           https://www.pixiv.net/bookmark_new_illust*
 // @match           https://www.pixiv.net/discovery*
 // @match           https://www.pixiv.net/ranking.php*
@@ -416,9 +416,9 @@
         case 1:
         case 7:
         case 8:
-        case 10: return [...document.querySelectorAll('li > div')].filter(e => (e.querySelector('a[href*="/artworks/"]')));
+        case 10: return document.querySelectorAll('li > div:has(a[href*="/artworks/"])');
 
-        case 6:  return [...document.querySelectorAll('li')].filter(e => (e.querySelector('a[href*="/artworks/"]')));
+        case 6:  return document.querySelectorAll('li:has(a[href*="/artworks/"])');
 
         case 4:  return document.querySelectorAll('.ui-profile-popup');
 
@@ -1637,7 +1637,7 @@
       imgsArrInit(thisObj, +count);
     }
     //-----------------------------------------------------------------------------------
-    function imgsArrInit(thisObj, count, batch = 3)
+    function imgsArrInit(thisObj, count, batch = 4)
     {
       let primaryLink = parseImgUrl(thisObj);
       let currentImgId = getImgId(primaryLink);
@@ -1663,12 +1663,14 @@
             imgsArr[i] = document.createElement('img');
             mangaContainer.appendChild(imgsArr[i]);
           }
-          if (i <= batch) //priority-load {batch} arts
+          if (i < batch) //priority-load {batch} arts
             loadImg(i)
-          else{
-            const timer = setTimeout(loadImg, batch*1500 + i*300, i);
+          else if (!imgsArr.slice(0, batch).every(img => img?.naturalHeight > 0)) {  //if {batch} images are already loaded ~-> all images are loaded before
+            const timer = setTimeout(loadImg, batch*1000 + i*300, i);
             timerIds.push(timer); //if preview was hovered accidentally there's time to cancel following requests [without await/promise/fetch]
           }
+          else
+            loadImg(i);
         }
       }
       //---------------------------------------------------------------------------------
@@ -1809,7 +1811,7 @@
       xhr.open("GET", illustPageUrl, true);
       xhr.onload = function ()
       {
-        let originalArtUrl = this.response.body.urls.original; //this.response.body.url.big;
+        let originalArtUrl = this.response.body.urls.original.replace(/(\/[^/]*)-[^/_]*_/, '$1_'); //this.response.body.url.big;
         if (pageNum>0) originalArtUrl = originalArtUrl.replace('p0','p'+pageNum);
 
         if (toSave)    saveImgByUrl(originalArtUrl);
@@ -1820,7 +1822,7 @@
     //-----------------------------------------------------------------------------------
     async function saveImgByUrl(sourceUrl)
     {
-      const filename = sourceUrl.split('/').pop().replace(/-[^_]+_/, '_'); //removing hashed part only on saving, giving initial image can potentially differ a lot...
+      const filename = sourceUrl.split('/').pop(); //.replace(/-[^_]+_/, '_'); (if 404: todo revert^)
       const illustId = filename.split('_')[0];
       const ext = filename.split('.').pop().toLowerCase();
       const GMR = (typeof(GM_xmlhttpRequest)==='function')?GM_xmlhttpRequest:GM.xmlHttpRequest;
